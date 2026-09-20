@@ -1,0 +1,10 @@
+{
+  "name": "whatsapp-converty-web",
+  "private": true,
+  "scripts": {
+    "styles": "tailwindcss -i web/static/src/input.css -o web/static/css/styles.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.7"
+  }
+}

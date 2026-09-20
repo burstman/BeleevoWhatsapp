@@ -1,0 +1,46 @@
+package components
+
+import "github.com/anthdm/superkit/validate"
+
+// FieldErrors renders inline validation errors for a form field when present.
+templ FieldErrors(field string, errors validate.Errors) {
+	if errors != nil && errors.Has(field) {
+		for _, msg := range errors.Get(field) {
+			if msg == "" {
+				continue
+			}
+			<p class="mt-1 text-sm text-red-600">{ msg }</p>
+		}
+	}
+}
+
+// StatCard is a single summary metric on the overview page.
+templ StatCard(label string, value string, hint string) {
+	<div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+		<p class="text-xs font-medium uppercase tracking-wide text-slate-500">{ label }</p>
+		<p class="mt-2 text-3xl font-semibold text-slate-900">{ value }</p>
+		<p class="mt-1 text-xs text-slate-500">{ hint }</p>
+	</div>
+}
+
+// EmptyState renders a friendly placeholder for modules that are not yet built.
+templ EmptyState(title string, body string) {
+	<div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center">
+		<h2 class="text-lg font-semibold text-slate-900">{ title }</h2>
+		<p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{ body }</p>
+	</div>
+}
+
+// ToastTarget is the HTMX target element for server-rendered error toasts.
+templ ToastTarget() {
+	<div id="toast" aria-live="polite"></div>
+}
+
+// LogoutForm is a tiny POST form used in the topbar.
+templ LogoutForm() {
+	<form method="POST" action="/logout">
+		<button type="submit" class="rounded-md px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white">
+			Sign out
+		</button>
+	</form>
+}

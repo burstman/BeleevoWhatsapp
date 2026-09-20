@@ -1,0 +1,61 @@
+# Render Blueprint for Converty WhatsApp Notification Platform.
+# Creates: web service, background worker, PostgreSQL, and Redis.
+#
+# All secrets are provided via Render environment variables (not stored here).
+
+databases:
+  - name: converty-whatsapp-db
+    databaseName: converty_whatsapp
+    user: converty_whatsapp
+    plan: free # change to a paid/production plan when ready
+
+services:
+  - type: redis
+    name: converty-whatsapp-redis
+    region: oregon
+    plan: free # change to a paid/production plan when ready
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: converty-whatsapp-api
+    runtime: go
+    plan: free
+    buildCommand: go build -o bin/api ./cmd/app && go build -o bin/migrate ./cmd/scripts/migrate
+    preDeployCommand: ./bin/migrate
+    startCommand: ./bin/api
+    healthCheckPath: /healthz
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: 3000 # Render injects the actual PORT; keep this as a placeholder
+      - fromDatabase:
+          name: converty-whatsapp-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: converty-whatsapp-redis
+          type: redis
+          property: connectionString
+      - key: SUPERKIT_SECRET
+        sync: false # set manually in the Render dashboard
+
+  - type: worker
+    name: converty-whatsapp-worker
+    runtime: go
+    plan: free
+    buildCommand: go build -o bin/worker ./cmd/worker
+    startCommand: ./bin/worker
+    envVars:
+      - key: APP_ENV
+        value: production
+      - fromDatabase:
+          name: converty-whatsapp-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: converty-whatsapp-redis
+          type: redis
+          property: connectionString
+      - key: SUPERKIT_SECRET
+        sync: false

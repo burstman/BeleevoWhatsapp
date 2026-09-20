@@ -1,0 +1,61 @@
+package viewsdashboard
+
+import (
+	"strconv"
+
+	"whatsappconverty/internal/dashboard"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+templ Overview(page components.Page, stats dashboard.Stats) {
+	@layouts.Shell(page) {
+		<div class="mb-6 flex items-center justify-between">
+			<div>
+				<h2 class="text-xl font-semibold text-slate-900">Welcome back</h2>
+				<p class="text-sm text-slate-500">Here's what's happening with your shop.</p>
+			</div>
+			if stats.WhatsappConnected {
+				<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+					<span class="h-2 w-2 rounded-full bg-emerald-500"></span> WhatsApp connected
+				</span>
+			} else {
+				<a href="/settings"
+					class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 transition hover:bg-amber-100">
+					<span class="h-2 w-2 rounded-full bg-amber-500"></span> WhatsApp not connected
+				</a>
+			}
+		</div>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			@components.StatCard("Messages sent", strconv.Itoa(stats.MessagesSent), "lifetime")
+			@components.StatCard("Messages delivered", strconv.Itoa(stats.MessagesDelivered), "lifetime")
+			@components.StatCard("Messages failed", strconv.Itoa(stats.MessagesFailed), "lifetime")
+			@components.StatCard("Active automations", strconv.Itoa(stats.ActiveAutomations), "status → template")
+		</div>
+
+		<div class="mt-8">
+			<h3 class="mb-3 text-sm font-semibold text-slate-700">Getting started</h3>
+			<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<a href="/settings" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
+					<h4 class="font-semibold text-slate-900">1. Connect WhatsApp</h4>
+					<p class="mt-1 text-sm text-slate-500">Link your WhatsApp Business phone number to your shop.</p>
+				</a>
+				<a href="/automations" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
+					<h4 class="font-semibold text-slate-900">2. Create automations</h4>
+					<p class="mt-1 text-sm text-slate-500">Map order statuses to approved message templates.</p>
+				</a>
+				<a href="/messages" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
+					<h4 class="font-semibold text-slate-900">3. Monitor messages</h4>
+					<p class="mt-1 text-sm text-slate-500">Track sent, delivered, read and failed messages.</p>
+				</a>
+			</div>
+		</div>
+	}
+}
+
+templ Placeholder(page components.Page, section string) {
+	@layouts.Shell(page) {
+		@components.EmptyState("Coming soon", "This module lands in a later phase. It will let "+ "you manage "+ section + " from your dashboard.")
+	}
+}

@@ -1,0 +1,25 @@
+package viewslanding
+
+import (
+	"whatsappconverty/web/views/layouts"
+)
+
+templ Index() {
+	@layouts.AuthLayout("Converty WhatsApp") {
+		<div class="rounded-xl border border-slate-200 bg-white p-8 shadow-sm text-center">
+			<h2 class="text-lg font-semibold text-slate-900">Automated WhatsApp order notifications</h2>
+			<p class="mt-2 text-sm text-slate-500">
+				Connect your WhatsApp Business number, configure templates and let Converty order
+				statuses drive the messages your customers receive.
+			</p>
+			<div class="mt-6 flex items-center justify-center gap-3">
+				<a href="/login" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500">
+					Sign in
+				</a>
+				<a href="/register" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+					Create account
+				</a>
+			</div>
+		</div>
+	}
+}

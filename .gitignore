@@ -1,0 +1,17 @@
+# Environment / secrets
+.env
+.env.local
+
+# Build output
+bin/
+dist/
+
+# Node
+node_modules/
+
+# Generated templ code is committed (needed for build), but these are transient:
+*.log
+
+# Editor
+.idea/
+.vscode/
