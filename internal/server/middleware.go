@@ -2,10 +2,23 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
+
+// shouldLogRequest filters high-frequency noise (health checks, static assets)
+// from the request log.
+func shouldLogRequest(path string) bool {
+	if path == "/healthz" || path == "/readyz" {
+		return false
+	}
+	if strings.HasPrefix(path, "/static/") {
+		return false
+	}
+	return true
+}
 
 func (a *App) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +34,10 @@ func (a *App) loggingMiddleware(next http.Handler) http.Handler {
 		// Capture the response status for the log line.
 		rr := newStatusRecorder(w)
 		next.ServeHTTP(rr, r)
+
+		if !shouldLogRequest(r.URL.Path) {
+			return
+		}
 
 		logger.Info("request",
 			"status", rr.status,
