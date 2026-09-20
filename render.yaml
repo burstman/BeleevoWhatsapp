@@ -1,13 +1,8 @@
 # Render Blueprint for Converty WhatsApp Notification Platform.
-# Creates: web service, background worker, PostgreSQL, and Redis.
+# Creates: web service, background worker, and Redis.
+# PostgreSQL is provided by Neon (external) — set DATABASE_URL manually.
 #
 # All secrets are provided via Render environment variables (not stored here).
-
-databases:
-  - name: converty-whatsapp-db
-    databaseName: converty_whatsapp
-    user: converty_whatsapp
-    plan: free # change to a paid/production plan when ready
 
 services:
   - type: redis
@@ -32,9 +27,7 @@ services:
       - key: APP_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: converty-whatsapp-db
-          property: connectionString
+        sync: false # paste your Neon connection string (use the direct, non-pooled one)
       - key: REDIS_URL
         fromService:
           name: converty-whatsapp-redis
@@ -53,9 +46,7 @@ services:
       - key: APP_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: converty-whatsapp-db
-          property: connectionString
+        sync: false # paste your Neon connection string (use the direct, non-pooled one)
       - key: REDIS_URL
         fromService:
           name: converty-whatsapp-redis
