@@ -16,7 +16,8 @@ services:
     plan: free # change to a paid/production plan when ready
     maxmemoryPolicy: noeviction
     ipAllowList: # public access is fine for the free test tier; tighten before production
-      - 0.0.0.0/0
+      - source: 0.0.0.0/0
+        description: everywhere
 
   - type: web
     name: converty-whatsapp-api
