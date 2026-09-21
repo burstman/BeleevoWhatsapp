@@ -26,6 +26,7 @@ type Config struct {
 	ConvertyClientID     string
 	ConvertyClientSecret string
 	ConvertyBaseURL      string
+	ConvertyAPIURL       string
 	ConvertyRedirectURI  string
 
 	// ConvertyEncryptionKey encrypts Converty tokens at rest (AES-256-GCM).
@@ -52,6 +53,7 @@ func Load() Config {
 		ConvertyClientID:      getenv("CONVERTY_CLIENT_ID", ""),
 		ConvertyClientSecret:  getenv("CONVERTY_CLIENT_SECRET", ""),
 		ConvertyBaseURL:       getenv("CONVERTY_BASE_URL", "https://partner.converty.shop"),
+		ConvertyAPIURL:        getenv("CONVERTY_API_URL", "https://api.converty.shop"),
 		ConvertyRedirectURI:   getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
 		ConvertyEncryptionKey: getenv("CONVERTY_ENCRYPTION_KEY", ""),
 	}

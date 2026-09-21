@@ -83,7 +83,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (Token,
 
 // GetStore returns the authenticated seller's store.
 func (s *Service) GetStore(ctx context.Context, accessToken string) (Store, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.cfg.ConvertyBaseURL+"/api/v1/stores/me", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.cfg.ConvertyAPIURL+"/api/v1/stores/me", nil)
 	if err != nil {
 		return Store{}, fmt.Errorf("build request: %w", err)
 	}
@@ -108,7 +108,7 @@ func (s *Service) SubscribeHook(ctx context.Context, accessToken, targetURL, eve
 	if err != nil {
 		return fmt.Errorf("marshal body: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.ConvertyBaseURL+"/api/v1/hooks/subscribe", strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.ConvertyAPIURL+"/api/v1/hooks/subscribe", strings.NewReader(string(body)))
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
