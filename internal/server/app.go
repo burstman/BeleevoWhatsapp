@@ -78,6 +78,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/dashboard", kit.Handler(a.handleOverview))
 		pr.Get("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
+		pr.Post("/auth/converty/disconnect", kit.Handler(a.handleConvertyDisconnect))
 		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
 		pr.Get("/templates", kit.Handler(a.handlePlaceholder("templates")))
 		pr.Get("/messages", kit.Handler(a.handlePlaceholder("messages")))

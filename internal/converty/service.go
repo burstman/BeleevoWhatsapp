@@ -47,6 +47,14 @@ func SupportedEvents() []string {
 	return append([]string(nil), supportedEvents...)
 }
 
+// DecryptToken unwraps an encrypted Converty token stored for an integration.
+func (s *Service) DecryptToken(encrypted string) (string, error) {
+	if s.cipher == nil {
+		return "", errors.New("converty encryption not configured")
+	}
+	return s.cipher.Decrypt(encrypted)
+}
+
 // WebhookURL returns the absolute webhook target for a UI-origin AppURL.
 func (s *Service) WebhookURL(appURL string) string {
 	for len(appURL) > 0 && appURL[len(appURL)-1] == '/' {

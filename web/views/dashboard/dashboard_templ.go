@@ -93,7 +93,7 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if stats.ConvertyConnected {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center gap-3\"><span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> Connected</span> <a href=\"/auth/converty/connect\" class=\"inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700\">Reconnect</a></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center gap-3\"><span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> Connected</span> <a href=\"/auth/converty/connect\" class=\"inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700\">Reconnect</a><form method=\"post\" action=\"/auth/converty/disconnect\" onsubmit=\"return confirm('Disconnect your Converty store? Order updates will stop.')\"><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50\">Disconnect</button></form></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

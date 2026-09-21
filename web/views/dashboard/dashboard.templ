@@ -48,6 +48,13 @@ if stats.ConvertyConnected {
 						class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
 						Reconnect
 					</a>
+					<form method="post" action="/auth/converty/disconnect"
+						onsubmit="return confirm('Disconnect your Converty store? Order updates will stop.')">
+						<button type="submit"
+							class="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50">
+							Disconnect
+						</button>
+					</form>
 				</div>
 			} else {
 					<a href="/auth/converty/connect"

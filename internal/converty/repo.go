@@ -2,6 +2,7 @@ package converty
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,9 @@ type Integration struct {
 	RefreshTokenEncrypted string
 	AccessTokenExpiresAt  *time.Time
 	Status                string
+	// WebhookSubscriptions maps webhook event -> Converty hook id, so hooks
+	// can be removed upstream when the shop disconnects.
+	WebhookSubscriptions map[string]string
 }
 
 // SaveIntegration upserts the shop's Converty integration with freshly
@@ -64,11 +68,12 @@ func (s *Service) SaveIntegration(ctx context.Context, shopID uuid.UUID, store S
 // Integration returns the shop's Converty connection.
 func (s *Service) Integration(ctx context.Context, shopID uuid.UUID) (Integration, error) {
 	var i Integration
+	var subs json.RawMessage
 	err := s.pool.QueryRow(ctx, `
 		SELECT shop_id, converty_store_id, store_name, store_slug, store_domain,
 		       store_currency, store_country, scopes,
 		       access_token_encrypted, refresh_token_encrypted,
-		       access_token_expires_at, status
+		       access_token_expires_at, status, webhook_subscriptions
 		FROM converty_integrations
 		WHERE shop_id = $1`,
 		shopID,
@@ -76,7 +81,42 @@ func (s *Service) Integration(ctx context.Context, shopID uuid.UUID) (Integratio
 		&i.ShopID, &i.ConvertyStoreID, &i.StoreName, &i.StoreSlug, &i.StoreDomain,
 		&i.StoreCurrency, &i.StoreCountry, &i.Scopes,
 		&i.AccessTokenEncrypted, &i.RefreshTokenEncrypted,
-		&i.AccessTokenExpiresAt, &i.Status,
+		&i.AccessTokenExpiresAt, &i.Status, &subs,
 	)
-	return i, err
+	if err != nil {
+		return i, err
+	}
+	if len(subs) > 0 && string(subs) != "{}" {
+		if err := json.Unmarshal(subs, &i.WebhookSubscriptions); err != nil {
+			return i, err
+		}
+	}
+	return i, nil
+}
+
+// SaveWebhookSubscriptions replaces the shop's stored Converty hook map
+// (event -> hook id) with subs.
+func (s *Service) SaveWebhookSubscriptions(ctx context.Context, shopID uuid.UUID, subs map[string]string) error {
+	raw, err := json.Marshal(subs)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
+		UPDATE converty_integrations
+		SET webhook_subscriptions = $2::jsonb, updated_at = now()
+		WHERE shop_id = $1`,
+		shopID, raw,
+	)
+	return err
+}
+
+// DeleteIntegration removes the shop's Converty connection (tokens included)
+// after a disconnect. A missing row is not an error.
+func (s *Service) DeleteIntegration(ctx context.Context, shopID uuid.UUID) error {
+	_, err := s.pool.Exec(ctx, `
+		DELETE FROM converty_integrations
+		WHERE shop_id = $1`,
+		shopID,
+	)
+	return err
 }

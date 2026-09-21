@@ -105,22 +105,61 @@ func (s *Service) GetStore(ctx context.Context, accessToken string) (Store, erro
 	return resp.Data, nil
 }
 
-// SubscribeHook registers a webhook subscription with Converty.
-func (s *Service) SubscribeHook(ctx context.Context, accessToken, targetURL, event string) error {
+// SubscribeHook registers a webhook subscription with Converty and returns
+// the Converty hook id assigned to it, so the subscription can later be
+// removed on disconnect (DELETE /api/v1/hooks/unsubscribe/:hookId).
+func (s *Service) SubscribeHook(ctx context.Context, accessToken, targetURL, event string) (string, error) {
 	body, err := json.Marshal(struct {
 		TargetURL string `json:"targetUrl"`
 		Event     string `json:"event"`
 	}{TargetURL: targetURL, Event: event})
 	if err != nil {
-		return fmt.Errorf("marshal body: %w", err)
+		return "", fmt.Errorf("marshal body: %w", err)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.ConvertyAPIURL+"/api/v1/hooks/subscribe", strings.NewReader(string(body)))
+	if err != nil {
+		return "", fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	return s.captureHookID(req)
+}
+
+// UnsubscribeHook removes a single Converty webhook subscription by its id.
+// Best-effort: a 404 (already gone) is not an error.
+func (s *Service) UnsubscribeHook(ctx context.Context, accessToken, hookID string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, s.cfg.ConvertyAPIURL+"/api/v1/hooks/unsubscribe/"+url.PathEscape(hookID), nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
 	return s.doJSON(req, &struct{}{})
+}
+
+// captureHookID issues a subscription request and returns the Converty
+// hook id from the response. The payload shape is not exhaustively
+// documented, so the id is looked up across the plausible field names
+// (_id, hookId). A missing id does not fail the call: the subscribe "ok"
+// matters more than the id for connect-time log reporting.
+func (s *Service) captureHookID(req *http.Request) (string, error) {
+	var resp struct {
+		Success bool `json:"success"`
+		Data    struct {
+			ID     string `json:"_id"`
+			HookID string `json:"hookId"`
+		} `json:"data"`
+	}
+	if err := s.doJSON(req, &resp); err != nil {
+		return "", err
+	}
+	switch {
+	case resp.Data.ID != "":
+		return resp.Data.ID, nil
+	case resp.Data.HookID != "":
+		return resp.Data.HookID, nil
+	default:
+		return "", nil
+	}
 }
 
 func (s *Service) requestToken(ctx context.Context, form url.Values) (Token, error) {
