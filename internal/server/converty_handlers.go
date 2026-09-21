@@ -162,6 +162,19 @@ func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID) {
 			a.Log.Error("converty hook subscribe failed",
 				"shop_id", shopID, "event", event, "target_url", targetURL, "error", sErr)
 		}
+
+		// Hooks that already existed (409) come back without an id, so pull
+		// the live list and record their ids for later removal on disconnect.
+		hooks, hErr := a.Converty.ListHooks(ctx, accessToken)
+		if hErr != nil {
+			a.Log.Warn("converty hooks list failed", "shop_id", shopID, "target_url", targetURL, "error", hErr)
+			return nil
+		}
+		for _, h := range hooks {
+			if h.TargetURL == targetURL && h.Event != "" && h.ID != "" {
+				subs[h.Event] = h.ID
+			}
+		}
 		return nil
 	})
 	if err != nil {

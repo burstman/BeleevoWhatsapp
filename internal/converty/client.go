@@ -162,6 +162,31 @@ func (s *Service) captureHookID(req *http.Request) (string, error) {
 	}
 }
 
+// Hook is one Converty webhook subscription (GET /api/v1/hooks).
+type Hook struct {
+	ID        string `json:"_id"`
+	TargetURL string `json:"targetUrl"`
+	Event     string `json:"event"`
+}
+
+// ListHooks returns the store's registered webhook subscriptions.
+func (s *Service) ListHooks(ctx context.Context, accessToken string) ([]Hook, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.cfg.ConvertyAPIURL+"/api/v1/hooks", nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	var resp struct {
+		Success bool   `json:"success"`
+		Data    []Hook `json:"data"`
+	}
+	if err := s.doJSON(req, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
 func (s *Service) requestToken(ctx context.Context, form url.Values) (Token, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.ConvertyBaseURL+"/oauth2/token", strings.NewReader(form.Encode()))
 	if err != nil {
