@@ -22,20 +22,38 @@ import (
 const maxWebhookBody = 2 << 20
 
 // handleConvertyWebhook is the target Converty POSTs order events to. The
-// payload shape is not yet documented, so for now we acknowledge with 200 and
-// log the raw body until a real event sample is captured.
+// payload shape is not yet documented, so each delivery is persisted
+// verbatim into order_events (deduplicated by body hash) with best-effort
+// parsed fields, and we always acknowledge with 200.
 func (a *App) handleConvertyWebhook(k *kit.Kit) error {
 	body, err := io.ReadAll(io.LimitReader(k.Request.Body, maxWebhookBody))
 	if err != nil {
 		return err
 	}
 
-	a.Log.Info("converty webhook received",
-		"content_type", k.Request.Header.Get("Content-Type"),
-		"body", string(body),
+	event, err := a.Converty.CaptureWebhook(k.Request.Context(), body)
+	if err != nil {
+		a.Log.Error("converty webhook ingest failed", "error", err)
+		return err
+	}
+
+	a.Log.Info("converty webhook captured",
+		"duplicate", event.Duplicate,
+		"shop_id", event.ShopID,
+		"event_type", event.EventType,
+		"order_id", event.OrderID,
+		"order_status", event.OrderStatus,
+		"body", truncateBytes(body, 800),
 	)
 
 	return k.Text(http.StatusOK, "ok")
+}
+
+func truncateBytes(b []byte, n int) string {
+	if len(b) <= n {
+		return string(b)
+	}
+	return string(b[:n]) + "..."
 }
 
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
