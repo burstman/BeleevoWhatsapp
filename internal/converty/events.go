@@ -58,7 +58,7 @@ func (s *Service) CaptureWebhook(ctx context.Context, body []byte) (WebhookEvent
 	shopID, _ := s.lookupShopID(ctx, decoded)
 	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO order_events (shop_id, event_id, event_type, order_id, order_status, payload, payload_hash, processed_at)
-		VALUES ($1, '', $2, $3, $4, $5, $6, $7)
+		VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (payload_hash) DO NOTHING`,
 		nullableUUID(shopID), decoded.EventType, decoded.OrderID, decoded.OrderStatus, body, hash, event.ReceivedAt,
 	)
