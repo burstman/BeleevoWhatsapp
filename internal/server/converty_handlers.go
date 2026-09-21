@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,6 +17,25 @@ import (
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/converty"
 )
+
+const maxWebhookBody = 2 << 20
+
+// handleConvertyWebhook is the target Converty POSTs order events to. The
+// payload shape is not yet documented, so for now we acknowledge with 200 and
+// log the raw body until a real event sample is captured.
+func (a *App) handleConvertyWebhook(k *kit.Kit) error {
+	body, err := io.ReadAll(io.LimitReader(k.Request.Body, maxWebhookBody))
+	if err != nil {
+		return err
+	}
+
+	a.Log.Info("converty webhook received",
+		"content_type", k.Request.Header.Get("Content-Type"),
+		"body", string(body),
+	)
+
+	return k.Text(http.StatusOK, "ok")
+}
 
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
@@ -90,18 +111,25 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	return k.Redirect(http.StatusSeeOther, "/dashboard?connect=success")
 }
 
-// subscribeWebhooks registers the order/product events against the app's
-// Converty webhook endpoint. Failures are logged but do not fail the connect
-// (the integration is already saved).
+// subscribeWebhooks registers the order events against the app's Converty
+// webhook endpoint. Failures are logged but do not fail the connect (the
+// integration is already saved). A 409 means the hook already exists and is
+// treated as success.
 func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID, accessToken string) {
 	targetURL := a.Converty.WebhookURL(a.Cfg.AppURL)
 	for _, event := range converty.SupportedEvents() {
-		if err := a.Converty.SubscribeHook(ctx, accessToken, targetURL, event); err != nil {
-			a.Log.Error("converty hook subscribe failed",
-				"shop_id", shopID, "event", event, "target_url", targetURL, "error", err)
-		} else {
+		err := a.Converty.SubscribeHook(ctx, accessToken, targetURL, event)
+		if err == nil {
 			a.Log.Info("converty hook subscribed", "shop_id", shopID, "event", event, "target_url", targetURL)
+			continue
 		}
+		var apiErr converty.APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
+			a.Log.Info("converty hook already subscribed", "shop_id", shopID, "event", event)
+			continue
+		}
+		a.Log.Error("converty hook subscribe failed",
+			"shop_id", shopID, "event", event, "target_url", targetURL, "error", err)
 	}
 }
 

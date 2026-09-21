@@ -69,6 +69,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/register", kit.Handler(a.handleRegisterGet))
 		pr.Post("/register", kit.Handler(a.handleRegisterPost))
 		pr.Post("/logout", kit.Handler(a.handleLogout))
+		pr.Post("/webhooks/converty", kit.Handler(a.handleConvertyWebhook))
 	})
 
 	// Required authentication for the merchant dashboard.
