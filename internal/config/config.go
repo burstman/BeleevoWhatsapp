@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -58,10 +59,14 @@ func Load() Config {
 
 // EncryptionKeyResolved returns the encryption key, falling back to a
 // deterministic derivation of SUPERKIT_SECRET in development when
-// CONVERTY_ENCRYPTION_KEY is not set.
+// CONVERTY_ENCRYPTION_KEY is not set. A 64-character hex value (e.g. the
+// output of `openssl rand -hex 32`) is decoded to its 32 bytes.
 func (c Config) EncryptionKeyResolved() []byte {
-	if c.ConvertyEncryptionKey != "" {
-		return []byte(c.ConvertyEncryptionKey)
+	if key := c.ConvertyEncryptionKey; key != "" {
+		if decoded, err := hex.DecodeString(key); err == nil && len(decoded) == 32 {
+			return decoded
+		}
+		return []byte(key)
 	}
 	sum := sha256.Sum256([]byte(c.SuperkitSecret))
 	return sum[:]

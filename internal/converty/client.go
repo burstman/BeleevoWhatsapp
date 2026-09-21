@@ -152,6 +152,13 @@ func (s *Service) doJSON(req *http.Request, out any) error {
 			Message string `json:"message"`
 		}
 		_ = json.Unmarshal(body, &e)
+		if e.Message == "" {
+			snippet := strings.TrimSpace(string(body))
+			if len(snippet) > 300 {
+				snippet = snippet[:300]
+			}
+			e.Message = snippet
+		}
 		return APIError{StatusCode: resp.StatusCode, Message: e.Message}
 	}
 

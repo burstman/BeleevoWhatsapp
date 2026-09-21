@@ -68,8 +68,15 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 
 	store, err := a.Converty.GetStore(ctx, tok.AccessToken)
 	if err != nil {
+		// A failed store sync should not discard the freshly connected tokens:
+		// persist them and subscribe webhooks, but flag the sync problem.
 		a.Log.Error("converty stores/me failed", "error", err)
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		if err := a.Converty.SaveIntegration(ctx, principal.User.ShopID, converty.Store{}, converty.DefaultScopes, tok, time.Now()); err != nil {
+			a.Log.Error("converty integration save failed", "error", err)
+			return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		}
+		a.subscribeWebhooks(ctx, principal.User.ShopID, tok.AccessToken)
+		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=store")
 	}
 
 	if err := a.Converty.SaveIntegration(ctx, principal.User.ShopID, store, converty.DefaultScopes, tok, time.Now()); err != nil {
