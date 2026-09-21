@@ -101,9 +101,9 @@ func decodeWebhook(body []byte) webhookDecoded {
 		return d
 	}
 	d.EventType = pick(root, "event", "eventType", "event_type", "webhookType", "type")
-	d.OrderID = pick(root, "orderId", "order_id", "id")
+	d.OrderID = pick(root, "orderId", "order_id", "_id", "id")
 	d.OrderStatus = pick(root, "status", "orderStatus", "order_status")
-	d.StoreID = pick(root, "storeId", "store_id")
+	d.StoreID = pick(root, "store", "storeId", "store_id")
 	d.StoreSlug = pick(root, "storeSlug", "store_slug", "slug")
 	return d
 }
