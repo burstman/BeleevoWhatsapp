@@ -32,6 +32,14 @@ services:
         value: https://partner.converty.shop
       - key: CONVERTY_API_URL
         value: https://api.converty.shop
+      - key: CONVERTY_REDIRECT_URI
+        value: https://converty-whatsapp-api.onrender.com/auth/converty/callback
+      - key: CONVERTY_CLIENT_ID
+        sync: false # paste your Converty OAuth client id
+      - key: CONVERTY_CLIENT_SECRET
+        sync: false # paste your Converty OAuth client secret
+      - key: CONVERTY_ENCRYPTION_KEY
+        sync: false # openssl rand -hex 32; keeps the same value across restarts
       - key: DATABASE_URL
         sync: false # paste your Neon connection string (use the direct, non-pooled one)
       - key: REDIS_URL
