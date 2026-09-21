@@ -10,6 +10,7 @@ import (
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/config"
+	"whatsappconverty/internal/converty"
 	"whatsappconverty/internal/dashboard"
 	"whatsappconverty/internal/shops"
 )
@@ -22,6 +23,7 @@ type App struct {
 	Auth      *auth.Service
 	Shops     *shops.Repository
 	Dashboard *dashboard.Repository
+	Converty  *converty.Service
 }
 
 func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
@@ -33,6 +35,7 @@ func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
 		Auth:      auth.NewService(pool, *shopsRepo),
 		Shops:     shopsRepo,
 		Dashboard: dashboard.NewRepository(pool),
+		Converty:  converty.NewService(cfg, pool, log),
 	}
 }
 
@@ -72,6 +75,8 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(kit.WithAuthentication(authConfig, true))
 		pr.Get("/dashboard", kit.Handler(a.handleOverview))
+		pr.Get("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
+		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
 		pr.Get("/templates", kit.Handler(a.handlePlaceholder("templates")))
 		pr.Get("/messages", kit.Handler(a.handlePlaceholder("messages")))

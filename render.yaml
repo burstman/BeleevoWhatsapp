@@ -26,6 +26,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: APP_URL
+        value: https://converty-whatsapp-api.onrender.com
       - key: DATABASE_URL
         sync: false # paste your Neon connection string (use the direct, non-pooled one)
       - key: REDIS_URL
