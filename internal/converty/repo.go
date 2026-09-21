@@ -94,6 +94,30 @@ func (s *Service) Integration(ctx context.Context, shopID uuid.UUID) (Integratio
 	return i, nil
 }
 
+// SaveTokens refreshes just the token columns after an access-token
+// rotation; the rest of the integration (store info, subscriptions) is
+// left untouched.
+func (s *Service) SaveTokens(ctx context.Context, shopID uuid.UUID, tok Token, now time.Time) error {
+	accessEnc, err := s.cipher.Encrypt(tok.AccessToken)
+	if err != nil {
+		return err
+	}
+	refreshEnc, err := s.cipher.Encrypt(tok.RefreshToken)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
+		UPDATE converty_integrations
+		SET access_token_encrypted = $2,
+		    refresh_token_encrypted = $3,
+		    access_token_expires_at = $4,
+		    updated_at = now()
+		WHERE shop_id = $1`,
+		shopID, accessEnc, refreshEnc, tok.ExpiresAt(now),
+	)
+	return err
+}
+
 // SaveWebhookSubscriptions replaces the shop's stored Converty hook map
 // (event -> hook id) with subs.
 func (s *Service) SaveWebhookSubscriptions(ctx context.Context, shopID uuid.UUID, subs map[string]string) error {

@@ -97,7 +97,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 			a.Log.Error("converty integration save failed", "error", err)
 			return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
 		}
-		a.subscribeWebhooks(ctx, principal.User.ShopID, tok.AccessToken)
+		a.subscribeWebhooks(ctx, principal.User.ShopID)
 		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=store")
 	}
 
@@ -106,19 +106,20 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
 	}
 
-	a.subscribeWebhooks(ctx, principal.User.ShopID, tok.AccessToken)
+	a.subscribeWebhooks(ctx, principal.User.ShopID)
 
 	a.Log.Info("converty connected", "shop_id", principal.User.ShopID, "store", store.Name)
 	return k.Redirect(http.StatusSeeOther, "/dashboard?connect=success")
 }
 
 // subscribeWebhooks registers the order events against the app's Converty
-// webhook endpoint. The returned Converty hook ids are merged into the
-// stored subscription map (so ids from hooks that already existed survive a
-// reconnect) and persisted for later removal on disconnect. Failures are
-// logged but do not fail the connect (the integration is already saved). A
-// 409 means the hook already exists and is treated as success.
-func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID, accessToken string) {
+// webhook endpoint, fetching/refreshing the access token as needed. The
+// returned Converty hook ids are merged into the stored subscription map (so
+// ids from hooks that already existed survive a reconnect) and persisted for
+// later removal on disconnect. Failures are logged but do not fail the
+// connect (the integration is already saved). A 409 means the hook already
+// exists and is treated as success.
+func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID) {
 	targetURL := a.Converty.WebhookURL(a.Cfg.AppURL)
 
 	subs := map[string]string{}
@@ -127,20 +128,26 @@ func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID, accessTok
 		subs = existing.WebhookSubscriptions
 	}
 
-	for _, event := range converty.SupportedEvents() {
-		hookID, err := a.Converty.SubscribeHook(ctx, accessToken, targetURL, event)
-		if err == nil {
-			subs[event] = hookID
-			a.Log.Info("converty hook subscribed", "shop_id", shopID, "event", event, "hook_id", hookID, "target_url", targetURL)
-			continue
+	err = a.Converty.WithAccessToken(ctx, shopID, func(ctx context.Context, accessToken string) error {
+		for _, event := range converty.SupportedEvents() {
+			hookID, sErr := a.Converty.SubscribeHook(ctx, accessToken, targetURL, event)
+			if sErr == nil {
+				subs[event] = hookID
+				a.Log.Info("converty hook subscribed", "shop_id", shopID, "event", event, "hook_id", hookID, "target_url", targetURL)
+				continue
+			}
+			var apiErr converty.APIError
+			if errors.As(sErr, &apiErr) && apiErr.StatusCode == http.StatusConflict {
+				a.Log.Info("converty hook already subscribed", "shop_id", shopID, "event", event)
+				continue
+			}
+			a.Log.Error("converty hook subscribe failed",
+				"shop_id", shopID, "event", event, "target_url", targetURL, "error", sErr)
 		}
-		var apiErr converty.APIError
-		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusConflict {
-			a.Log.Info("converty hook already subscribed", "shop_id", shopID, "event", event)
-			continue
-		}
-		a.Log.Error("converty hook subscribe failed",
-			"shop_id", shopID, "event", event, "target_url", targetURL, "error", err)
+		return nil
+	})
+	if err != nil {
+		a.Log.Error("converty hook subscribe skipped, no access token", "shop_id", shopID, "error", err)
 	}
 
 	if err := a.Converty.SaveWebhookSubscriptions(ctx, shopID, subs); err != nil {
@@ -148,9 +155,10 @@ func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID, accessTok
 	}
 }
 
-// handleConvertyDisconnect removes every stored Converty webhook subscription,
-// then drops the integration row. Unsubscribe failures are logged but never
-// block the local disconnect, so the user is always freed from their account.
+// handleConvertyDisconnect removes every stored Converty webhook subscription
+// (with an auto-refreshed token), then drops the integration row. Unsubscribe
+// failures are logged but never block the local disconnect, so the user is
+// always freed from their account.
 func (a *App) handleConvertyDisconnect(k *kit.Kit) error {
 	principal := auth.FromKit(k)
 	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
@@ -164,26 +172,27 @@ func (a *App) handleConvertyDisconnect(k *kit.Kit) error {
 		return err
 	}
 
-	accessToken := ""
-	if plainToken, dErr := a.Converty.DecryptToken(integ.AccessTokenEncrypted); dErr == nil {
-		accessToken = plainToken
-	}
-
-	for event, hookID := range integ.WebhookSubscriptions {
-		if hookID == "" || accessToken == "" {
-			continue
-		}
-		if uErr := a.Converty.UnsubscribeHook(ctx, accessToken, hookID); uErr != nil {
-			var apiErr converty.APIError
-			alreadyGone := errors.As(uErr, &apiErr) &&
-				(apiErr.StatusCode == http.StatusNotFound || apiErr.StatusCode == http.StatusConflict)
-			if !alreadyGone {
-				a.Log.Warn("converty hook unsubscribe failed",
-					"shop_id", principal.User.ShopID, "event", event, "hook_id", hookID, "error", uErr)
+	err = a.Converty.WithAccessToken(ctx, principal.User.ShopID, func(ctx context.Context, accessToken string) error {
+		for event, hookID := range integ.WebhookSubscriptions {
+			if hookID == "" {
+				continue
 			}
-			continue
+			if uErr := a.Converty.UnsubscribeHook(ctx, accessToken, hookID); uErr != nil {
+				var apiErr converty.APIError
+				alreadyGone := errors.As(uErr, &apiErr) &&
+					(apiErr.StatusCode == http.StatusNotFound || apiErr.StatusCode == http.StatusConflict)
+				if !alreadyGone {
+					a.Log.Warn("converty hook unsubscribe failed",
+						"shop_id", principal.User.ShopID, "event", event, "hook_id", hookID, "error", uErr)
+				}
+				continue
+			}
+			a.Log.Info("converty hook unsubscribed", "shop_id", principal.User.ShopID, "event", event, "hook_id", hookID)
 		}
-		a.Log.Info("converty hook unsubscribed", "shop_id", principal.User.ShopID, "event", event, "hook_id", hookID)
+		return nil
+	})
+	if err != nil {
+		a.Log.Warn("converty disconnect: hook cleanup skipped, no access token", "shop_id", principal.User.ShopID, "error", err)
 	}
 
 	if err := a.Converty.DeleteIntegration(ctx, principal.User.ShopID); err != nil {
