@@ -16,7 +16,10 @@ const (
 	webhookPath   = "/webhooks/converty"
 )
 
-var supportedEvents = []string{"order.create", "order.update", "product.create", "product.update"}
+// supportedEvents are the webhook events subscribed after connecting. Only
+// order events are needed; product events require a read-products scope we
+// deliberately do not request.
+var supportedEvents = []string{"order.create", "order.update"}
 
 // Token is the Converty OAuth token response.
 type Token struct {
@@ -31,13 +34,16 @@ func (t Token) ExpiresAt(now time.Time) time.Time {
 }
 
 // Store is the authenticated seller's store (GET /api/v1/stores/me).
+// Field types are deliberately tolerant: the live API is not fully
+// documented, so optional fields that can be either scalar or object are
+// kept opaque (json.RawMessage) rather than failing the whole decode.
 type Store struct {
-	ID       string `json:"_id"`
-	Name     string `json:"name"`
-	Slug     string `json:"slug"`
-	Domain   string `json:"domain"`
-	Currency string `json:"currency"`
-	Country  string `json:"country"`
+	ID       string          `json:"_id"`
+	Name     string          `json:"name"`
+	Slug     string          `json:"slug"`
+	Domain   string          `json:"domain"`
+	Currency json.RawMessage `json:"currency"`
+	Country  json.RawMessage `json:"country"`
 }
 
 // APIError carries the Converty error payload ({success, message}).
