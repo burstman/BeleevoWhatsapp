@@ -1,0 +1,100 @@
+package viewsdashboard
+
+import (
+	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+templ MessagesPage(page components.Page, messages []whatsapp.Message) {
+	@layouts.Shell(page) {
+		<div class="space-y-6">
+			<div>
+				<h2 class="text-xl font-semibold text-slate-900">Messages</h2>
+				<p class="text-sm text-slate-500">Delivery status reported by WhatsApp for messages sent through the platform number.</p>
+			</div>
+
+			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				if len(messages) == 0 {
+					<div class="px-6 py-10 text-center text-sm text-slate-500">
+						No messages sent yet.
+					</div>
+				} else {
+					<table class="w-full text-left text-sm">
+						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+							<tr>
+								<th class="px-6 py-3 font-medium">Status</th>
+								<th class="px-6 py-3 font-medium">To</th>
+								<th class="px-6 py-3 font-medium">Order</th>
+								<th class="px-6 py-3 font-medium">Template</th>
+								<th class="px-6 py-3 font-medium">Sent</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-slate-100">
+							for _, m := range messages {
+								<tr>
+									<td class="px-6 py-3">
+										@MessageStatusBadge(m.Status)
+										if m.Status == "failed" && m.ErrorMessage != "" {
+											<p class="mt-1 max-w-xs truncate text-xs text-rose-600" title={ m.ErrorMessage }>{ m.ErrorMessage }</p>
+										}
+									</td>
+									<td class="px-6 py-3 text-slate-700">{ m.RecipientPhone }</td>
+									<td class="px-6 py-3 text-slate-600">
+										if m.ConvertyOrderID == "" {
+											<span class="text-slate-400">—</span>
+										} else {
+											{ m.ConvertyOrderID }
+										}
+									</td>
+									<td class="px-6 py-3 text-slate-600">
+										if m.TemplateID == nil {
+											<span class="text-slate-400">—</span>
+										} else {
+											<span class="font-mono text-xs">{ m.TemplateID.String() }</span>
+										}
+									</td>
+									<td class="px-6 py-3 text-slate-600">
+										if m.SentAt == nil {
+											<span class="text-slate-400">—</span>
+										} else {
+											{ m.SentAt.Format("2006-01-02 15:04") }
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ ApprovalBadge(status string) {
+	if status == "approved" {
+		<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Approved</span>
+	} else if status == "rejected" {
+		<span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">Rejected</span>
+	} else if status == "pending" {
+		<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Pending review</span>
+	} else {
+		<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ status }</span>
+	}
+}
+
+templ MessageStatusBadge(status string) {
+	if status == "read" {
+		<span class="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Read</span>
+	} else if status == "delivered" {
+		<span class="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">Delivered</span>
+	} else if status == "sent" {
+		<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Sent</span>
+	} else if status == "queued" {
+		<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Queued</span>
+	} else if status == "failed" {
+		<span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">Failed</span>
+	} else {
+		<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ status }</span>
+	}
+}

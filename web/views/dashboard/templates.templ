@@ -1,0 +1,62 @@
+package viewsdashboard
+
+import (
+	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) {
+	@layouts.Shell(page) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h2 class="text-xl font-semibold text-slate-900">Templates</h2>
+					<p class="text-sm text-slate-500">
+						Only <span class="font-medium text-emerald-600">approved</span> templates can be
+						sent. Approval is decided by Meta's review — not by us.
+					</p>
+				</div>
+			</div>
+
+			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div class="border-b border-slate-100 px-6 py-4">
+					<h3 class="text-sm font-semibold text-slate-700">Your templates</h3>
+				</div>
+				if len(templates) == 0 {
+					<div class="px-6 py-10 text-center text-sm text-slate-500">
+						No templates yet. Submit one through the API
+						(<span class="font-mono text-xs">POST /api/whatsapp/templates</span>) and its
+						Meta review status will appear here.
+					</div>
+				} else {
+					<table class="w-full text-left text-sm">
+						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+							<tr>
+								<th class="px-6 py-3 font-medium">Name</th>
+								<th class="px-6 py-3 font-medium">Language</th>
+								<th class="px-6 py-3 font-medium">Category</th>
+								<th class="px-6 py-3 font-medium">Status</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-slate-100">
+							for _, t := range templates {
+								<tr>
+									<td class="px-6 py-3 font-medium text-slate-900">{ t.Name }</td>
+									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
+									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
+									<td class="px-6 py-3">
+										@ApprovalBadge(t.ApprovalStatus)
+										if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
+											<p class="mt-1 text-xs text-rose-600">{ t.RejectionReason }</p>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</div>
+		</div>
+	}
+}

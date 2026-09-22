@@ -37,10 +37,23 @@ type Config struct {
 	MetaGraphURL string
 
 	// MetaSystemUserToken is the platform's long-lived Meta system-user
-	// access token. Under the BSP model the platform holds it centrally and
-	// provisions connections for every shop "through mine" — clients never
-	// paste their own token.
+	// access token. Every shop's messages go through this centrally owned
+	// credential — merchants never supply or see a Meta token.
 	MetaSystemUserToken string
+
+	// Central WhatsApp sending identity: the single WABA + phone number the
+	// platform owns and sends all merchant traffic on behalf of.
+	MetaPhoneNumberID       string
+	MetaMessagingAccountID  string
+	MetaWaacID              string
+	MetaBusinessPortfolioID string
+
+	// MetaWebhookVerifyToken is the hub.verify_token the Meta app must echo
+	// when subscribing to the platform webhook endpoint.
+	MetaWebhookVerifyToken string
+
+	// MetaAppSecret verifies X-Hub-Signature-256 on webhook deliveries.
+	MetaAppSecret string
 }
 
 // Load reads configuration from the environment.
@@ -60,14 +73,20 @@ func Load() Config {
 		RedisURL:       getenv("REDIS_URL", "redis://localhost:6379/0"),
 		SuperkitSecret: getenv("SUPERKIT_SECRET", "dev-only-change-me-please-32-bytes"),
 
-		ConvertyClientID:      getenv("CONVERTY_CLIENT_ID", ""),
-		ConvertyClientSecret:  getenv("CONVERTY_CLIENT_SECRET", ""),
-		ConvertyBaseURL:       getenv("CONVERTY_BASE_URL", "https://partner.converty.shop"),
-		ConvertyAPIURL:        getenv("CONVERTY_API_URL", "https://api.converty.shop"),
-		ConvertyRedirectURI:   getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
-		ConvertyEncryptionKey: getenv("CONVERTY_ENCRYPTION_KEY", ""),
-		MetaGraphURL:          getenv("META_GRAPH_URL", "https://graph.facebook.com"),
-		MetaSystemUserToken:   getenv("META_SYSTEM_USER_TOKEN", ""),
+		ConvertyClientID:        getenv("CONVERTY_CLIENT_ID", ""),
+		ConvertyClientSecret:    getenv("CONVERTY_CLIENT_SECRET", ""),
+		ConvertyBaseURL:         getenv("CONVERTY_BASE_URL", "https://partner.converty.shop"),
+		ConvertyAPIURL:          getenv("CONVERTY_API_URL", "https://api.converty.shop"),
+		ConvertyRedirectURI:     getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
+		ConvertyEncryptionKey:   getenv("CONVERTY_ENCRYPTION_KEY", ""),
+		MetaGraphURL:            getenv("META_GRAPH_URL", "https://graph.facebook.com"),
+		MetaSystemUserToken:     getenv("META_SYSTEM_USER_TOKEN", ""),
+		MetaPhoneNumberID:       getenv("META_PHONE_NUMBER_ID", ""),
+		MetaMessagingAccountID:  getenv("META_MESSAGING_ACCOUNT_ID", "2883242225383967"),
+		MetaWaacID:              getenv("META_WAAC_ID", ""),
+		MetaBusinessPortfolioID: getenv("META_BUSINESS_PORTFOLIO_ID", ""),
+		MetaWebhookVerifyToken:  getenv("META_WEBHOOK_VERIFY_TOKEN", ""),
+		MetaAppSecret:           getenv("META_APP_SECRET", ""),
 	}
 }
 

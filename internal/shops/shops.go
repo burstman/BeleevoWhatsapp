@@ -15,11 +15,14 @@ import (
 var ErrNotFound = errors.New("shop not found")
 
 type Shop struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                      uuid.UUID  `json:"id"`
+	Name                    string     `json:"name"`
+	Phone                   string     `json:"phone"`
+	Status                  string     `json:"status"`
+	WhatsappEnabled         bool       `json:"whatsapp_enabled"`
+	WhatsappTermsAcceptedAt *time.Time `json:"whatsapp_terms_accepted_at"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
 type Repository struct {
@@ -35,9 +38,9 @@ func (r *Repository) Create(ctx context.Context, q database.Querier, name string
 	err := q.QueryRow(ctx, `
 		INSERT INTO shops (name)
 		VALUES ($1)
-		RETURNING id, name, status, created_at, updated_at`,
+		RETURNING id, name, status, updated_at, created_at`,
 		name,
-	).Scan(&s.ID, &s.Name, &s.Status, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.Name, &s.Status, &s.UpdatedAt, &s.CreatedAt)
 	if err != nil {
 		return Shop{}, err
 	}
@@ -47,11 +50,11 @@ func (r *Repository) Create(ctx context.Context, q database.Querier, name string
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Shop, error) {
 	var s Shop
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, name, status, created_at, updated_at
+		SELECT id, name, phone, status, whatsapp_enabled, whatsapp_terms_accepted_at, created_at, updated_at
 		FROM shops
 		WHERE id = $1`,
 		id,
-	).Scan(&s.ID, &s.Name, &s.Status, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.Name, &s.Phone, &s.Status, &s.WhatsappEnabled, &s.WhatsappTermsAcceptedAt, &s.CreatedAt, &s.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Shop{}, ErrNotFound
 	}
@@ -59,4 +62,20 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Shop, error) {
 		return Shop{}, err
 	}
 	return s, nil
+}
+
+// EnableWhatsApp marks the merchant as opted into the platform's WhatsApp
+// service, records their contact phone and that they accepted the service
+// terms. This is the onboarding gateway for sending.
+func (r *Repository) EnableWhatsApp(ctx context.Context, id uuid.UUID, phone string) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE shops
+		SET whatsapp_enabled = true,
+		    whatsapp_terms_accepted_at = COALESCE(whatsapp_terms_accepted_at, now()),
+		    phone = CASE WHEN $2 <> '' THEN $2 ELSE phone END,
+		    updated_at = now()
+		WHERE id = $1`,
+		id, phone,
+	)
+	return err
 }

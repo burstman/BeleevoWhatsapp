@@ -61,6 +61,49 @@ func (a *App) handleOverview(k *kit.Kit) error {
 	return k.Render(vdashboard.Overview(page, stats))
 }
 
+// handleTemplates renders the merchant's WhatsApp templates with their Meta
+// approval status.
+func (a *App) handleTemplates(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
+	if err != nil && !errors.Is(err, shops.ErrNotFound) {
+		return err
+	}
+
+	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
+	if err != nil {
+		return err
+	}
+
+	page := viewshared.Page{
+		Title:    "Templates",
+		ShopName: shop.Name,
+		UserName: principal.User.Name,
+	}
+	return k.Render(vdashboard.TemplatesPage(page, templates))
+}
+
+// handleMessages renders the merchant's message history with delivery status.
+func (a *App) handleMessages(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
+	if err != nil && !errors.Is(err, shops.ErrNotFound) {
+		return err
+	}
+
+	messages, err := a.WhatsApp.Messages(k.Request.Context(), principal.User.ShopID)
+	if err != nil {
+		return err
+	}
+
+	page := viewshared.Page{
+		Title:    "Messages",
+		ShopName: shop.Name,
+		UserName: principal.User.Name,
+	}
+	return k.Render(vdashboard.MessagesPage(page, messages))
+}
+
 // handlePlaceholder renders a shell page for features that arrive in later phases.
 func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 	return func(k *kit.Kit) error {

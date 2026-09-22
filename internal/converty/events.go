@@ -16,13 +16,15 @@ import (
 // fields. The payload is kept verbatim because the delivery shape is not
 // fully documented yet.
 type WebhookEvent struct {
-	ShopID      uuid.UUID
-	EventType   string
-	OrderID     string
-	OrderStatus string
-	Payload     []byte
-	PayloadHash string
-	ReceivedAt  time.Time
+	ShopID        uuid.UUID
+	EventType     string
+	OrderID       string
+	OrderStatus   string
+	CustomerPhone string
+	CustomerName  string
+	Payload       []byte
+	PayloadHash   string
+	ReceivedAt    time.Time
 	// Duplicate reports whether the body was already ingested.
 	Duplicate bool
 }
@@ -30,11 +32,13 @@ type WebhookEvent struct {
 // webhookDecoded holds the fields we defensively extract from a Converty
 // payload. Extraction is best-effort and never blocks ingestion.
 type webhookDecoded struct {
-	EventType   string
-	OrderID     string
-	OrderStatus string
-	StoreID     string
-	StoreSlug   string
+	EventType     string
+	OrderID       string
+	OrderStatus   string
+	StoreID       string
+	StoreSlug     string
+	CustomerPhone string
+	CustomerName  string
 }
 
 // CaptureWebhook ingests one Converty webhook delivery into order_events,
@@ -51,6 +55,8 @@ func (s *Service) CaptureWebhook(ctx context.Context, body []byte) (WebhookEvent
 	event.EventType = decoded.EventType
 	event.OrderID = decoded.OrderID
 	event.OrderStatus = decoded.OrderStatus
+	event.CustomerPhone = decoded.CustomerPhone
+	event.CustomerName = decoded.CustomerName
 	event.Payload = body
 	event.PayloadHash = hash
 	event.ReceivedAt = time.Now().UTC()
@@ -105,7 +111,42 @@ func decodeWebhook(body []byte) webhookDecoded {
 	d.OrderStatus = pick(root, "status", "orderStatus", "order_status")
 	d.StoreID = pick(root, "store", "storeId", "store_id")
 	d.StoreSlug = pick(root, "storeSlug", "store_slug", "slug")
+	d.CustomerPhone = pickCustomer(root, "phone", "phoneNumber", "phone_number")
+	d.CustomerName = pickCustomer(root, "name", "customerName", "customer_name", "fullName")
 	return d
+}
+
+// pickCustomer pulls a field off a nested customer/contact/address object,
+// wherever it appears inside the payload.
+func pickCustomer(root any, keys ...string) string {
+	var walk func(any, int) string
+	walk = func(node any, depth int) string {
+		if depth > 6 {
+			return ""
+		}
+		m, ok := node.(map[string]any)
+		if !ok {
+			return ""
+		}
+		if customer, exists := m["customer"]; exists {
+			if cm, ok := customer.(map[string]any); ok {
+				for _, k := range keys {
+					if v, ok := cm[k].(string); ok && v != "" {
+						return v
+					}
+				}
+			}
+		}
+		for _, envelope := range []string{"data", "order", "payload", "store", "result", "order_extra"} {
+			if nested, exists := m[envelope]; exists {
+				if res := walk(nested, depth+1); res != "" {
+					return res
+				}
+			}
+		}
+		return ""
+	}
+	return walk(root, 0)
 }
 
 // pick returns the first non-empty string found for any of the candidate

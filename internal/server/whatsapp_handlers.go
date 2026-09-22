@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/anthdm/superkit/kit"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"whatsappconverty/internal/auth"
@@ -111,8 +110,9 @@ func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
 	return k.Redirect(http.StatusSeeOther, "/settings?connect=disconnected")
 }
 
-// handleWhatsappOnboard renders the onboarding wizard: the shop's name plus
-// the rentable numbers the platform can provision.
+// handleWhatsappOnboard renders the WhatsApp enable page: the merchant opts
+// into the platform's shared number, records a contact phone, and accepts the
+// service terms (which include the customer opt-in obligation).
 func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 	principal := auth.FromKit(k)
 
@@ -121,50 +121,31 @@ func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 		return err
 	}
 
-	if a.Cfg.MetaSystemUserToken == "" {
-		a.Log.Warn("whatsapp onboard blocked: META_SYSTEM_USER_TOKEN not configured")
-		return k.Redirect(http.StatusSeeOther, "/settings?connect=nosystem")
-	}
-
-	numbers, err := a.WhatsApp.AvailableNumbers(k.Request.Context())
-	if err != nil {
-		return err
-	}
-
 	page := viewshared.Page{
-		Title:    "Connect WhatsApp",
+		Title:    "Enable WhatsApp",
 		Active:   "settings",
 		ShopName: shop.Name,
 		UserName: principal.User.Name,
 	}
-	return k.Render(vsettings.Onboarding(page, shop.Name, numbers))
+	return k.Render(vsettings.Onboarding(page, shop))
 }
 
-// handleWhatsappOnboardPost provisions the selected rentable number to the
-// shop using the platform's system-user token — the client does not need to
-// paste any Meta credentials.
+// handleWhatsappOnboardPost records the merchant's opt-in: terms accepted,
+// service enabled, contact phone saved. No Meta credentials are handled here —
+// sending happens through the platform's centrally owned number.
 func (a *App) handleWhatsappOnboardPost(k *kit.Kit) error {
 	principal := auth.FromKit(k)
 
-	numberID := k.Request.FormValue("number_id")
-	if numberID == "" {
-		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=number")
+	if k.Request.FormValue("accept_terms") != "1" {
+		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=terms")
 	}
-	if a.Cfg.MetaSystemUserToken == "" {
-		return k.Redirect(http.StatusSeeOther, "/settings?connect=nosystem")
+	phone := k.Request.FormValue("shop_phone")
+
+	if err := a.Shops.EnableWhatsApp(k.Request.Context(), principal.User.ShopID, phone); err != nil {
+		a.Log.Error("whatsapp onboard enable failed", "shop_id", principal.User.ShopID, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=enable")
 	}
 
-	nid, err := uuid.Parse(numberID)
-	if err != nil {
-		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=number")
-	}
-
-	if err := a.WhatsApp.Provision(k.Request.Context(), principal.User.ShopID, nid, a.Cfg.MetaSystemUserToken); err != nil {
-		a.Log.Error("whatsapp onboard provision failed", "shop_id", principal.User.ShopID, "number_id", numberID, "error", err)
-		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=provision")
-	}
-
-	a.Log.Info("whatsapp onboard complete",
-		"shop_id", principal.User.ShopID, "number_id", numberID)
+	a.Log.Info("whatsapp service enabled", "shop_id", principal.User.ShopID, "phone", phone)
 	return k.Redirect(http.StatusSeeOther, "/settings?connect=success")
 }

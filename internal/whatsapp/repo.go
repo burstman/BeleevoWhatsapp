@@ -14,14 +14,14 @@ import (
 // on); a shop picks one during onboarding and the connection is provisioned
 // with the platform's system-user token rather than the client's.
 type Number struct {
-	ID                   uuid.UUID
-	DisplayPhoneNumber   string
-	PhoneNumberID        string
-	MessagingAccountID   string
-	WaacID               string
-	VerifiedName         string
-	Status               string
-	ShopID               *uuid.UUID
+	ID                 uuid.UUID
+	DisplayPhoneNumber string
+	PhoneNumberID      string
+	MessagingAccountID string
+	WaacID             string
+	VerifiedName       string
+	Status             string
+	ShopID             *uuid.UUID
 }
 
 // Integration is a shop's WhatsApp connection. Per the new Meta account

@@ -50,7 +50,13 @@ services:
       - key: SUPERKIT_SECRET
         sync: false # set manually in the Render dashboard
       - key: META_SYSTEM_USER_TOKEN
-        sync: false # platform's long-lived Meta system-user token (BSP provisioning)
+        sync: false # platform's long-lived Meta system-user token (provisioning)
+      - key: META_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WEBHOOK_VERIFY_TOKEN
+        sync: false # hub.verify_token echo challenge
+      - key: META_APP_SECRET
+        sync: false # verifies X-Hub-Signature-256 on Meta webhook deliveries
 
   - type: worker
     name: converty-whatsapp-worker

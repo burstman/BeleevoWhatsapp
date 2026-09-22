@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/encrypt"
@@ -18,15 +19,16 @@ import (
 // shop (or its token cannot be decrypted).
 var ErrNotConfigured = errors.New("whatsapp is not configured")
 
-// Service talks to the Meta Graph API and persists WhatsApp integrations per
-// shop. Mirroring the Converty integration, Meta credentials are stored
-// encrypted (AES-256-GCM) in whatsapp_integrations.
+// Service talks to the Meta Graph API and enforces the platform's
+// single-WABA sending rules. Meta credentials are held centrally in config;
+// per-shop rows in whatsapp_integrations are legacy (Phase-1 token-paste).
 type Service struct {
 	cfg    config.Config
 	pool   *pgxpool.Pool
 	log    *slog.Logger
 	cipher *encrypt.Cipher
 	http   *http.Client
+	rate   *RateLimiter
 }
 
 func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Service {
@@ -40,7 +42,22 @@ func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Servic
 		log:    log,
 		cipher: cipher,
 		http:   &http.Client{Timeout: 20 * time.Second},
+		rate:   rateLimiterFor(cfg, log),
 	}
+}
+
+// rateLimiterFor builds the Redis-backed send limiter, or a no-op limiter when
+// no Redis is reachable/configured (local test/dev without Redis).
+func rateLimiterFor(cfg config.Config, log *slog.Logger) *RateLimiter {
+	if cfg.RedisURL == "" {
+		return NewRateLimiter(nil)
+	}
+	opt, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		log.Warn("whatsapp: invalid REDIS_URL, send rate limiting disabled", "error", err)
+		return NewRateLimiter(nil)
+	}
+	return NewRateLimiter(redis.NewClient(opt))
 }
 
 // DecryptToken unwraps an encrypted Meta token stored for a shop.

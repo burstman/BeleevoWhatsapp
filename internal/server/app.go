@@ -74,6 +74,8 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/register", kit.Handler(a.handleRegisterPost))
 		pr.Post("/logout", kit.Handler(a.handleLogout))
 		pr.Post("/webhooks/converty", kit.Handler(a.handleConvertyWebhook))
+		pr.Get("/webhooks/meta", kit.Handler(a.handleMetaWebhookVerify))
+		pr.Post("/webhooks/meta", kit.Handler(a.handleMetaWebhook))
 	})
 
 	// Required authentication for the merchant dashboard.
@@ -84,13 +86,25 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Post("/auth/converty/disconnect", kit.Handler(a.handleConvertyDisconnect))
 		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
-		pr.Get("/templates", kit.Handler(a.handlePlaceholder("templates")))
-		pr.Get("/messages", kit.Handler(a.handlePlaceholder("messages")))
+		pr.Get("/templates", kit.Handler(a.handleTemplates))
+		pr.Get("/messages", kit.Handler(a.handleMessages))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
 		pr.Get("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboard))
 		pr.Post("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboardPost))
 		pr.Post("/whatsapp/connect", kit.Handler(a.handleWhatsappConnect))
 		pr.Post("/whatsapp/disconnect", kit.Handler(a.handleWhatsappDisconnect))
+
+		// JSON API for the dashboard and integrations. All endpoints are
+		// tenant-scoped from the authenticated shop.
+		pr.Get("/api/whatsapp/customers", kit.Handler(a.handleAPICustomers))
+		pr.Post("/api/whatsapp/customers", kit.Handler(a.handleAPICreateCustomer))
+		pr.Post("/api/whatsapp/consent", kit.Handler(a.handleAPIGrantConsent))
+		pr.Post("/api/whatsapp/revoke", kit.Handler(a.handleAPIRevokeConsent))
+		pr.Get("/api/whatsapp/templates", kit.Handler(a.handleAPITemplates))
+		pr.Post("/api/whatsapp/templates", kit.Handler(a.handleAPICreateTemplate))
+		pr.Get("/api/whatsapp/messages", kit.Handler(a.handleAPIMessages))
+		pr.Post("/api/whatsapp/messages", kit.Handler(a.handleAPISendMessage))
+		pr.Get("/api/whatsapp/messages/{id}", kit.Handler(a.handleAPIMessage))
 	})
 
 	r.NotFound(kit.Handler(a.handleNotFound))

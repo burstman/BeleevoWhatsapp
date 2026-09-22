@@ -9,12 +9,17 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/internal/shops"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
 
-func Onboarding(page components.Page, shopName string, numbers []whatsapp.Number) templ.Component {
+// Onboarding enables the platform's shared WhatsApp service for a merchant.
+// The merchant does NOT connect its own number: all messages go through the
+// platform's centrally owned WABA and phone number. Enabling requires an
+// explicit, audited acceptance of the service terms, which include the
+// customer opt-in obligations.
+func Onboarding(page components.Page, shop shops.Shop) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -47,69 +52,30 @@ func Onboarding(page components.Page, shopName string, numbers []whatsapp.Number
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-2xl\"><h1 class=\"text-2xl font-bold text-slate-900\">Connect your WhatsApp number</h1><p class=\"mt-1 text-sm text-slate-500\">Fill in your shop details and pick a number — we handle the WhatsApp connection for you.</p><div class=\"mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><ol class=\"flex items-center gap-2 text-sm\"><li class=\"flex items-center gap-2 font-semibold text-indigo-600\"><span class=\"rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white\">1</span> Shop</li><li class=\"h-px w-6 bg-slate-200\"></li><li class=\"flex items-center gap-2 font-semibold text-indigo-600\"><span class=\"rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white\">2</span> Number</li></ol><form method=\"post\" action=\"/whatsapp/onboard\" class=\"mt-6 space-y-6\"><div><label for=\"shop-name\" class=\"block text-sm font-medium text-slate-700\">Shop name</label> <input id=\"shop-name\" name=\"shop_name\" type=\"text\" required value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-2xl\"><h1 class=\"text-2xl font-bold text-slate-900\">Enable WhatsApp messaging</h1><p class=\"mt-1 text-sm text-slate-500\">Your messages are sent through <span class=\"font-medium text-slate-700\">our</span> WhatsApp platform number. You do not need to connect or manage a Meta app.</p><div class=\"mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if shop.WhatsappEnabled {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"flex items-center gap-3 rounded-lg bg-emerald-50 px-4 py-3\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> <span class=\"text-sm font-medium text-emerald-800\">WhatsApp service is enabled for this shop.</span></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<form method=\"post\" action=\"/whatsapp/onboard\" class=\"mt-6 space-y-5\"><div><label for=\"shop-phone\" class=\"block text-sm font-medium text-slate-700\">Shop contact phone (shown in messages)</label> <input id=\"shop-phone\" name=\"shop_phone\" type=\"text\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(shopName)
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(shop.Phone)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/onboarding.templ`, Line: 32, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/onboarding.templ`, Line: 35, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"><p class=\"mt-1 text-xs text-slate-500\">Used as the display name on WhatsApp.</p></div><div><span class=\"block text-sm font-medium text-slate-700\">Choose a WhatsApp number</span><div class=\"mt-2 space-y-3\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			for _, n := range numbers {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<label class=\"flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 transition hover:border-indigo-300\"><input type=\"radio\" name=\"number_id\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(n.ID.String())
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/onboarding.templ`, Line: 42, Col: 67}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" required class=\"mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500\"><div><p class=\"font-semibold text-slate-900\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(n.DisplayPhoneNumber)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/onboarding.templ`, Line: 45, Col: 72}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</p><p class=\"text-sm text-slate-500\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(n.VerifiedName)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/onboarding.templ`, Line: 46, Col: 60}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p></div></label>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></div><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Connect WhatsApp</button></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" placeholder=\"+216 ...\" class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div><div class=\"rounded-lg border border-slate-200 p-4\"><label class=\"flex cursor-pointer items-start gap-3\"><input type=\"checkbox\" name=\"accept_terms\" value=\"1\" required class=\"mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500\"><div class=\"text-sm text-slate-600\">I confirm that the phone numbers I message were collected with the customers' <span class=\"font-medium text-slate-800\">WhatsApp opt-in consent</span>, that I will only send approved transactional templates, and that I accept the platform's <a href=\"/privacy\" class=\"text-indigo-600 underline\">terms</a>.</div></label></div><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Enable WhatsApp messaging</button></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

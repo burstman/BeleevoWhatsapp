@@ -59,7 +59,7 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a href=\"/settings\" class=\"inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 transition hover:bg-amber-100\"><span class=\"h-2 w-2 rounded-full bg-amber-500\"></span> WhatsApp not connected</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a href=\"/whatsapp/onboard\" class=\"inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 transition hover:bg-amber-100\"><span class=\"h-2 w-2 rounded-full bg-amber-500\"></span> WhatsApp not enabled</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -123,7 +123,7 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-8\"><h3 class=\"mb-3 text-sm font-semibold text-slate-700\">Getting started</h3><div class=\"grid grid-cols-1 gap-4 lg:grid-cols-3\"><a href=\"/settings\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">1. Connect WhatsApp</h4><p class=\"mt-1 text-sm text-slate-500\">Link your WhatsApp Business phone number to your shop.</p></a> <a href=\"/automations\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">2. Create automations</h4><p class=\"mt-1 text-sm text-slate-500\">Map order statuses to approved message templates.</p></a> <a href=\"/messages\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">3. Monitor messages</h4><p class=\"mt-1 text-sm text-slate-500\">Track sent, delivered, read and failed messages.</p></a></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-8\"><h3 class=\"mb-3 text-sm font-semibold text-slate-700\">Getting started</h3><div class=\"grid grid-cols-1 gap-4 lg:grid-cols-3\"><a href=\"/whatsapp/onboard\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">1. Enable WhatsApp</h4><p class=\"mt-1 text-sm text-slate-500\">Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p></a> <a href=\"/automations\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">2. Create automations</h4><p class=\"mt-1 text-sm text-slate-500\">Map order statuses to approved message templates.</p></a> <a href=\"/messages\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">3. Monitor messages</h4><p class=\"mt-1 text-sm text-slate-500\">Track sent, delivered, read and failed messages.</p></a></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

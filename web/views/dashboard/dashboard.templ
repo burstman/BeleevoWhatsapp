@@ -20,9 +20,9 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 					<span class="h-2 w-2 rounded-full bg-emerald-500"></span> WhatsApp connected
 				</span>
 			} else {
-				<a href="/settings"
+				<a href="/whatsapp/onboard"
 					class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 transition hover:bg-amber-100">
-					<span class="h-2 w-2 rounded-full bg-amber-500"></span> WhatsApp not connected
+					<span class="h-2 w-2 rounded-full bg-amber-500"></span> WhatsApp not enabled
 				</a>
 			}
 		</div>
@@ -75,9 +75,9 @@ if stats.ConvertyConnected {
 		<div class="mt-8">
 			<h3 class="mb-3 text-sm font-semibold text-slate-700">Getting started</h3>
 			<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-				<a href="/settings" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
-					<h4 class="font-semibold text-slate-900">1. Connect WhatsApp</h4>
-					<p class="mt-1 text-sm text-slate-500">Link your WhatsApp Business phone number to your shop.</p>
+				<a href="/whatsapp/onboard" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
+					<h4 class="font-semibold text-slate-900">1. Enable WhatsApp</h4>
+					<p class="mt-1 text-sm text-slate-500">Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p>
 				</a>
 				<a href="/automations" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300">
 					<h4 class="font-semibold text-slate-900">2. Create automations</h4>

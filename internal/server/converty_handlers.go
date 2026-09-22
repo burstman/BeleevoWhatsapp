@@ -46,6 +46,15 @@ func (a *App) handleConvertyWebhook(k *kit.Kit) error {
 		"body", truncateBytes(body, 800),
 	)
 
+	// Best-effort: learn the merchant's customers from the orders Converty
+	// reports, so a phone number on record can be linked to a consent record
+	// later. Never treat the phone number itself as WhatsApp consent.
+	if event.ShopID != uuid.Nil && event.CustomerPhone != "" {
+		if _, cErr := a.WhatsApp.UpsertCustomer(k.Request.Context(), event.ShopID, event.CustomerName, event.CustomerPhone); cErr != nil {
+			a.Log.Warn("converty webhook customer upsert failed", "shop_id", event.ShopID, "error", cErr)
+		}
+	}
+
 	return k.Text(http.StatusOK, "ok")
 }
 

@@ -1,58 +1,58 @@
 package settings
 
 import (
-	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/internal/shops"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
 
-templ Onboarding(page components.Page, shopName string, numbers []whatsapp.Number) {
+// Onboarding enables the platform's shared WhatsApp service for a merchant.
+// The merchant does NOT connect its own number: all messages go through the
+// platform's centrally owned WABA and phone number. Enabling requires an
+// explicit, audited acceptance of the service terms, which include the
+// customer opt-in obligations.
+templ Onboarding(page components.Page, shop shops.Shop) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-2xl">
-			<h1 class="text-2xl font-bold text-slate-900">Connect your WhatsApp number</h1>
+			<h1 class="text-2xl font-bold text-slate-900">Enable WhatsApp messaging</h1>
 			<p class="mt-1 text-sm text-slate-500">
-				Fill in your shop details and pick a number — we handle the WhatsApp connection for you.
+				Your messages are sent through <span class="font-medium text-slate-700">our</span> WhatsApp
+				platform number. You do not need to connect or manage a Meta app.
 			</p>
 
 			<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-				<ol class="flex items-center gap-2 text-sm">
-					<li class="flex items-center gap-2 font-semibold text-indigo-600">
-						<span class="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">1</span> Shop
-					</li>
-					<li class="h-px w-6 bg-slate-200"></li>
-					<li class="flex items-center gap-2 font-semibold text-indigo-600">
-						<span class="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">2</span> Number
-					</li>
-				</ol>
+				if shop.WhatsappEnabled {
+					<div class="flex items-center gap-3 rounded-lg bg-emerald-50 px-4 py-3">
+						<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+						<span class="text-sm font-medium text-emerald-800">WhatsApp service is enabled for this shop.</span>
+					</div>
+				}
 
-				<form method="post" action="/whatsapp/onboard" class="mt-6 space-y-6">
+				<form method="post" action="/whatsapp/onboard" class="mt-6 space-y-5">
 					<div>
-						<label for="shop-name" class="block text-sm font-medium text-slate-700">Shop name</label>
-						<input id="shop-name" name="shop_name" type="text" required
-							value={ shopName }
+						<label for="shop-phone" class="block text-sm font-medium text-slate-700">Shop contact phone (shown in messages)</label>
+						<input id="shop-phone" name="shop_phone" type="text"
+							value={ shop.Phone }
+							placeholder="+216 ..."
 							class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"/>
-						<p class="mt-1 text-xs text-slate-500">Used as the display name on WhatsApp.</p>
 					</div>
 
-					<div>
-						<span class="block text-sm font-medium text-slate-700">Choose a WhatsApp number</span>
-						<div class="mt-2 space-y-3">
-							for _, n := range numbers {
-								<label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 transition hover:border-indigo-300">
-									<input type="radio" name="number_id" value={ n.ID.String() } required
-										class="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500"/>
-									<div>
-										<p class="font-semibold text-slate-900">{ n.DisplayPhoneNumber }</p>
-										<p class="text-sm text-slate-500">{ n.VerifiedName }</p>
-									</div>
-								</label>
-							}
-						</div>
+					<div class="rounded-lg border border-slate-200 p-4">
+						<label class="flex cursor-pointer items-start gap-3">
+							<input type="checkbox" name="accept_terms" value="1" required
+								class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"/>
+							<div class="text-sm text-slate-600">
+								I confirm that the phone numbers I message were collected with the
+								customers' <span class="font-medium text-slate-800">WhatsApp opt-in consent</span>,
+								that I will only send approved transactional templates, and that I accept
+								the platform's <a href="/privacy" class="text-indigo-600 underline">terms</a>.
+							</div>
+						</label>
 					</div>
 
 					<button type="submit"
 						class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-						Connect WhatsApp
+						Enable WhatsApp messaging
 					</button>
 				</form>
 			</div>
