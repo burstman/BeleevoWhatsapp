@@ -1,0 +1,61 @@
+package settings
+
+import (
+	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+templ Onboarding(page components.Page, shopName string, numbers []whatsapp.Number) {
+	@layouts.Shell(page) {
+		<div class="mx-auto max-w-2xl">
+			<h1 class="text-2xl font-bold text-slate-900">Connect your WhatsApp number</h1>
+			<p class="mt-1 text-sm text-slate-500">
+				Fill in your shop details and pick a number — we handle the WhatsApp connection for you.
+			</p>
+
+			<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+				<ol class="flex items-center gap-2 text-sm">
+					<li class="flex items-center gap-2 font-semibold text-indigo-600">
+						<span class="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">1</span> Shop
+					</li>
+					<li class="h-px w-6 bg-slate-200"></li>
+					<li class="flex items-center gap-2 font-semibold text-indigo-600">
+						<span class="rounded-full bg-indigo-600 px-2 py-0.5 text-xs text-white">2</span> Number
+					</li>
+				</ol>
+
+				<form method="post" action="/whatsapp/onboard" class="mt-6 space-y-6">
+					<div>
+						<label for="shop-name" class="block text-sm font-medium text-slate-700">Shop name</label>
+						<input id="shop-name" name="shop_name" type="text" required
+							value={ shopName }
+							class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"/>
+						<p class="mt-1 text-xs text-slate-500">Used as the display name on WhatsApp.</p>
+					</div>
+
+					<div>
+						<span class="block text-sm font-medium text-slate-700">Choose a WhatsApp number</span>
+						<div class="mt-2 space-y-3">
+							for _, n := range numbers {
+								<label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 transition hover:border-indigo-300">
+									<input type="radio" name="number_id" value={ n.ID.String() } required
+										class="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500"/>
+									<div>
+										<p class="font-semibold text-slate-900">{ n.DisplayPhoneNumber }</p>
+										<p class="text-sm text-slate-500">{ n.VerifiedName }</p>
+									</div>
+								</label>
+							}
+						</div>
+					</div>
+
+					<button type="submit"
+						class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+						Connect WhatsApp
+					</button>
+				</form>
+			</div>
+		</div>
+	}
+}

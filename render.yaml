@@ -49,6 +49,8 @@ services:
           property: connectionString
       - key: SUPERKIT_SECRET
         sync: false # set manually in the Render dashboard
+      - key: META_SYSTEM_USER_TOKEN
+        sync: false # platform's long-lived Meta system-user token (BSP provisioning)
 
   - type: worker
     name: converty-whatsapp-worker

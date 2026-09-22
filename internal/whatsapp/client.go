@@ -49,6 +49,32 @@ type PhoneNumber struct {
 	CodeVerificationStatus string `json:"code_verification_status"`
 }
 
+// MessageNumber is the minimal shape of a number when listing the messaging
+// account's phone_numbers connection. PhoneNumber is kept for the
+// connect/seed sanity checks (it carries quality/verification fields);
+// MessageNumber is what the BSP number-pool importer needs.
+type MessageNumber struct {
+	ID                 string `json:"id"`
+	DisplayPhoneNumber string `json:"display_phone_number"`
+	VerifiedName       string `json:"verified_name"`
+}
+
+// ListMessageNumbers returns the phone numbers registered under a messaging
+// account — the platform's rentable number pool for the BSP onboarding.
+func (s *Service) ListMessageNumbers(ctx context.Context, token, messagingAccountID string) ([]MessageNumber, error) {
+	q := url.Values{}
+	q.Set("fields", "id,display_phone_number,verified_name")
+	q.Set("limit", "100")
+
+	var resp struct {
+		Data []MessageNumber `json:"data"`
+	}
+	if err := s.getJSON(ctx, token, s.cfg.MetaGraphURL+"/"+metaAPIVersion+"/"+messagingAccountID+"/phone_numbers?"+q.Encode(), &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}
+
 // Option is a functional option for the Meta build of a message send.
 type Option func(map[string]any)
 

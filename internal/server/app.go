@@ -67,6 +67,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(kit.WithAuthentication(authConfig, false))
 		pr.Get("/", kit.Handler(a.handleIndex))
+		pr.Get("/privacy", kit.Handler(a.handlePrivacyPage))
 		pr.Get("/login", kit.Handler(a.handleLoginGet))
 		pr.Post("/login", kit.Handler(a.handleLoginPost))
 		pr.Get("/register", kit.Handler(a.handleRegisterGet))
@@ -86,6 +87,8 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/templates", kit.Handler(a.handlePlaceholder("templates")))
 		pr.Get("/messages", kit.Handler(a.handlePlaceholder("messages")))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
+		pr.Get("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboard))
+		pr.Post("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboardPost))
 		pr.Post("/whatsapp/connect", kit.Handler(a.handleWhatsappConnect))
 		pr.Post("/whatsapp/disconnect", kit.Handler(a.handleWhatsappDisconnect))
 	})

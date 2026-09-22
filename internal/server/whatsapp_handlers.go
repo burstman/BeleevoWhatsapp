@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/anthdm/superkit/kit"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"whatsappconverty/internal/auth"
@@ -108,4 +109,62 @@ func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
 	}
 	a.Log.Info("whatsapp disconnected", "shop_id", principal.User.ShopID)
 	return k.Redirect(http.StatusSeeOther, "/settings?connect=disconnected")
+}
+
+// handleWhatsappOnboard renders the onboarding wizard: the shop's name plus
+// the rentable numbers the platform can provision.
+func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+
+	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
+	if err != nil && err != shops.ErrNotFound {
+		return err
+	}
+
+	if a.Cfg.MetaSystemUserToken == "" {
+		a.Log.Warn("whatsapp onboard blocked: META_SYSTEM_USER_TOKEN not configured")
+		return k.Redirect(http.StatusSeeOther, "/settings?connect=nosystem")
+	}
+
+	numbers, err := a.WhatsApp.AvailableNumbers(k.Request.Context())
+	if err != nil {
+		return err
+	}
+
+	page := viewshared.Page{
+		Title:    "Connect WhatsApp",
+		Active:   "settings",
+		ShopName: shop.Name,
+		UserName: principal.User.Name,
+	}
+	return k.Render(vsettings.Onboarding(page, shop.Name, numbers))
+}
+
+// handleWhatsappOnboardPost provisions the selected rentable number to the
+// shop using the platform's system-user token — the client does not need to
+// paste any Meta credentials.
+func (a *App) handleWhatsappOnboardPost(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+
+	numberID := k.Request.FormValue("number_id")
+	if numberID == "" {
+		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=number")
+	}
+	if a.Cfg.MetaSystemUserToken == "" {
+		return k.Redirect(http.StatusSeeOther, "/settings?connect=nosystem")
+	}
+
+	nid, err := uuid.Parse(numberID)
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=number")
+	}
+
+	if err := a.WhatsApp.Provision(k.Request.Context(), principal.User.ShopID, nid, a.Cfg.MetaSystemUserToken); err != nil {
+		a.Log.Error("whatsapp onboard provision failed", "shop_id", principal.User.ShopID, "number_id", numberID, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=provision")
+	}
+
+	a.Log.Info("whatsapp onboard complete",
+		"shop_id", principal.User.ShopID, "number_id", numberID)
+	return k.Redirect(http.StatusSeeOther, "/settings?connect=success")
 }

@@ -12,6 +12,7 @@ import (
 	viewshared "whatsappconverty/web/views/components"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
+	vlegal "whatsappconverty/web/views/legal"
 )
 
 func (a *App) handleLiveness(k *kit.Kit) error {
@@ -30,6 +31,13 @@ func (a *App) handleIndex(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/dashboard")
 	}
 	return k.Render(vlanding.Index())
+}
+
+// handlePrivacyPage renders the public Privacy Policy, required by Meta for
+// live apps. It intentionally skips auth so the URL can be published to the
+// WhatsApp review and marketing materials.
+func (a *App) handlePrivacyPage(k *kit.Kit) error {
+	return k.Render(vlegal.Privacy())
 }
 
 func (a *App) handleOverview(k *kit.Kit) error {

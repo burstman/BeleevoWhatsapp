@@ -35,6 +35,12 @@ type Config struct {
 	// MetaGraphURL is the base of the Facebook Graph API. Overridable so
 	// tests and mirrors can point elsewhere.
 	MetaGraphURL string
+
+	// MetaSystemUserToken is the platform's long-lived Meta system-user
+	// access token. Under the BSP model the platform holds it centrally and
+	// provisions connections for every shop "through mine" — clients never
+	// paste their own token.
+	MetaSystemUserToken string
 }
 
 // Load reads configuration from the environment.
@@ -61,6 +67,7 @@ func Load() Config {
 		ConvertyRedirectURI:   getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
 		ConvertyEncryptionKey: getenv("CONVERTY_ENCRYPTION_KEY", ""),
 		MetaGraphURL:          getenv("META_GRAPH_URL", "https://graph.facebook.com"),
+		MetaSystemUserToken:   getenv("META_SYSTEM_USER_TOKEN", ""),
 	}
 }
 
