@@ -31,6 +31,10 @@ type Config struct {
 
 	// ConvertyEncryptionKey encrypts Converty tokens at rest (AES-256-GCM).
 	ConvertyEncryptionKey string
+
+	// MetaGraphURL is the base of the Facebook Graph API. Overridable so
+	// tests and mirrors can point elsewhere.
+	MetaGraphURL string
 }
 
 // Load reads configuration from the environment.
@@ -56,6 +60,7 @@ func Load() Config {
 		ConvertyAPIURL:        getenv("CONVERTY_API_URL", "https://api.converty.shop"),
 		ConvertyRedirectURI:   getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
 		ConvertyEncryptionKey: getenv("CONVERTY_ENCRYPTION_KEY", ""),
+		MetaGraphURL:          getenv("META_GRAPH_URL", "https://graph.facebook.com"),
 	}
 }
 

@@ -2,6 +2,7 @@
 .env
 .env.local
 convertyID.txt
+whatsapptoken.txt
 
 # Build output
 bin/

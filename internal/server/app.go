@@ -13,6 +13,7 @@ import (
 	"whatsappconverty/internal/converty"
 	"whatsappconverty/internal/dashboard"
 	"whatsappconverty/internal/shops"
+	"whatsappconverty/internal/whatsapp"
 )
 
 // App wires the dependencies for the web/API process and owns the HTTP router.
@@ -24,6 +25,7 @@ type App struct {
 	Shops     *shops.Repository
 	Dashboard *dashboard.Repository
 	Converty  *converty.Service
+	WhatsApp  *whatsapp.Service
 }
 
 func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
@@ -36,6 +38,7 @@ func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
 		Shops:     shopsRepo,
 		Dashboard: dashboard.NewRepository(pool),
 		Converty:  converty.NewService(cfg, pool, log),
+		WhatsApp:  whatsapp.NewService(cfg, pool, log),
 	}
 }
 
@@ -82,7 +85,9 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
 		pr.Get("/templates", kit.Handler(a.handlePlaceholder("templates")))
 		pr.Get("/messages", kit.Handler(a.handlePlaceholder("messages")))
-		pr.Get("/settings", kit.Handler(a.handlePlaceholder("settings")))
+		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
+		pr.Post("/whatsapp/connect", kit.Handler(a.handleWhatsappConnect))
+		pr.Post("/whatsapp/disconnect", kit.Handler(a.handleWhatsappDisconnect))
 	})
 
 	r.NotFound(kit.Handler(a.handleNotFound))
