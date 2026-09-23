@@ -13,9 +13,11 @@ import (
 	vsettings "whatsappconverty/web/views/settings"
 )
 
-// handleWhatsappSettings renders the WhatsApp onboarding/connect page. When a
-// shop already has credentials it shows the connected state plus the templates
-// available on its messaging account.
+// handleWhatsappSettings renders the WhatsApp settings page. This is a legacy
+// view that predates the shared single-WABA model: template listings belong to
+// the shop-scoped /templates page only. A shop must never see the platform's
+// account-level templates (other merchants' content), so no template list is
+// rendered here.
 func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 	principal := auth.FromKit(k)
 	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
@@ -38,17 +40,7 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 		return err
 	}
 
-	token, err := a.WhatsApp.DecryptToken(integ.AccessTokenEncrypted)
-	if err != nil {
-		return err
-	}
-
-	templates, err := a.WhatsApp.ListTemplates(k.Request.Context(), token, integ.MessagingAccountID)
-	if err != nil {
-		a.Log.Warn("whatsapp: template list failed on settings page", "error", err)
-	}
-
-	return k.Render(vsettings.Settings(page, &integ, templates))
+	return k.Render(vsettings.Settings(page, &integ, nil))
 }
 
 // handleWhatsappConnect stores the shop's Meta WhatsApp credentials after a

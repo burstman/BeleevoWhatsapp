@@ -72,6 +72,7 @@ func main() {
 				status, approval_status, rejection_reason, components
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
 			ON CONFLICT (shop_id, meta_template_name, language) DO UPDATE SET
+				meta_template_id   = EXCLUDED.meta_template_id,
 				category          = EXCLUDED.category,
 				status            = EXCLUDED.status,
 				approval_status   = EXCLUDED.approval_status,
@@ -79,7 +80,7 @@ func main() {
 				components        = EXCLUDED.components,
 				updated_at        = now()
 			RETURNING id`,
-			shopID, t.Name, "", t.Language, t.Category,
+			shopID, t.Name, t.ID, t.Language, t.Category,
 			"imported", approval, "", t.Components,
 		).Scan(&id)
 		if rowErr != nil {
