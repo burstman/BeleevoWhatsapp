@@ -86,6 +86,11 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	if tmpl.ApprovalStatus == "rejected" {
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected")
 	}
+	if tmpl.MarketingFlagged {
+		a.Log.Warn("template flagged as marketing by meta",
+			"shop_id", principal.User.ShopID, "name", tmpl.Name, "warning", tmpl.MetaWarnings)
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=marketing")
+	}
 	a.Log.Info("template submitted for review",
 		"shop_id", principal.User.ShopID, "name", tmpl.Name, "language", tmpl.Language)
 	return k.Redirect(http.StatusSeeOther, "/templates?flash=created")

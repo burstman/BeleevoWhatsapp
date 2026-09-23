@@ -80,6 +80,8 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	switch k.Request.URL.Query().Get("flash") {
 	case "created":
 		flash.Info = "Template submitted to Meta for review. Status refreshes here once decided."
+	case "marketing":
+		flash.Error = "Meta flagged this template as marketing content. It will NEVER be sent — delete it and rewrite as a transactional update (order status, delivery, billing…)."
 	case "rejected":
 		flash.Error = "Meta rejected the submission — check the rejection reason on the row below."
 	case "synced":

@@ -196,11 +196,11 @@ func (s *Service) templateState(ctx context.Context, shopID, templateID uuid.UUI
 	var t TemplateState
 	var components []byte
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, meta_template_name, language, category, approval_status, components
+		SELECT id, meta_template_name, language, category, approval_status, marketing_flagged, components
 		FROM templates
 		WHERE id = $1 AND shop_id = $2`,
 		templateID, shopID,
-	).Scan(&t.ID, &t.Name, &t.Language, &t.Category, &t.ApprovalStatus, &components)
+	).Scan(&t.ID, &t.Name, &t.Language, &t.Category, &t.ApprovalStatus, &t.MarketingFlagged, &components)
 	if err != nil {
 		return TemplateState{}, err
 	}

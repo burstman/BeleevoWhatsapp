@@ -33,11 +33,12 @@ type TemplateParameter struct {
 // listed via GET /<messaging_account_id>/message_templates. Components stay
 // opaque (json.RawMessage) since their shape is version-specific.
 type Template struct {
-	Name       string          `json:"name"`
-	Status     string          `json:"status"`
-	Category   string          `json:"category"`
-	Language   string          `json:"language"`
-	Components json.RawMessage `json:"components"`
+	Name           string          `json:"name"`
+	Status         string          `json:"status"`
+	Category       string          `json:"category"`
+	Language       string          `json:"language"`
+	RejectedReason string          `json:"rejected_reason"`
+	Components     json.RawMessage `json:"components"`
 }
 
 // PhoneNumber is a WhatsApp number owned by the messaging account, used for
@@ -132,7 +133,7 @@ func (s *Service) SendTemplate(ctx context.Context, token, phoneNumberID, to, na
 // (utility/marketing/authentication) and status are included for UI use.
 func (s *Service) ListTemplates(ctx context.Context, token, messagingAccountID string) ([]Template, error) {
 	q := url.Values{}
-	q.Set("fields", "name,status,category,language,components")
+	q.Set("fields", "name,status,category,language,rejected_reason,components")
 	q.Set("limit", "100")
 
 	var resp struct {

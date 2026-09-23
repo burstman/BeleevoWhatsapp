@@ -25,6 +25,7 @@ const (
 	ErrCodeTemplateNotApproved       = "template_not_approved"
 	ErrCodeTemplateUnintendedPurpose = "template_unintended_purpose"
 	ErrCodeTemplateVariableInvalid   = "template_variable_invalid"
+	ErrCodeTemplateMarketingBlocked  = "template_marketing_blocked"
 	ErrCodeRateLimited               = "rate_limited"
 	ErrCodeMetaAPIError              = "meta_api_error"
 	ErrCodeDuplicateSend             = "duplicate_send"
@@ -70,14 +71,15 @@ type ConsentState struct {
 
 // TemplateState is the merchant's template snapshot used by the send gate.
 type TemplateState struct {
-	ID             uuid.UUID
-	Name           string
-	Language       string
-	Category       string
-	ApprovalStatus string // pending | approved | rejected | paused | deleted
-	Components     []TemplateComponent
-	RawComponents  []byte // components exactly as stored (Meta list or provision shape)
-	NumVariables   int
+	ID               uuid.UUID
+	Name             string
+	Language         string
+	Category         string
+	ApprovalStatus   string // pending | approved | rejected | paused | deleted
+	MarketingFlagged bool   // Meta warned the content is treated as marketing
+	Components       []TemplateComponent
+	RawComponents    []byte // components exactly as stored (Meta list or provision shape)
+	NumVariables     int
 }
 
 // SendRequest is a single message send attempt. Purpose is the business
@@ -132,6 +134,9 @@ func EvaluateSendRule(merchant MerchantState, customer CustomerState, consent Co
 	}
 	if template.ApprovalStatus != "approved" {
 		return NewSendRejection(ErrCodeTemplateNotApproved, "template is not approved ("+template.ApprovalStatus+")")
+	}
+	if template.MarketingFlagged {
+		return NewSendRejection(ErrCodeTemplateMarketingBlocked, "meta treats this template as marketing content and it can never be sent")
 	}
 	if req.Purpose != "" && template.Category != req.Purpose {
 		return NewSendRejection(ErrCodeTemplateUnintendedPurpose, "template category does not match the requested purpose")

@@ -145,6 +145,50 @@ func TestEvaluateSendRuleApprovalEnforcement(t *testing.T) {
 	}
 }
 
+func TestEvaluateSendRuleMarketingBlocked(t *testing.T) {
+	flagged := approvedTemplate()
+	flagged.MarketingFlagged = true
+
+	// Even though Meta approved the mechanics, a marketing-flagged template
+	// must never be sent — the platform only transmits transactional content.
+	if got := rejCode(EvaluateSendRule(activeMerchant(), ownedCustomer(), optedIn(), flagged, sendReq())); got != ErrCodeTemplateMarketingBlocked {
+		t.Fatalf("marketing flagged template: got %q", got)
+	}
+
+	clean := approvedTemplate()
+	if got := rejCode(EvaluateSendRule(activeMerchant(), ownedCustomer(), optedIn(), clean, sendReq())); got != "" {
+		t.Fatalf("clean template should pass: got %q", got)
+	}
+}
+
+func TestWarningsIndicateMarketing(t *testing.T) {
+	cases := map[string]bool{
+		"":                           false,
+		"Your template is approved.": false,
+		"This template will be treated as a marketing template and may not reach users' main inbox.": true,
+		"Promotional content detected in this template":                                              true,
+		"This is not a marketing template.":                                                          false,
+		"The template is not considered marketing.":                                                  false,
+	}
+	for warn, want := range cases {
+		if got := warningsIndicateMarketing(warn); got != want {
+			t.Fatalf("warningsIndicateMarketing(%q) = %v, want %v", warn, got, want)
+		}
+	}
+}
+
+func TestMarketingSignal(t *testing.T) {
+	if !marketingSignal("MARKETING", "") {
+		t.Fatal("MARKETING category must flag")
+	}
+	if !marketingSignal("UTILITY", "the template violates the marketing policy") {
+		t.Fatal("marketing rejection reason must flag")
+	}
+	if marketingSignal("UTILITY", "") {
+		t.Fatal("clean utility must not flag")
+	}
+}
+
 func TestEvaluateSendRulePurposeMismatch(t *testing.T) {
 	editorial := optedIn()
 	editorial.Category = "marketing" // matches the requested purpose, not the template

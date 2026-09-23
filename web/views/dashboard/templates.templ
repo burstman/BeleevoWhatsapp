@@ -109,9 +109,22 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
 									<td class="px-6 py-3">
-										@ApprovalBadge(t.ApprovalStatus)
-										if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
-											<p class="mt-1 text-xs text-rose-600">{ t.RejectionReason }</p>
+										if t.MarketingFlagged {
+											<span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+												Blocked — marketing
+											</span>
+											<p class="mt-1 text-xs text-rose-600">
+												Meta treats this as marketing content; it will never be sent. Delete it and
+												rewrite as a transactional update.
+											</p>
+											if t.MetaWarnings != "" {
+												<p class="mt-1 text-xs text-slate-400 italic">{ t.MetaWarnings }</p>
+											}
+										} else {
+											@ApprovalBadge(t.ApprovalStatus)
+											if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
+												<p class="mt-1 text-xs text-rose-600">{ t.RejectionReason }</p>
+											}
 										}
 									</td>
 								</tr>

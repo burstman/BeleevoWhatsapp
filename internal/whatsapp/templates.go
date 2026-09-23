@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,19 +14,21 @@ import (
 // MerchantTemplate is a merchant's template on the shared messaging account,
 // tracked with Meta's review lifecycle.
 type MerchantTemplate struct {
-	ID              uuid.UUID
-	ShopID          uuid.UUID
-	Name            string
-	Language        string
-	Category        string
-	Status          string // our lifecycle bookkeeping (submitted while awaiting review)
-	ApprovalStatus  string // pending | approved | rejected | paused | deleted (Meta authority)
-	RejectionReason string
-	MetaTemplateID  string
-	Components      []byte // raw Meta components JSONB (also drives variable counting on send)
-	NumVariables    int    // placeholder count derived from Components
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID               uuid.UUID
+	ShopID           uuid.UUID
+	Name             string
+	Language         string
+	Category         string
+	Status           string // our lifecycle bookkeeping (submitted while awaiting review)
+	ApprovalStatus   string // pending | approved | rejected | paused | deleted (Meta authority)
+	RejectionReason  string
+	MarketingFlagged bool   // Meta warned this template is/will be treated as marketing
+	MetaWarnings     string // Meta's own warning text, verbatim, for client display
+	MetaTemplateID   string
+	Components       []byte // raw Meta components JSONB (also drives variable counting on send)
+	NumVariables     int    // placeholder count derived from Components
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // TemplateDraft is what a merchant submits. Raw components are validated by
@@ -41,7 +44,10 @@ type TemplateDraft struct {
 // CreateTemplate submits a template to Meta through the platform's central
 // account and records the merchant-scoped row. Approval is Meta's to give;
 // the platform merely reflects pending/rejected/approved as it comes back.
-// Re-submitting the same name+language refreshes the existing row.
+// Meta's creation-time warnings are captured verbatim; a warning that the
+// content is treated as marketing sets MarketingFlagged (and such templates
+// are never sendable). Re-submitting the same name+language refreshes the
+// existing row.
 func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft TemplateDraft) (MerchantTemplate, error) {
 	if s.cfg.MetaSystemUserToken == "" || s.cfg.MetaMessagingAccountID == "" {
 		return MerchantTemplate{}, &SendRejection{Code: ErrCodeMetaAPIError, Reason: "platform meta credentials not configured"}
@@ -55,7 +61,10 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 	}
 
 	var resp struct {
-		ID string `json:"id"`
+		ID       string `json:"id"`
+		Warnings []struct {
+			Message string `json:"message"`
+		} `json:"warnings"`
 	}
 	err := s.postJSON(ctx, s.cfg.MetaSystemUserToken,
 		fmt.Sprintf("%s/%s/%s/message_templates", s.cfg.MetaGraphURL, metaAPIVersion, s.cfg.MetaMessagingAccountID),
@@ -63,6 +72,7 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 
 	approval := "pending"
 	rejection := ""
+	warnings := warningStrings(resp.Warnings)
 	if err != nil {
 		// Meta refused the submission (e.g. name collision, bad variables).
 		approval = "rejected"
@@ -77,25 +87,29 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 	t.Status = "submitted"
 	t.ApprovalStatus = approval
 	t.RejectionReason = rejection
+	t.MarketingFlagged = warningsIndicateMarketing(warnings)
+	t.MetaWarnings = warnings
 	t.MetaTemplateID = resp.ID
 	t.Components = draft.Components
 
 	rowErr := s.pool.QueryRow(ctx, `
 		INSERT INTO templates (
 			shop_id, meta_template_name, meta_template_id, language, category,
-			status, approval_status, rejection_reason, components
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+			status, approval_status, rejection_reason, marketing_flagged, meta_warnings, components
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
 		ON CONFLICT (shop_id, meta_template_name, language) DO UPDATE SET
 			meta_template_id  = EXCLUDED.meta_template_id,
 			category          = EXCLUDED.category,
 			status            = EXCLUDED.status,
 			approval_status   = EXCLUDED.approval_status,
 			rejection_reason  = EXCLUDED.rejection_reason,
+			marketing_flagged = EXCLUDED.marketing_flagged,
+			meta_warnings     = EXCLUDED.meta_warnings,
 			components        = EXCLUDED.components,
 			updated_at        = now()
 		RETURNING id, created_at, updated_at`,
 		shopID, draft.Name, resp.ID, draft.Language, draft.Category,
-		t.Status, approval, rejection, draft.Components,
+		t.Status, approval, rejection, t.MarketingFlagged, t.MetaWarnings, draft.Components,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 	if rowErr != nil {
 		return MerchantTemplate{}, fmt.Errorf("store template: %w", rowErr)
@@ -106,10 +120,49 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 	return t, nil
 }
 
+// warningStrings joins Meta's warning messages into a single display string.
+func warningStrings(w warnings) string {
+	var b strings.Builder
+	for i, w := range w {
+		if w.Message == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString("; ")
+		}
+		b.WriteString(w.Message)
+		if i >= 5 {
+			break
+		}
+	}
+	return b.String()
+}
+
+// warningsIndicateMarketing reports whether Meta's creation-time warnings say
+// the template is (or will be) treated as marketing content. The authoritative
+// signal is Meta itself — the platform never guesses from the body text.
+func warningsIndicateMarketing(warnings string) bool {
+	low := strings.ToLower(warnings)
+	if low == "" {
+		return false
+	}
+	if strings.Contains(low, "not a marketing") || strings.Contains(low, "not marketing") ||
+		strings.Contains(low, "isn't marketing") || strings.Contains(low, "not considered marketing") {
+		return false
+	}
+	return strings.Contains(low, "marketing") || strings.Contains(low, "promotional")
+}
+
+// warnings is the payload subset of Meta's create-response warnings array.
+type warnings []struct {
+	Message string `json:"message"`
+}
+
 // SyncTemplates refreshes the approval state of every merchant template whose
-// name+language now exists on the messaging account. Only status/rejection
-// are updated — ownership is never touched, and approval never comes from the
-// frontend.
+// name+language now exists on the messaging account. Only status/rejection are
+// updated — ownership is never touched, and approval never comes from the
+// frontend. Templates Meta reports as MARKETING category (or rejected for
+// marketing) are also flagged unsendable.
 func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 	if s.cfg.MetaSystemUserToken == "" || s.cfg.MetaMessagingAccountID == "" {
 		return 0, nil
@@ -120,12 +173,14 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 	}
 	updated := 0
 	for _, t := range templates {
+		marketing := marketingSignal(t.Category, t.RejectedReason)
 		tag, uErr := s.pool.Exec(ctx, `
 			UPDATE templates
-			SET approval_status = $2, updated_at = now()
+			SET approval_status = $2, updated_at = now(),
+			    marketing_flagged = $4
 			WHERE meta_template_name = $1 AND language = $3
-			  AND approval_status <> $2`,
-			t.Name, NormalizeApproval(t.Status), t.Language,
+			  AND (approval_status <> $2 OR marketing_flagged <> $4)`,
+			t.Name, NormalizeApproval(t.Status), t.Language, marketing,
 		)
 		if uErr != nil {
 			return updated, uErr
@@ -133,6 +188,15 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 		updated += int(tag.RowsAffected())
 	}
 	return updated, nil
+}
+
+// marketingSignal is Meta's post-review signal that a template is marketing:
+// explicit category, or a rejection that cites the marketing policies.
+func marketingSignal(category, rejectedReason string) bool {
+	if strings.EqualFold(strings.TrimSpace(category), "MARKETING") {
+		return true
+	}
+	return warningsIndicateMarketing(rejectedReason)
 }
 
 // NormalizeApproval maps Meta's uppercase statuses to the stored vocabulary.
@@ -157,7 +221,8 @@ func NormalizeApproval(status string) string {
 func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTemplate, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, meta_template_name, language, category, status,
-		       approval_status, rejection_reason, meta_template_id, components, created_at, updated_at
+		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
+		       meta_template_id, components, created_at, updated_at
 		FROM templates
 		WHERE shop_id = $1
 		ORDER BY created_at DESC`,
@@ -172,8 +237,8 @@ func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTe
 	for rows.Next() {
 		var t MerchantTemplate
 		if err := rows.Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
-			&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MetaTemplateID,
-			&t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
+			&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		t.NumVariables = countVariablesFromJSON(t.Components)
@@ -187,13 +252,14 @@ func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (M
 	var t MerchantTemplate
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, shop_id, meta_template_name, language, category, status,
-		       approval_status, rejection_reason, meta_template_id, components, created_at, updated_at
+		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
+		       meta_template_id, components, created_at, updated_at
 		FROM templates
 		WHERE id = $1 AND shop_id = $2`,
 		templateID, shopID,
 	).Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
-		&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MetaTemplateID,
-		&t.Components, &t.CreatedAt, &t.UpdatedAt)
+		&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
+		&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return MerchantTemplate{}, nil
 	}
