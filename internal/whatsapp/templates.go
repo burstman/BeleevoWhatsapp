@@ -23,6 +23,7 @@ type MerchantTemplate struct {
 	RejectionReason string
 	MetaTemplateID  string
 	Components      []byte // raw Meta components JSONB (also drives variable counting on send)
+	NumVariables    int    // placeholder count derived from Components
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -175,6 +176,7 @@ func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTe
 			&t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
+		t.NumVariables = countVariablesFromJSON(t.Components)
 		out = append(out, t)
 	}
 	return out, rows.Err()
@@ -195,5 +197,16 @@ func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (M
 	if err == pgx.ErrNoRows {
 		return MerchantTemplate{}, nil
 	}
+	t.NumVariables = countVariablesFromJSON(t.Components)
 	return t, err
+}
+
+// countVariablesFromJSON derives the placeholder count from stored Meta
+// components so senders can build the correct variable set without re-parsing.
+func countVariablesFromJSON(raw []byte) int {
+	var comps []TemplateComponent
+	if err := json.Unmarshal(raw, &comps); err != nil {
+		return 0
+	}
+	return countTemplateVariables(comps)
 }

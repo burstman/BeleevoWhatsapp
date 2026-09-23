@@ -9,6 +9,7 @@ import (
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/database"
 	"whatsappconverty/internal/shops"
+	"whatsappconverty/internal/whatsapp"
 	viewshared "whatsappconverty/web/views/components"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
@@ -83,7 +84,8 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	return k.Render(vdashboard.TemplatesPage(page, templates))
 }
 
-// handleMessages renders the merchant's message history with delivery status.
+// handleMessages renders the merchant's message history with delivery status
+// plus the approved templates available for a test send.
 func (a *App) handleMessages(k *kit.Kit) error {
 	principal := auth.FromKit(k)
 	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
@@ -96,12 +98,23 @@ func (a *App) handleMessages(k *kit.Kit) error {
 		return err
 	}
 
+	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
+	if err != nil {
+		return err
+	}
+	approved := make([]whatsapp.MerchantTemplate, 0, len(templates))
+	for _, t := range templates {
+		if t.ApprovalStatus == "approved" {
+			approved = append(approved, t)
+		}
+	}
+
 	page := viewshared.Page{
 		Title:    "Messages",
 		ShopName: shop.Name,
 		UserName: principal.User.Name,
 	}
-	return k.Render(vdashboard.MessagesPage(page, messages))
+	return k.Render(vdashboard.MessagesPage(page, messages, approved))
 }
 
 // handlePlaceholder renders a shell page for features that arrive in later phases.
