@@ -6,7 +6,7 @@ import (
 	"whatsappconverty/web/views/layouts"
 )
 
-templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) {
+templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, flash TemplateFlash) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
@@ -17,6 +17,71 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate)
 						sent. Approval is decided by Meta's review — not by us.
 					</p>
 				</div>
+				<a href="/templates/refresh"
+					class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+					Refresh from Meta
+				</a>
+			</div>
+
+			if flash.Error != "" {
+				<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{ flash.Error }</div>
+			}
+			if flash.Info != "" {
+				<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash.Info }</div>
+			}
+
+			<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+				<div class="flex items-center justify-between">
+					<div>
+						<h3 class="text-sm font-semibold text-slate-700">Create a template</h3>
+						<p class="mt-1 text-xs text-slate-500">
+							Submitted to Meta for review. Category is fixed to <span class="font-medium">Utility</span> —
+							this platform only sends transactional updates, not marketing.
+						</p>
+					</div>
+					<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">UTILITY</span>
+				</div>
+
+				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3">
+					<div class="grid gap-3 sm:grid-cols-3">
+						<div>
+							<label for="tplName" class="block text-xs font-medium text-slate-600">Name</label>
+							<input id="tplName" name="name" required pattern="[a-z0-9_]{1,60}"
+								placeholder="order_shipped" title="lowercase letters, digits, underscores"
+								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+						</div>
+						<div>
+							<label for="tplLang" class="block text-xs font-medium text-slate-600">Language</label>
+							<select id="tplLang" name="language" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+								<option value="ar">Arabic (ar)</option>
+								<option value="en">English (en)</option>
+								<option value="fr">French (fr)</option>
+							</select>
+						</div>
+						<div>
+							<label for="tplExamples" class="block text-xs font-medium text-slate-600">Example values</label>
+							<p id="tplExamples" class="mt-1 text-xs text-slate-500">
+								Fill after writing the body — one per variable.
+							</p>
+						</div>
+					</div>
+
+					<div>
+						<label for="tplBody" class="block text-xs font-medium text-slate-600">Body text</label>
+						<textarea id="tplBody" name="body" required rows="3" placeholder="Your order {{1}} has shipped and will arrive by {{2}}. Contact us on +216 24 118 849."
+							class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+					</div>
+
+					<div id="tplVars" class="grid gap-2 sm:grid-cols-2"></div>
+
+					<div class="flex items-center gap-3">
+						<button type="submit"
+							class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+							Submit for review
+						</button>
+						<span id="tplStatus" class="text-xs text-slate-500"></span>
+					</div>
+				</form>
 			</div>
 
 			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -25,9 +90,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate)
 				</div>
 				if len(templates) == 0 {
 					<div class="px-6 py-10 text-center text-sm text-slate-500">
-						No templates yet. Submit one through the API
-						(<span class="font-mono text-xs">POST /api/whatsapp/templates</span>) and its
-						Meta review status will appear here.
+						No templates yet. Create one above and its review status will appear here.
 					</div>
 				} else {
 					<table class="w-full text-left text-sm">
@@ -58,5 +121,48 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate)
 				}
 			</div>
 		</div>
+
+		<script>
+			(function () {
+				var body = document.getElementById("tplBody");
+				var varsBox = document.getElementById("tplVars");
+				var status = document.getElementById("tplStatus");
+				var LB = String.fromCharCode(123, 123);
+				var RB = String.fromCharCode(125, 125);
+
+				function renderVars() {
+					var seen = [];
+					var re = new RegExp(LB + "([0-9]+)" + RB, "g");
+					var m;
+					while ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }
+					seen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })
+						.sort(function (a, b) { return a - b; });
+					if (seen.length === 0) {
+						varsBox.innerHTML = "";
+						status.textContent = "";
+						return;
+					}
+					var out = "";
+					for (var i = 0; i < seen.length; i++) {
+						out += '<div><label class="block text-xs font-medium text-slate-600" for="example_' + seen[i] + '">Value for ' + LB + seen[i] + RB + '</label>' +
+							'<input id="example_' + seen[i] + '" name="example_' + seen[i] + '" required placeholder="Sample value for ' + LB + seen[i] + RB + '" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>';
+					}
+					varsBox.innerHTML = out;
+					status.textContent = seen.length + " variable(s) detected";
+				}
+
+				var debounce;
+				body.addEventListener("input", function () {
+					clearTimeout(debounce);
+					debounce = setTimeout(renderVars, 150);
+				});
+				renderVars();
+			})();
+		</script>
 	}
+}
+
+type TemplateFlash struct {
+	Error string
+	Info  string
 }

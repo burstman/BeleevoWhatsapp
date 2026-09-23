@@ -144,6 +144,16 @@ func (s *Service) ListTemplates(ctx context.Context, token, messagingAccountID s
 	return resp.Data, nil
 }
 
+// DeleteTemplate removes a template from the messaging account by
+// name+language.
+func (s *Service) DeleteTemplate(ctx context.Context, token, messagingAccountID, name, language string) error {
+	q := url.Values{}
+	q.Set("name", name)
+	q.Set("language", language)
+	return s.deleteJSON(ctx, token,
+		s.cfg.MetaGraphURL+"/"+metaAPIVersion+"/"+messagingAccountID+"/message_templates?"+q.Encode())
+}
+
 // GetPhoneNumber verifies a phone-number id resolves and returns its identity
 // details, for connect/seed-time sanity checks.
 func (s *Service) GetPhoneNumber(ctx context.Context, token, phoneNumberID string) (PhoneNumber, error) {
@@ -187,6 +197,16 @@ func (s *Service) getJSON(ctx context.Context, token, endpoint string, out any) 
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	return s.doJSON(req, out)
+}
+
+func (s *Service) deleteJSON(ctx context.Context, token, endpoint string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	var out any
+	return s.doJSON(req, &out)
 }
 
 func (s *Service) postJSON(ctx context.Context, token, endpoint string, body any, out any) error {

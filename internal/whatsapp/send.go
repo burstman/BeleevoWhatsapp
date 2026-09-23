@@ -160,7 +160,7 @@ func countTemplateVariables(components []TemplateComponent) int {
 		if c.Type != "header" && c.Type != "body" {
 			continue
 		}
-		for _, n := range placeholderNumbers(componentText(c)) {
+		for _, n := range PlaceholderNumbers(componentText(c)) {
 			seen[n] = true
 		}
 	}
@@ -174,8 +174,8 @@ func componentText(c TemplateComponent) string {
 	return c.Parameters[0].Text
 }
 
-// placeholderNumbers returns the {{N}} indexes in text order.
-func placeholderNumbers(text string) []int {
+// PlaceholderNumbers returns the {{N}} indexes in text order.
+func PlaceholderNumbers(text string) []int {
 	var nums []int
 	for i := 0; i < len(text); i++ {
 		if text[i] != '{' || i+1 >= len(text) || text[i+1] != '{' {
@@ -263,7 +263,7 @@ func countTemplateVariablesRaw(raw []byte) int {
 	for _, c := range decodeMetaComponents(raw) {
 		switch metaCompType(c) {
 		case "BODY", "HEADER":
-			for _, n := range placeholderNumbers(metaCompText(c)) {
+			for _, n := range PlaceholderNumbers(metaCompText(c)) {
 				seen[n] = true
 			}
 		}
@@ -280,7 +280,7 @@ func buildComponents(raw []byte, vars map[string]string) ([]TemplateComponent, e
 	for _, c := range comps {
 		switch metaCompType(c) {
 		case "BODY", "HEADER":
-			numbers := placeholderNumbers(metaCompText(c))
+			numbers := PlaceholderNumbers(metaCompText(c))
 			if len(numbers) == 0 {
 				continue
 			}

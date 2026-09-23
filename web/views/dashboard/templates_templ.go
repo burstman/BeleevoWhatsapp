@@ -14,7 +14,7 @@ import (
 	"whatsappconverty/web/views/layouts"
 )
 
-func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) templ.Component {
+func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, flash TemplateFlash) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -47,61 +47,103 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"space-y-6\"><div class=\"flex items-center justify-between\"><div><h2 class=\"text-xl font-semibold text-slate-900\">Templates</h2><p class=\"text-sm text-slate-500\">Only <span class=\"font-medium text-emerald-600\">approved</span> templates can be sent. Approval is decided by Meta's review — not by us.</p></div></div><div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Your templates</h3></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"space-y-6\"><div class=\"flex items-center justify-between\"><div><h2 class=\"text-xl font-semibold text-slate-900\">Templates</h2><p class=\"text-sm text-slate-500\">Only <span class=\"font-medium text-emerald-600\">approved</span> templates can be sent. Approval is decided by Meta's review — not by us.</p></div><a href=\"/templates/refresh\" class=\"inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50\">Refresh from Meta</a></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if flash.Error != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var3 string
+				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Error)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 27, Col: 107}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if flash.Info != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var4 string
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Info)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 30, Col: 115}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between\"><div><h3 class=\"text-sm font-semibold text-slate-700\">Create a template</h3><p class=\"mt-1 text-xs text-slate-500\">Submitted to Meta for review. Category is fixed to <span class=\"font-medium\">Utility</span> — this platform only sends transactional updates, not marketing.</p></div><span class=\"rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600\">UTILITY</span></div><form id=\"createTemplateForm\" method=\"post\" action=\"/templates/create\" class=\"mt-4 space-y-3\"><div class=\"grid gap-3 sm:grid-cols-3\"><div><label for=\"tplName\" class=\"block text-xs font-medium text-slate-600\">Name</label> <input id=\"tplName\" name=\"name\" required pattern=\"[a-z0-9_]{1,60}\" placeholder=\"order_shipped\" title=\"lowercase letters, digits, underscores\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div><label for=\"tplLang\" class=\"block text-xs font-medium text-slate-600\">Language</label> <select id=\"tplLang\" name=\"language\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"><option value=\"ar\">Arabic (ar)</option> <option value=\"en\">English (en)</option> <option value=\"fr\">French (fr)</option></select></div><div><label for=\"tplExamples\" class=\"block text-xs font-medium text-slate-600\">Example values</label><p id=\"tplExamples\" class=\"mt-1 text-xs text-slate-500\">Fill after writing the body — one per variable.</p></div></div><div><label for=\"tplBody\" class=\"block text-xs font-medium text-slate-600\">Body text</label> <textarea id=\"tplBody\" name=\"body\" required rows=\"3\" placeholder=\"Your order {{1}} has shipped and will arrive by {{2}}. Contact us on +216 24 118 849.\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></textarea></div><div id=\"tplVars\" class=\"grid gap-2 sm:grid-cols-2\"></div><div class=\"flex items-center gap-3\"><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Submit for review</button> <span id=\"tplStatus\" class=\"text-xs text-slate-500\"></span></div></form></div><div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Your templates</h3></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(templates) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No templates yet. Submit one through the API (<span class=\"font-mono text-xs\">POST /api/whatsapp/templates</span>) and its Meta review status will appear here.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No templates yet. Create one above and its review status will appear here.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<table class=\"w-full text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-400\"><tr><th class=\"px-6 py-3 font-medium\">Name</th><th class=\"px-6 py-3 font-medium\">Language</th><th class=\"px-6 py-3 font-medium\">Category</th><th class=\"px-6 py-3 font-medium\">Status</th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<table class=\"w-full text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-400\"><tr><th class=\"px-6 py-3 font-medium\">Name</th><th class=\"px-6 py-3 font-medium\">Language</th><th class=\"px-6 py-3 font-medium\">Category</th><th class=\"px-6 py-3 font-medium\">Status</th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, t := range templates {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<tr><td class=\"px-6 py-3 font-medium text-slate-900\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var3 string
-					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 45, Col: 66}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</td><td class=\"px-6 py-3 text-slate-600\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var4 string
-					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 46, Col: 58}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<tr><td class=\"px-6 py-3 font-medium text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
-					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Category)
+					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 47, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 108, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</td><td class=\"px-6 py-3\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var6 string
+					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 109, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var7 string
+					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.Category)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 110, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</td><td class=\"px-6 py-3\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -110,35 +152,35 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) 
 						return templ_7745c5c3_Err
 					}
 					if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"mt-1 text-xs text-rose-600\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-1 text-xs text-rose-600\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var6 string
-						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
+						var templ_7745c5c3_Var8 string
+						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 51, Col: 68}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 114, Col: 68}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</td></tr>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</td></tr>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</tbody></table>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</tbody></table>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div></div><script>\n\t\t\t(function () {\n\t\t\t\tvar body = document.getElementById(\"tplBody\");\n\t\t\t\tvar varsBox = document.getElementById(\"tplVars\");\n\t\t\t\tvar status = document.getElementById(\"tplStatus\");\n\t\t\t\tvar LB = String.fromCharCode(123, 123);\n\t\t\t\tvar RB = String.fromCharCode(125, 125);\n\n\t\t\t\tfunction renderVars() {\n\t\t\t\t\tvar seen = [];\n\t\t\t\t\tvar re = new RegExp(LB + \"([0-9]+)\" + RB, \"g\");\n\t\t\t\t\tvar m;\n\t\t\t\t\twhile ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }\n\t\t\t\t\tseen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })\n\t\t\t\t\t\t.sort(function (a, b) { return a - b; });\n\t\t\t\t\tif (seen.length === 0) {\n\t\t\t\t\t\tvarsBox.innerHTML = \"\";\n\t\t\t\t\t\tstatus.textContent = \"\";\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tvar out = \"\";\n\t\t\t\t\tfor (var i = 0; i < seen.length; i++) {\n\t\t\t\t\t\tout += '<div><label class=\"block text-xs font-medium text-slate-600\" for=\"example_' + seen[i] + '\">Value for ' + LB + seen[i] + RB + '</label>' +\n\t\t\t\t\t\t\t'<input id=\"example_' + seen[i] + '\" name=\"example_' + seen[i] + '\" required placeholder=\"Sample value for ' + LB + seen[i] + RB + '\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\" /></div>';\n\t\t\t\t\t}\n\t\t\t\t\tvarsBox.innerHTML = out;\n\t\t\t\t\tstatus.textContent = seen.length + \" variable(s) detected\";\n\t\t\t\t}\n\n\t\t\t\tvar debounce;\n\t\t\t\tbody.addEventListener(\"input\", function () {\n\t\t\t\t\tclearTimeout(debounce);\n\t\t\t\t\tdebounce = setTimeout(renderVars, 150);\n\t\t\t\t});\n\t\t\t\trenderVars();\n\t\t\t})();\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -150,6 +192,11 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate) 
 		}
 		return nil
 	})
+}
+
+type TemplateFlash struct {
+	Error string
+	Info  string
 }
 
 var _ = templruntime.GeneratedTemplate

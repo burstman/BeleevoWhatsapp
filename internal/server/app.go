@@ -87,6 +87,8 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/auth/converty/disconnect", kit.Handler(a.handleConvertyDisconnect))
 		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
 		pr.Get("/templates", kit.Handler(a.handleTemplates))
+		pr.Post("/templates/create", kit.Handler(a.handleTemplateCreate))
+		pr.Get("/templates/refresh", kit.Handler(a.handleTemplateRefresh))
 		pr.Get("/messages", kit.Handler(a.handleMessages))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
 		pr.Get("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboard))

@@ -76,12 +76,30 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		return err
 	}
 
+	flash := vdashboard.TemplateFlash{}
+	switch k.Request.URL.Query().Get("flash") {
+	case "created":
+		flash.Info = "Template submitted to Meta for review. Status refreshes here once decided."
+	case "rejected":
+		flash.Error = "Meta rejected the submission — check the rejection reason on the row below."
+	case "synced":
+		flash.Info = "Approval statuses refreshed from Meta."
+	case "missing":
+		flash.Error = "Name, language and body are required."
+	case "novariables":
+		flash.Error = "The body must contain at least one {{N}} placeholder."
+	case "example":
+		flash.Error = "Provide an example value for every {{N}} placeholder."
+	case "error", "internal", "refresh":
+		flash.Error = "Something went wrong — try again."
+	}
+
 	page := viewshared.Page{
 		Title:    "Templates",
 		ShopName: shop.Name,
 		UserName: principal.User.Name,
 	}
-	return k.Render(vdashboard.TemplatesPage(page, templates))
+	return k.Render(vdashboard.TemplatesPage(page, templates, flash))
 }
 
 // handleMessages renders the merchant's message history with delivery status
