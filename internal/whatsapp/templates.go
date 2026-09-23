@@ -125,7 +125,7 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 			SET approval_status = $2, updated_at = now()
 			WHERE meta_template_name = $1 AND language = $3
 			  AND approval_status <> $2`,
-			t.Name, normalizeApproval(t.Status), t.Language,
+			t.Name, NormalizeApproval(t.Status), t.Language,
 		)
 		if uErr != nil {
 			return updated, uErr
@@ -135,8 +135,8 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 	return updated, nil
 }
 
-// normalizeApproval maps Meta's uppercase statuses to the stored vocabulary.
-func normalizeApproval(status string) string {
+// NormalizeApproval maps Meta's uppercase statuses to the stored vocabulary.
+func NormalizeApproval(status string) string {
 	switch status {
 	case "APPROVED":
 		return "approved"
@@ -204,9 +204,5 @@ func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (M
 // countVariablesFromJSON derives the placeholder count from stored Meta
 // components so senders can build the correct variable set without re-parsing.
 func countVariablesFromJSON(raw []byte) int {
-	var comps []TemplateComponent
-	if err := json.Unmarshal(raw, &comps); err != nil {
-		return 0
-	}
-	return countTemplateVariables(comps)
+	return countTemplateVariablesRaw(raw)
 }

@@ -172,34 +172,36 @@ func TestEvaluateSendRuleVariableValidation(t *testing.T) {
 }
 
 func TestCountTemplateVariables(t *testing.T) {
-	components := []TemplateComponent{
-		{Type: "body", Parameters: []TemplateParameter{{Type: "text", Text: "hi {{1}}, order {{2}} ready"}}},
-	}
-	if got := countTemplateVariables(components); got != 2 {
-		t.Fatalf("got %d variables, want 2", got)
+	// Meta list shape (uppercase types, text field).
+	metaShape := []byte(`[
+		{"type":"HEADER","format":"TEXT","text":"أهلا"},
+		{"type":"BODY","text":"مرحبًا {{1}}، طلبك {{2}}. التسليم {{3}}"},
+		{"type":"BUTTONS","buttons":[{"type":"URL","url":"https://x/{{1}}","text":"عرض"}]}
+	]`)
+	if got := countTemplateVariablesRaw(metaShape); got != 3 {
+		t.Fatalf("meta shape: got %d variables, want 3", got)
 	}
 
-	urlButton := []TemplateComponent{
-		{Type: "body", Parameters: []TemplateParameter{{Type: "text", Text: "order {{1}}"}}},
-		{Type: "button", Parameters: []TemplateParameter{{Type: "text", Text: "https://track/{{1}}"}}},
-	}
+	// Provision shape (lowercase types, parameters).
+	provisionShape := []byte(`[
+		{"type":"body","parameters":[{"type":"text","text":"hi {{1}}, order {{2}} ready"}]},
+		{"type":"button","parameters":[{"type":"text","text":"https://track/{{1}}"}]}
+	]`)
 	// Button placeholders are NOT counted as body variables; only body/header.
-	if got := countTemplateVariables(urlButton); got != 1 {
-		t.Fatalf("got %d body variables, want 1", got)
+	if got := countTemplateVariablesRaw(provisionShape); got != 2 {
+		t.Fatalf("provision shape: got %d body variables, want 2", got)
 	}
 }
 
 func TestBuildComponentsBodyAndURLButton(t *testing.T) {
-	tmpl := TemplateState{
-		Name:     "cv",
-		Language: "ar",
-		Components: []TemplateComponent{
-			{Type: "body", Parameters: []TemplateParameter{{Type: "text", Text: "order {{1}} status {{2}}"}}},
-			{Type: "button", Parameters: []TemplateParameter{{Type: "text", Text: "https://track.example/{{1}}"}}},
-		},
-	}
-	vars := map[string]string{"1": "CVY-7", "2": "in transit"}
-	components, err := buildComponents(tmpl, vars)
+	// order_confirmed_v2-style stored components (Meta list shape).
+	raw := []byte(`[
+		{"type":"HEADER","format":"TEXT","text":"تم تأكيد الطلب"},
+		{"type":"BODY","text":"مرحبًا {{1}}، تم تأكيد طلبك ورقم طلبك هو {{2}}.\nالتسليم: {{3}}."},
+		{"type":"BUTTONS","buttons":[{"type":"URL","url":"https://shop-ecommerce-9kak.onrender.com/tracking{{1}}","text":"عرض"}]}
+	]`)
+	vars := map[string]string{"1": "CVY-7", "2": "12345", "3": "1 يناير 2024"}
+	components, err := buildComponents(raw, vars)
 	if err != nil {
 		t.Fatalf("buildComponents: %v", err)
 	}
@@ -220,14 +222,17 @@ func TestBuildComponentsBodyAndURLButton(t *testing.T) {
 	if !foundURLParam {
 		t.Fatalf("url button substitution missing: %+v", components)
 	}
-	if len(bodyParams) != 2 || bodyParams[0] != "CVY-7" || bodyParams[1] != "in transit" {
+	if len(bodyParams) != 3 || bodyParams[0] != "CVY-7" || bodyParams[1] != "12345" || bodyParams[2] != "1 يناير 2024" {
 		t.Fatalf("body params wrong: %v", bodyParams)
 	}
 }
 
 func TestBuildComponentsMissingVariable(t *testing.T) {
-	tmpl := approvedTemplate()
-	_, err := buildComponents(tmpl, map[string]string{"1": "x", "3": "y"})
+	raw := []byte(`[
+		{"type":"BODY","text":"{{1}} / {{2}} / {{3}}"},
+		{"type":"BUTTONS","buttons":[{"type":"URL","url":"https://x/{{1}}"}]}
+	]`)
+	_, err := buildComponents(raw, map[string]string{"1": "x", "3": "y"})
 	if got := rejCode(err); got != ErrCodeTemplateVariableInvalid {
 		t.Fatalf("got %q, want %q", got, ErrCodeTemplateVariableInvalid)
 	}
@@ -344,8 +349,8 @@ func TestNormalizeApproval(t *testing.T) {
 		"APPROVED": "approved", "PENDING": "pending", "IN_APPEAL": "pending",
 		"REJECTED": "rejected", "PAUSED": "paused", "DELETED": "deleted", "OTHER": "pending",
 	} {
-		if got := normalizeApproval(meta); got != want {
-			t.Fatalf("normalizeApproval(%q)=%q, want %q", meta, got, want)
+		if got := NormalizeApproval(meta); got != want {
+			t.Fatalf("NormalizeApproval(%q)=%q, want %q", meta, got, want)
 		}
 	}
 }

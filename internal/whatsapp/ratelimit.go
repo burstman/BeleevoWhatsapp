@@ -49,11 +49,15 @@ func NewRateLimiter(rd *redis.Client) *RateLimiter {
 		global:  defaultGlobalLimit,
 		window:  defaultWindow,
 		script: redis.NewScript(`
-			local c = redis.call('INCR', KEYS[1])
-			if c == 1 then
+			local sc = redis.call('INCR', KEYS[1])
+			if sc == 1 then
 				redis.call('EXPIRE', KEYS[1], ARGV[1])
 			end
-			return c
+			local gc = redis.call('INCR', KEYS[2])
+			if gc == 1 then
+				redis.call('EXPIRE', KEYS[2], ARGV[1])
+			end
+			return {sc, gc}
 		`),
 	}
 }

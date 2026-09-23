@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -75,6 +76,7 @@ type TemplateState struct {
 	Category       string
 	ApprovalStatus string // pending | approved | rejected | paused | deleted
 	Components     []TemplateComponent
+	RawComponents  []byte // components exactly as stored (Meta list or provision shape)
 	NumVariables   int
 }
 
@@ -150,60 +152,8 @@ func validateVariables(t TemplateState, vars map[string]string) error {
 	return nil
 }
 
-// buildComponents turns positional variables into the Meta component body,
-// matching the template's stored components. Variables are ordered by the
-// {{N}} index in the first variable-bearing component (body, or header when
-// the body has none).
-func buildComponents(t TemplateState, vars map[string]string) ([]TemplateComponent, error) {
-	var components []TemplateComponent
-	for _, c := range t.Components {
-		switch c.Type {
-		case "header", "body":
-			text := ""
-			for _, p := range c.Parameters {
-				if p.Type == "text" && strings.Contains(p.Text, "{{") {
-					text = p.Text
-					break
-				}
-			}
-			if text == "" {
-				components = append(components, c)
-				continue
-			}
-			numbers := placeholderNumbers(text)
-			params := make([]TemplateParameter, 0, len(numbers))
-			for _, n := range numbers {
-				v, ok := vars[strconv.Itoa(n)]
-				if !ok {
-					return nil, NewSendRejection(ErrCodeTemplateVariableInvalid, "missing variable {{"+strconv.Itoa(n)+"}}")
-				}
-				params = append(params, TemplateParameter{Type: "text", Text: v})
-			}
-			components = append(components, TemplateComponent{Type: c.Type, Parameters: params})
-		case "button":
-			// URL buttons may carry the trailing {{1}} substitution as the last
-			// parameter set. Variables were already validated above.
-			components = append(components, c)
-		default:
-			components = append(components, c)
-		}
-	}
-
-	// Append the URL-button parameter set that Meta requires when any button
-	// element references a placeholder (verified on order_confirmed_v2).
-	if hasURLPlaceholder(t.Components) {
-		components = append(components, TemplateComponent{
-			Type: "button",
-			Parameters: []TemplateParameter{
-				{Type: "text", Text: vars["1"]},
-			},
-		})
-	}
-	return components, nil
-}
-
 // countTemplateVariables counts the distinct {{N}} placeholders across the
-// template's header/body text.
+// template's header/body text (sliced form; see countTemplateVariablesRaw).
 func countTemplateVariables(components []TemplateComponent) int {
 	seen := map[int]bool{}
 	for _, c := range components {
@@ -222,15 +172,6 @@ func componentText(c TemplateComponent) string {
 		return ""
 	}
 	return c.Parameters[0].Text
-}
-
-func hasURLPlaceholder(components []TemplateComponent) bool {
-	for _, c := range components {
-		if c.Type == "button" && strings.Contains(componentText(c), "{{") {
-			return true
-		}
-	}
-	return false
 }
 
 // placeholderNumbers returns the {{N}} indexes in text order.
@@ -252,6 +193,124 @@ func placeholderNumbers(text string) []int {
 		i = j
 	}
 	return nums
+}
+
+// metaComponent is the neutral decode of a template component, accepting both
+// Meta's list shape (HEADER/BODY/BUTTONS with text/buttons/example) and the
+// provision shape (header/body/button with parameters).
+type metaComponent struct {
+	Type    string `json:"type"`
+	Text    string `json:"text"`
+	Format  string `json:"format"`
+	Buttons []struct {
+		Type string `json:"type"`
+		URL  string `json:"url"`
+	} `json:"buttons"`
+	Parameters []TemplateParameter `json:"parameters"`
+}
+
+// decodeMetaComponents parses stored template components; a malformed blob
+// yields an empty set rather than a hard failure (the gate still rejects on
+// variable mismatch).
+func decodeMetaComponents(raw []byte) []metaComponent {
+	var out []metaComponent
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &out)
+	}
+	return out
+}
+
+func metaCompType(c metaComponent) string {
+	return strings.ToUpper(c.Type)
+}
+
+func metaCompText(c metaComponent) string {
+	if c.Text != "" {
+		return c.Text
+	}
+	for _, p := range c.Parameters {
+		if p.Type == "text" {
+			return p.Text
+		}
+	}
+	return ""
+}
+
+// metaHasURLButton reports whether any button component resolves to a URL with
+// a {{N}} substitution (the send shape needs a trailing button parameter set).
+func metaHasURLButton(comps []metaComponent) bool {
+	for _, c := range comps {
+		switch metaCompType(c) {
+		case "BUTTONS":
+			for _, b := range c.Buttons {
+				if b.Type == "URL" {
+					return true
+				}
+			}
+		case "BUTTON":
+			if strings.Contains(metaCompText(c), "http") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// countTemplateVariablesRaw counts the distinct {{N}} placeholders in the
+// body/header text of components in their stored form.
+func countTemplateVariablesRaw(raw []byte) int {
+	seen := map[int]bool{}
+	for _, c := range decodeMetaComponents(raw) {
+		switch metaCompType(c) {
+		case "BODY", "HEADER":
+			for _, n := range placeholderNumbers(metaCompText(c)) {
+				seen[n] = true
+			}
+		}
+	}
+	return len(seen)
+}
+
+// buildComponents converts the stored template components into the Meta send
+// shape, substituting positional variables in body/header text. URL buttons
+// receive the trailing {{1}} parameter set Meta requires.
+func buildComponents(raw []byte, vars map[string]string) ([]TemplateComponent, error) {
+	comps := decodeMetaComponents(raw)
+	var out []TemplateComponent
+	for _, c := range comps {
+		switch metaCompType(c) {
+		case "BODY", "HEADER":
+			numbers := placeholderNumbers(metaCompText(c))
+			if len(numbers) == 0 {
+				continue
+			}
+			params := make([]TemplateParameter, 0, len(numbers))
+			for _, n := range numbers {
+				v, ok := vars[strconv.Itoa(n)]
+				if !ok {
+					return nil, NewSendRejection(ErrCodeTemplateVariableInvalid, "missing variable {{"+strconv.Itoa(n)+"}}")
+				}
+				params = append(params, TemplateParameter{Type: "text", Text: v})
+			}
+			out = append(out, TemplateComponent{Type: strings.ToLower(metaCompType(c)), Parameters: params})
+		}
+	}
+
+	if metaHasURLButton(comps) {
+		v, ok := vars["1"]
+		if !ok {
+			return nil, NewSendRejection(ErrCodeTemplateVariableInvalid, "missing variable {{1}} for url button")
+		}
+		out = append(out, TemplateComponent{
+			Type:    "button",
+			SubType: "URL",
+			Index:   "0",
+			Parameters: []TemplateParameter{
+				{Type: "text", Text: v},
+			},
+		})
+	}
+	return out, nil
 }
 
 // SendTemplateMessage is the full tenant-scoped send flow: it loads the
@@ -305,7 +364,7 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		}
 	}
 
-	components, err := buildComponents(template, req.Variables)
+	components, err := buildComponents(template.RawComponents, req.Variables)
 	if err != nil {
 		return nil, err
 	}

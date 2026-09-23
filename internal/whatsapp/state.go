@@ -204,12 +204,13 @@ func (s *Service) templateState(ctx context.Context, shopID, templateID uuid.UUI
 	if err != nil {
 		return TemplateState{}, err
 	}
+	t.RawComponents = components
 	if len(components) > 0 {
 		if jErr := json.Unmarshal(components, &t.Components); jErr != nil {
 			return TemplateState{}, jErr
 		}
 	}
-	t.NumVariables = countTemplateVariables(t.Components)
+	t.NumVariables = countTemplateVariablesRaw(components)
 	return t, nil
 }
 

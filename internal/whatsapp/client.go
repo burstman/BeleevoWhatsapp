@@ -18,6 +18,8 @@ const metaAPIVersion = "v21.0"
 // (e.g. a BODY with positional parameters).
 type TemplateComponent struct {
 	Type       string              `json:"type"`
+	SubType    string              `json:"sub_type,omitempty"`
+	Index      string              `json:"index,omitempty"`
 	Parameters []TemplateParameter `json:"parameters,omitempty"`
 }
 
