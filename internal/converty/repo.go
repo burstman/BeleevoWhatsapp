@@ -202,6 +202,17 @@ func (s *Service) Integrations(ctx context.Context, shopID uuid.UUID) ([]Integra
 	return out, rows.Err()
 }
 
+// CountIntegrations returns how many Converty connections a shop currently
+// has. Used to detect orphaned placeholder shops (created at connect time)
+// after an abandoned authorization.
+func (s *Service) CountIntegrations(ctx context.Context, shopID uuid.UUID) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`SELECT count(*) FROM converty_integrations WHERE shop_id = $1`, shopID,
+	).Scan(&n)
+	return n, err
+}
+
 // UpdateIntegrationInfo edits the display details (name, domain) a shop
 // client sees on the integration list. Tokens are never touched.
 func (s *Service) UpdateIntegrationInfo(ctx context.Context, shopID, id uuid.UUID, name, domain string) error {

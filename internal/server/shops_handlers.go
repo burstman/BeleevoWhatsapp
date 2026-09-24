@@ -2,7 +2,6 @@ package server
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/anthdm/superkit/kit"
 	"github.com/go-chi/chi/v5"
@@ -11,17 +10,16 @@ import (
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/shops"
 	viewshared "whatsappconverty/web/views/components"
-	vdashboard "whatsappconverty/web/views/dashboard"
 )
 
 // ActiveShopCookieName remembers the operator's selected shop across requests.
 const ActiveShopCookieName = "active_shop"
 
-// activeShops resolves the operator's full shop list plus the currently
-// selected shop (from a cookie), falling back to the first shop when the
-// cookie is missing or stale.
+// activeShops resolves the integrated shop list (a shop only exists once its
+// Converty store is connected) plus the currently selected shop (from a
+// cookie), falling back to the first shop when the cookie is missing/stale.
 func (a *App) activeShops(k *kit.Kit) (shops.Shop, []shops.Shop, error) {
-	all, err := a.Shops.List(k.Request.Context())
+	all, err := a.Shops.ListIntegrated(k.Request.Context())
 	if err != nil {
 		return shops.Shop{}, nil, err
 	}
@@ -43,15 +41,15 @@ func (a *App) activeShops(k *kit.Kit) (shops.Shop, []shops.Shop, error) {
 	return active, all, nil
 }
 
-// requireShop resolves the selected shop, redirecting to /shops when the
-// operator has no shop yet.
+// requireShop resolves the selected shop, redirecting to the integration page
+// (the entry point) when no store has been connected yet.
 func (a *App) requireShop(k *kit.Kit) (shops.Shop, error) {
 	active, all, err := a.activeShops(k)
 	if err != nil {
 		return shops.Shop{}, err
 	}
 	if len(all) == 0 {
-		return shops.Shop{}, k.Redirect(http.StatusSeeOther, "/shops")
+		return shops.Shop{}, k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 	return active, nil
 }
@@ -81,69 +79,16 @@ func (a *App) dashboardPage(k *kit.Kit, title, activeSection string, active shop
 	}
 }
 
-// handleShops renders the operator's shop list with a create form.
-func (a *App) handleShops(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
-	if err != nil {
-		return err
-	}
-
-	flash := vdashboard.ShopFlash{}
-	switch k.Request.URL.Query().Get("flash") {
-	case "created":
-		flash.Info = "Shop created."
-	case "updated":
-		flash.Info = "Shop renamed."
-	case "missing":
-		flash.Error = "A shop name is required."
-	}
-
-	page := a.dashboardPage(k, "Shops", "shops", active, all)
-	return k.Render(vdashboard.ShopsPage(page, all, active.ID, flash))
-}
-
-// handleShopsCreate adds a new shop to the operator's portfolio and selects it.
-func (a *App) handleShopsCreate(k *kit.Kit) error {
-	name := strings.TrimSpace(k.Request.FormValue("name"))
-	if name == "" {
-		return k.Redirect(http.StatusSeeOther, "/shops?flash=missing")
-	}
-
-	shop, err := a.Shops.Create(k.Request.Context(), a.Pool, name)
-	if err != nil {
-		return err
-	}
-
-	setActiveShopCookie(k, shop.ID)
-	a.Log.Info("shop created", "shop_id", shop.ID, "name", name)
-	return k.Redirect(http.StatusSeeOther, "/dashboard")
-}
-
-// handleShopsSelect pins the active shop via cookie and returns to the dashboard.
+// handleShopsSelect pins the active shop via cookie and returns to the
+// dashboard. The shop must be integrated to be selectable.
 func (a *App) handleShopsSelect(k *kit.Kit) error {
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 	if _, err := a.Shops.GetByID(k.Request.Context(), id); err != nil {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 	setActiveShopCookie(k, id)
 	return k.Redirect(http.StatusSeeOther, "/dashboard")
-}
-
-// handleShopUpdate renames a shop.
-func (a *App) handleShopUpdate(k *kit.Kit) error {
-	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
-	if err != nil {
-		return k.Redirect(http.StatusSeeOther, "/shops?flash=missing")
-	}
-	name := strings.TrimSpace(k.Request.FormValue("name"))
-	if name == "" {
-		return k.Redirect(http.StatusSeeOther, "/shops?flash=missing")
-	}
-	if err := a.Shops.Update(k.Request.Context(), id, name); err != nil {
-		return err
-	}
-	return k.Redirect(http.StatusSeeOther, "/shops?flash=updated")
 }

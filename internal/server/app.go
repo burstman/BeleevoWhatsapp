@@ -80,10 +80,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(kit.WithAuthentication(authConfig, true))
 		pr.Get("/dashboard", kit.Handler(a.handleOverview))
-		pr.Get("/shops", kit.Handler(a.handleShops))
-		pr.Post("/shops", kit.Handler(a.handleShopsCreate))
 		pr.Get("/shops/{id}/select", kit.Handler(a.handleShopsSelect))
-		pr.Post("/shops/{id}/update", kit.Handler(a.handleShopUpdate))
 		pr.Post("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Get("/integrations", kit.Handler(a.handleIntegrations))

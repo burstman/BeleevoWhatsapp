@@ -74,9 +74,6 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
-	}
 
 	integrations, err := a.Converty.Integrations(k.Request.Context(), active.ID)
 	if err != nil {
@@ -115,19 +112,36 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 	return k.Render(vdashboard.IntegrationsPage(page, integrations, flash))
 }
 
+// placeholderShopName temporarily names the shop row created because a
+// merchant cannot exist (and appear in the switcher) until their store is
+// connected. It is renamed to the store name as soon as OAuth completes.
+const placeholderShopName = "New store"
+
 // handleConvertyConnect starts the OAuth round-trip for one shop using the
 // Converty app credentials that merchant pasted in (each merchant's app lives
-// inside their own Converty store). The credentials are recorded on a pending
-// integration row before redirecting to Converty, because the callback must
-// authenticate with them when exchanging the code.
+// inside their own Converty store). When no store is connected yet, a
+// placeholder shop is created so the callback has a tenant to attach the
+// integration to. The credentials are recorded on a pending integration row
+// before redirecting to Converty, because the callback must authenticate with
+// them when exchanging the code.
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
 		return fmt.Errorf("converty is not configured on this deployment")
 	}
 
-	active, err := a.requireShop(k)
+	active, all, err := a.activeShops(k)
 	if err != nil {
 		return err
+	}
+	if len(all) == 0 {
+		placeholder, cErr := a.Shops.Create(k.Request.Context(), a.Pool, placeholderShopName)
+		if cErr != nil {
+			a.Log.Error("converty placeholder shop create failed", "error", cErr)
+			return cErr
+		}
+		setActiveShopCookie(k, placeholder.ID)
+		active = placeholder
+		a.Log.Info("placeholder shop created for connect", "shop_id", active.ID)
 	}
 
 	clientID := strings.TrimSpace(k.Request.FormValue("converty_client_id"))
@@ -189,9 +203,24 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		}
 	}
 
+	// cleanupOrphanShop deletes the placeholder shop created at connect time
+	// when the authorization was abandoned before any store attached to it.
+	cleanupOrphanShop := func(ctx context.Context) {
+		if n, cErr := a.Converty.CountIntegrations(ctx, active.ID); cErr == nil && n == 0 {
+			if shop, gErr := a.Shops.GetByID(ctx, active.ID); gErr == nil && shop.Name == placeholderShopName {
+				if dErr := a.Shops.Delete(ctx, active.ID); dErr != nil {
+					a.Log.Warn("converty orphan placeholder shop cleanup failed", "shop_id", active.ID, "error", dErr)
+				} else {
+					a.Log.Info("converty orphan placeholder shop removed", "shop_id", active.ID)
+				}
+			}
+		}
+	}
+
 	if !secureEqual(savedState, state) || code == "" {
 		a.Log.Warn("converty callback rejected: state or code mismatch")
 		dropPending()
+		cleanupOrphanShop(k.Request.Context())
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
@@ -208,6 +237,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	if err != nil {
 		a.Log.Error("converty client credentials load failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
 		dropPending()
+		cleanupOrphanShop(ctx)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
@@ -215,6 +245,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	if err != nil {
 		a.Log.Error("converty code exchange failed", "shop_id", active.ID, "error", err)
 		dropPending()
+		cleanupOrphanShop(ctx)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
@@ -228,6 +259,9 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 			a.Log.Error("converty integration save failed", "error", cErr)
 			return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 		}
+		if store.Name != "" {
+			_ = a.Shops.Update(ctx, active.ID, store.Name)
+		}
 		a.subscribeWebhooks(ctx, active.ID, integrationID)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 	}
@@ -236,6 +270,13 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	if err != nil {
 		a.Log.Error("converty integration save failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	// The shop's display name follows its first connected store.
+	if store.Name != "" {
+		if err := a.Shops.Update(ctx, active.ID, store.Name); err != nil {
+			a.Log.Warn("converty shop rename after connect failed", "shop_id", active.ID, "error", err)
+		}
 	}
 
 	a.subscribeWebhooks(ctx, active.ID, integrationID)
