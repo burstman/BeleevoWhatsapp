@@ -1,11 +1,19 @@
 package components
 
+import (
+	"github.com/google/uuid"
+
+	"whatsappconverty/internal/shops"
+)
+
 // Page carries the common data rendered on every dashboard page.
 type Page struct {
-	Title    string
-	Active   string
-	ShopName string
-	UserName string
+	Title        string
+	Active       string
+	ShopName     string
+	UserName     string
+	Shops        []shops.Shop
+	ActiveShopID uuid.UUID
 }
 
 func (p Page) ActiveClass(section string) string {

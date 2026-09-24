@@ -6,10 +6,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// User is a merchant account. Users belong to exactly one shop.
+// User is the single operator account on this deployment. It manages all
+// shops (users are no longer bound to exactly one shop).
 type User struct {
 	ID       uuid.UUID `json:"id"`
-	ShopID   uuid.UUID `json:"shop_id"`
 	Email    string    `json:"email"`
 	Name     string    `json:"name"`
 	Role     string    `json:"role"`

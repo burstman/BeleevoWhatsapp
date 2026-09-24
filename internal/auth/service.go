@@ -6,16 +6,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/database"
-	"whatsappconverty/internal/shops"
 )
 
 var (
@@ -29,78 +29,60 @@ const (
 )
 
 type Service struct {
-	pool  *pgxpool.Pool
-	shops shops.Repository
-	now   func() time.Time
-	rand  func([]byte) (int, error)
+	pool *pgxpool.Pool
+	now  func() time.Time
+	rand func([]byte) (int, error)
 }
 
-type RegisterInput struct {
-	ShopName string
-	UserName string
-	Email    string
-	Password string
-}
-
-func NewService(pool *pgxpool.Pool, shops shops.Repository) *Service {
+func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{
-		pool:  pool,
-		shops: shops,
-		now:   time.Now,
+		pool: pool,
+		now:  time.Now,
 	}
 }
 
-// Register creates a shop, its owner as the first user, and a session in a
-// single transaction. It returns the session token that must be stored in the
-// session cookie.
-func (s *Service) Register(ctx context.Context, in RegisterInput) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("hash password: %w", err)
+// EnsureAdmin seeds the single operator account if it does not exist. The
+// admin user has no shop binding (shop_id NULL) and manages every shop.
+func (s *Service) EnsureAdmin(ctx context.Context, cfg config.Config) error {
+	email := lowerEmail(cfg.AdminEmail)
+	var existingID uuid.UUID
+	err := s.pool.QueryRow(ctx, `
+		SELECT id FROM users
+		WHERE email = $1`,
+		email,
+	).Scan(&existingID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("lookup admin: %w", err)
+	}
+	if err == nil {
+		_, _ = s.pool.Exec(ctx, `UPDATE users SET role = 'admin', updated_at = now() WHERE id = $1`, existingID)
+		return nil
 	}
 
-	tx, err := s.pool.Begin(ctx)
+	hash, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
+		return fmt.Errorf("hash admin password: %w", err)
 	}
-	defer tx.Rollback(ctx)
-
-	shop, err := s.shops.Create(ctx, tx, in.ShopName)
-	if err != nil {
-		return "", fmt.Errorf("create shop: %w", err)
+	if _, err := s.pool.Exec(ctx, `
+		INSERT INTO users (shop_id, email, password_hash, name, role)
+		VALUES (NULL, $1, $2, $3, 'admin')`,
+		email, string(hash), cfg.Name,
+	); err != nil {
+		return fmt.Errorf("insert admin: %w", err)
 	}
-
-	userID, err := insertUser(ctx, tx, shop.ID, in.Email, string(hash), in.UserName)
-	if err != nil {
-		if isUniqueViolation(err) {
-			return "", ErrEmailTaken
-		}
-		return "", fmt.Errorf("insert user: %w", err)
-	}
-
-	token, err := s.createSession(ctx, tx, userID)
-	if err != nil {
-		return "", fmt.Errorf("create session: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("commit tx: %w", err)
-	}
-	return token, nil
+	return nil
 }
 
-// Login verifies credentials and returns a session token for the user.
+// Login verifies credentials and returns a session token for the operator.
 func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
-	var (
-		user         User
-		passwordHash string
-	)
+	var user User
+	var passwordHash string
 	if err := s.pool.QueryRow(ctx, `
-		SELECT id, shop_id, email, name, role, password_hash
+		SELECT id, email, name, role, password_hash
 		FROM users
 		WHERE email = lower($1)`,
 		email,
-	).Scan(&user.ID, &user.ShopID, &user.Email, &user.Name, &user.Role, &passwordHash); err != nil {
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &passwordHash); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", ErrInvalidCredentials
 		}
@@ -142,15 +124,8 @@ func (s *Service) createSession(ctx context.Context, q database.Querier, userID 
 	return token, nil
 }
 
-func insertUser(ctx context.Context, q database.Querier, shopID uuid.UUID, email, hash, name string) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := q.QueryRow(ctx, `
-		INSERT INTO users (shop_id, email, password_hash, name)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id`,
-		shopID, email, hash, name,
-	).Scan(&id)
-	return id, err
+func lowerEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func randomToken(n int) (string, error) {
@@ -159,12 +134,4 @@ func randomToken(n int) (string, error) {
 		return "", fmt.Errorf("generate random token: %w", err)
 	}
 	return hex.EncodeToString(b), nil
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
 }

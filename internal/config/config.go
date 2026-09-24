@@ -23,6 +23,11 @@ type Config struct {
 
 	SuperkitSecret string
 
+	// AdminEmail/AdminPassword seed the single operator account that manages
+	// every shop. There is no public registration on this deployment.
+	AdminEmail    string
+	AdminPassword string
+
 	// Converty OAuth integration (Phase 2).
 	ConvertyClientID     string
 	ConvertyClientSecret string
@@ -77,6 +82,9 @@ func Load() Config {
 		DatabaseURL:    getenv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/converty_whatsapp?sslmode=disable"),
 		RedisURL:       getenv("REDIS_URL", "redis://localhost:6379/0"),
 		SuperkitSecret: getenv("SUPERKIT_SECRET", "dev-only-change-me-please-32-bytes"),
+
+		AdminEmail:    getenv("ADMIN_EMAIL", "admin@converty.local"),
+		AdminPassword: getenv("ADMIN_PASSWORD", "change-me-admin-12345"),
 
 		ConvertyClientID:        getenv("CONVERTY_CLIENT_ID", ""),
 		ConvertyClientSecret:    getenv("CONVERTY_CLIENT_SECRET", ""),

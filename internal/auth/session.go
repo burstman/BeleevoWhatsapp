@@ -31,24 +31,19 @@ func (s *Service) AuthenticateUser(k *kit.Kit) (kit.Auth, error) {
 
 func (s *Service) userByToken(ctx context.Context, token string) (Auth, error) {
 	var user User
-	var status string
 
 	err := s.pool.QueryRow(ctx, `
-		SELECT u.id, u.shop_id, u.email, u.name, u.role, s.status
+		SELECT u.id, u.email, u.name, u.role
 		FROM auth_sessions a
 		JOIN users u ON u.id = a.user_id
-		JOIN shops s ON s.id = u.shop_id
 		WHERE a.token = $1 AND a.expires_at > now()`,
 		token,
-	).Scan(&user.ID, &user.ShopID, &user.Email, &user.Name, &user.Role, &status)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Auth{}, nil
 	}
 	if err != nil {
 		return Auth{}, fmt.Errorf("resolve session: %w", err)
-	}
-	if status != "active" {
-		return Auth{}, nil
 	}
 
 	return Auth{LoggedIn: true, User: user}, nil

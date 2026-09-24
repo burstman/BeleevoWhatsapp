@@ -49,6 +49,10 @@ services:
           property: connectionString
       - key: SUPERKIT_SECRET
         sync: false # set manually in the Render dashboard
+      - key: ADMIN_EMAIL
+        sync: false # the single operator account email (no public registration)
+      - key: ADMIN_PASSWORD
+        sync: false # the single operator account password
       - key: META_SYSTEM_USER_TOKEN
         sync: false # platform's long-lived Meta system-user token (provisioning)
       - key: META_PHONE_NUMBER_ID

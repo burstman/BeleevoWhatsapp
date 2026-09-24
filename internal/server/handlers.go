@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -9,9 +8,7 @@ import (
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/database"
-	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
-	viewshared "whatsappconverty/web/views/components"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
 	vlegal "whatsappconverty/web/views/legal"
@@ -43,33 +40,32 @@ func (a *App) handlePrivacyPage(k *kit.Kit) error {
 }
 
 func (a *App) handleOverview(k *kit.Kit) error {
-	principal := auth.FromKit(k)
-	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-	if err != nil && !errors.Is(err, shops.ErrNotFound) {
+	active, all, err := a.activeShops(k)
+	if err != nil {
 		return err
 	}
+	if len(all) == 0 {
+		return k.Redirect(http.StatusSeeOther, "/shops")
+	}
 
-	stats, err := a.Dashboard.Stats(k.Request.Context(), principal.User.ShopID)
+	stats, err := a.Dashboard.Stats(k.Request.Context(), active.ID)
 	if err != nil {
 		return err
 	}
 
-	page := viewshared.Page{
-		Title:    "Overview",
-		ShopName: shop.Name,
-		UserName: principal.User.Name,
-	}
-
+	page := a.dashboardPage(k, "Overview", "overview", active, all)
 	return k.Render(vdashboard.Overview(page, stats))
 }
 
 // handleTemplates renders the merchant's WhatsApp templates with their Meta
 // approval status.
 func (a *App) handleTemplates(k *kit.Kit) error {
-	principal := auth.FromKit(k)
-	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-	if err != nil && !errors.Is(err, shops.ErrNotFound) {
+	active, all, err := a.activeShops(k)
+	if err != nil {
 		return err
+	}
+	if len(all) == 0 {
+		return k.Redirect(http.StatusSeeOther, "/shops")
 	}
 
 	purged := 0
@@ -80,7 +76,7 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		a.Log.Info("expired marketing templates deleted", "count", n)
 	}
 
-	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
+	templates, err := a.WhatsApp.Templates(k.Request.Context(), active.ID)
 	if err != nil {
 		return err
 	}
@@ -112,29 +108,27 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := viewshared.Page{
-		Title:    "Templates",
-		ShopName: shop.Name,
-		UserName: principal.User.Name,
-	}
+	page := a.dashboardPage(k, "Templates", "templates", active, all)
 	return k.Render(vdashboard.TemplatesPage(page, templates, flash))
 }
 
 // handleMessages renders the merchant's message history with delivery status
 // plus the approved templates available for a test send.
 func (a *App) handleMessages(k *kit.Kit) error {
-	principal := auth.FromKit(k)
-	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-	if err != nil && !errors.Is(err, shops.ErrNotFound) {
+	active, all, err := a.activeShops(k)
+	if err != nil {
 		return err
 	}
+	if len(all) == 0 {
+		return k.Redirect(http.StatusSeeOther, "/shops")
+	}
 
-	messages, err := a.WhatsApp.Messages(k.Request.Context(), principal.User.ShopID)
+	messages, err := a.WhatsApp.Messages(k.Request.Context(), active.ID)
 	if err != nil {
 		return err
 	}
 
-	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
+	templates, err := a.WhatsApp.Templates(k.Request.Context(), active.ID)
 	if err != nil {
 		return err
 	}
@@ -145,27 +139,21 @@ func (a *App) handleMessages(k *kit.Kit) error {
 		}
 	}
 
-	page := viewshared.Page{
-		Title:    "Messages",
-		ShopName: shop.Name,
-		UserName: principal.User.Name,
-	}
+	page := a.dashboardPage(k, "Messages", "messages", active, all)
 	return k.Render(vdashboard.MessagesPage(page, messages, approved))
 }
 
 // handlePlaceholder renders a shell page for features that arrive in later phases.
 func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 	return func(k *kit.Kit) error {
-		principal := auth.FromKit(k)
-		shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-		if err != nil && !errors.Is(err, shops.ErrNotFound) {
+		active, all, err := a.activeShops(k)
+		if err != nil {
 			return err
 		}
-		page := viewshared.Page{
-			Title:    sectionTitle(section),
-			ShopName: shop.Name,
-			UserName: principal.User.Name,
+		if len(all) == 0 {
+			return k.Redirect(http.StatusSeeOther, "/shops")
 		}
+		page := a.dashboardPage(k, sectionTitle(section), section, active, all)
 		return k.Render(vdashboard.Placeholder(page, section))
 	}
 }

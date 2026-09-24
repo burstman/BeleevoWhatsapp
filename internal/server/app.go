@@ -34,7 +34,7 @@ func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
 		Cfg:       cfg,
 		Log:       log,
 		Pool:      pool,
-		Auth:      auth.NewService(pool, *shopsRepo),
+		Auth:      auth.NewService(pool),
 		Shops:     shopsRepo,
 		Dashboard: dashboard.NewRepository(pool),
 		Converty:  converty.NewService(cfg, pool, log),
@@ -70,8 +70,6 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/privacy", kit.Handler(a.handlePrivacyPage))
 		pr.Get("/login", kit.Handler(a.handleLoginGet))
 		pr.Post("/login", kit.Handler(a.handleLoginPost))
-		pr.Get("/register", kit.Handler(a.handleRegisterGet))
-		pr.Post("/register", kit.Handler(a.handleRegisterPost))
 		pr.Post("/logout", kit.Handler(a.handleLogout))
 		pr.Post("/webhooks/converty", kit.Handler(a.handleConvertyWebhook))
 		pr.Get("/webhooks/meta", kit.Handler(a.handleMetaWebhookVerify))
@@ -82,6 +80,10 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(kit.WithAuthentication(authConfig, true))
 		pr.Get("/dashboard", kit.Handler(a.handleOverview))
+		pr.Get("/shops", kit.Handler(a.handleShops))
+		pr.Post("/shops", kit.Handler(a.handleShopsCreate))
+		pr.Get("/shops/{id}/select", kit.Handler(a.handleShopsSelect))
+		pr.Post("/shops/{id}/update", kit.Handler(a.handleShopUpdate))
 		pr.Get("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Get("/integrations", kit.Handler(a.handleIntegrations))

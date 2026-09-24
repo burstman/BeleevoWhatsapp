@@ -6,10 +6,7 @@ import (
 	"github.com/anthdm/superkit/kit"
 	"github.com/jackc/pgx/v5"
 
-	"whatsappconverty/internal/auth"
-	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
-	viewshared "whatsappconverty/web/views/components"
 	vsettings "whatsappconverty/web/views/settings"
 )
 
@@ -19,20 +16,17 @@ import (
 // account-level templates (other merchants' content), so no template list is
 // rendered here.
 func (a *App) handleWhatsappSettings(k *kit.Kit) error {
-	principal := auth.FromKit(k)
-	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-	if err != nil && err != shops.ErrNotFound {
+	active, all, err := a.activeShops(k)
+	if err != nil {
 		return err
 	}
-
-	page := viewshared.Page{
-		Title:    "Settings",
-		Active:   "settings",
-		ShopName: shop.Name,
-		UserName: principal.User.Name,
+	if len(all) == 0 {
+		return k.Redirect(http.StatusSeeOther, "/shops")
 	}
 
-	integ, err := a.WhatsApp.Integration(k.Request.Context(), principal.User.ShopID)
+	page := a.dashboardPage(k, "Settings", "settings", active, all)
+
+	integ, err := a.WhatsApp.Integration(k.Request.Context(), active.ID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return k.Render(vsettings.Settings(page, nil, nil))
@@ -46,7 +40,10 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 // handleWhatsappConnect stores the shop's Meta WhatsApp credentials after a
 // live sanity check of the token and ids against the Graph API.
 func (a *App) handleWhatsappConnect(k *kit.Kit) error {
-	principal := auth.FromKit(k)
+	active, err := a.requireShop(k)
+	if err != nil {
+		return err
+	}
 
 	ctx := k.Request.Context()
 	token := k.Request.FormValue("token")
@@ -69,8 +66,8 @@ func (a *App) handleWhatsappConnect(k *kit.Kit) error {
 		phoneNumber = pn.DisplayPhoneNumber
 	}
 
-	if err := a.WhatsApp.SaveIntegration(ctx, principal.User.ShopID, token, whatsapp.Integration{
-		ShopID:             principal.User.ShopID,
+	if err := a.WhatsApp.SaveIntegration(ctx, active.ID, token, whatsapp.Integration{
+		ShopID:             active.ID,
 		WaacID:             phoneNumberID,
 		PhoneNumberID:      phoneNumberID,
 		MessagingAccountID: messagingAccountID,
@@ -82,7 +79,7 @@ func (a *App) handleWhatsappConnect(k *kit.Kit) error {
 	}
 
 	a.Log.Info("whatsapp connected",
-		"shop_id", principal.User.ShopID,
+		"shop_id", active.ID,
 		"phone_number_id", phoneNumberID,
 		"messaging_account_id", messagingAccountID,
 		"phone", phoneNumber,
@@ -92,13 +89,16 @@ func (a *App) handleWhatsappConnect(k *kit.Kit) error {
 
 // handleWhatsappDisconnect removes the shop's WhatsApp credentials.
 func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
-	principal := auth.FromKit(k)
+	active, err := a.requireShop(k)
+	if err != nil {
+		return err
+	}
 
-	if err := a.WhatsApp.DeleteIntegration(k.Request.Context(), principal.User.ShopID); err != nil {
+	if err := a.WhatsApp.DeleteIntegration(k.Request.Context(), active.ID); err != nil {
 		a.Log.Error("whatsapp disconnect failed", "error", err)
 		return k.Redirect(http.StatusSeeOther, "/settings?connect=error")
 	}
-	a.Log.Info("whatsapp disconnected", "shop_id", principal.User.ShopID)
+	a.Log.Info("whatsapp disconnected", "shop_id", active.ID)
 	return k.Redirect(http.StatusSeeOther, "/settings?connect=disconnected")
 }
 
@@ -106,38 +106,37 @@ func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
 // into the platform's shared number, records a contact phone, and accepts the
 // service terms (which include the customer opt-in obligation).
 func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
-	principal := auth.FromKit(k)
-
-	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
-	if err != nil && err != shops.ErrNotFound {
+	active, all, err := a.activeShops(k)
+	if err != nil {
 		return err
 	}
-
-	page := viewshared.Page{
-		Title:    "Enable WhatsApp",
-		Active:   "settings",
-		ShopName: shop.Name,
-		UserName: principal.User.Name,
+	if len(all) == 0 {
+		return k.Redirect(http.StatusSeeOther, "/shops")
 	}
-	return k.Render(vsettings.Onboarding(page, shop))
+
+	page := a.dashboardPage(k, "Enable WhatsApp", "settings", active, all)
+	return k.Render(vsettings.Onboarding(page, active))
 }
 
 // handleWhatsappOnboardPost records the merchant's opt-in: terms accepted,
 // service enabled, contact phone saved. No Meta credentials are handled here —
 // sending happens through the platform's centrally owned number.
 func (a *App) handleWhatsappOnboardPost(k *kit.Kit) error {
-	principal := auth.FromKit(k)
+	active, err := a.requireShop(k)
+	if err != nil {
+		return err
+	}
 
 	if k.Request.FormValue("accept_terms") != "1" {
 		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=terms")
 	}
 	phone := k.Request.FormValue("shop_phone")
 
-	if err := a.Shops.EnableWhatsApp(k.Request.Context(), principal.User.ShopID, phone); err != nil {
-		a.Log.Error("whatsapp onboard enable failed", "shop_id", principal.User.ShopID, "error", err)
+	if err := a.Shops.EnableWhatsApp(k.Request.Context(), active.ID, phone); err != nil {
+		a.Log.Error("whatsapp onboard enable failed", "shop_id", active.ID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=enable")
 	}
 
-	a.Log.Info("whatsapp service enabled", "shop_id", principal.User.ShopID, "phone", phone)
+	a.Log.Info("whatsapp service enabled", "shop_id", active.ID, "phone", phone)
 	return k.Redirect(http.StatusSeeOther, "/settings?connect=success")
 }

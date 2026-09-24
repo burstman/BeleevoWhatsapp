@@ -64,6 +64,43 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Shop, error) {
 	return s, nil
 }
 
+// List returns every shop the operator manages, most recently created first.
+// On this single-client deployment the operator owns all shops.
+func (r *Repository) List(ctx context.Context) ([]Shop, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, name, phone, status, whatsapp_enabled, whatsapp_terms_accepted_at, created_at, updated_at
+		FROM shops
+		ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	shops := make([]Shop, 0)
+	for rows.Next() {
+		var s Shop
+		if err := rows.Scan(&s.ID, &s.Name, &s.Phone, &s.Status, &s.WhatsappEnabled, &s.WhatsappTermsAcceptedAt, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		shops = append(shops, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return shops, nil
+}
+
+// Update renames a shop.
+func (r *Repository) Update(ctx context.Context, id uuid.UUID, name string) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE shops
+		SET name = $2, updated_at = now()
+		WHERE id = $1`,
+		id, name,
+	)
+	return err
+}
+
 // EnableWhatsApp marks the merchant as opted into the platform's WhatsApp
 // service, records their contact phone and that they accepted the service
 // terms. This is the onboarding gateway for sending.

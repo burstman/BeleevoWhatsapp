@@ -9,7 +9,6 @@ import (
 
 	"github.com/anthdm/superkit/kit"
 
-	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/whatsapp"
 )
 
@@ -36,7 +35,10 @@ func (a *App) handleTemplateRefresh(k *kit.Kit) error {
 // accepted here; marketing templates are outside this platform's scope. The
 // stored status (pending/rejected/approved) is always Meta's verdict.
 func (a *App) handleTemplateCreate(k *kit.Kit) error {
-	principal := auth.FromKit(k)
+	active, err := a.requireShop(k)
+	if err != nil {
+		return err
+	}
 
 	name := strings.TrimSpace(k.Request.FormValue("name"))
 	language := strings.TrimSpace(k.Request.FormValue("language"))
@@ -72,7 +74,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 		return err
 	}
 
-	tmpl, err := a.WhatsApp.CreateTemplate(k.Request.Context(), principal.User.ShopID, whatsapp.TemplateDraft{
+	tmpl, err := a.WhatsApp.CreateTemplate(k.Request.Context(), active.ID, whatsapp.TemplateDraft{
 		Name:       name,
 		Language:   language,
 		Category:   "UTILITY",
@@ -94,10 +96,10 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	}
 	if tmpl.MarketingFlagged {
 		a.Log.Warn("template flagged as marketing by meta",
-			"shop_id", principal.User.ShopID, "name", tmpl.Name, "warning", tmpl.MetaWarnings)
+			"shop_id", active.ID, "name", tmpl.Name, "warning", tmpl.MetaWarnings)
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=marketing")
 	}
 	a.Log.Info("template submitted for review",
-		"shop_id", principal.User.ShopID, "name", tmpl.Name, "language", tmpl.Language)
+		"shop_id", active.ID, "name", tmpl.Name, "language", tmpl.Language)
 	return k.Redirect(http.StatusSeeOther, "/templates?flash=created")
 }

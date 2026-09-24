@@ -59,6 +59,11 @@ func main() {
 
 	app := server.New(cfg, logger, pool)
 
+	if err := app.Auth.EnsureAdmin(rootCtx, cfg); err != nil {
+		logger.Error("admin bootstrap failed", "error", err)
+		os.Exit(1)
+	}
+
 	router := chi.NewMux()
 	app.InitializeMiddleware(router)
 	router.Handle("/static/*", staticHandler(cfg))
