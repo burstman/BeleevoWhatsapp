@@ -62,11 +62,11 @@ func (s *Service) DecryptToken(encrypted string) (string, error) {
 	return s.cipher.Decrypt(encrypted)
 }
 
-// AccessToken returns an access token for the shop that is valid for at least
-// the refresh buffer horizon, rotating the stored refresh token when the
-// saved access token is expired or missing.
-func (s *Service) AccessToken(ctx context.Context, shopID uuid.UUID) (string, error) {
-	integ, err := s.Integration(ctx, shopID)
+// AccessToken returns an access token for one of the shop's integrations
+// that is valid for at least the refresh buffer horizon, rotating the stored
+// refresh token when the saved access token is expired or missing.
+func (s *Service) AccessToken(ctx context.Context, shopID, id uuid.UUID) (string, error) {
+	integ, err := s.IntegrationByID(ctx, shopID, id)
 	if err != nil {
 		return "", err
 	}
@@ -79,12 +79,13 @@ func (s *Service) AccessToken(ctx context.Context, shopID uuid.UUID) (string, er
 	return s.refreshAndSave(ctx, integ, time.Now())
 }
 
-// WithAccessToken runs fn with an unexpired token for the shop. If the server
-// rejects that token with 401 (revoked despite the local expiry clock), the
-// refresh token is rotated once and fn is retried with the fresh token. The
-// refreshed pair is always stored, since Converty rotates refresh tokens.
-func (s *Service) WithAccessToken(ctx context.Context, shopID uuid.UUID, fn func(ctx context.Context, accessToken string) error) error {
-	token, err := s.AccessToken(ctx, shopID)
+// WithAccessToken runs fn with an unexpired token for one of the shop's
+// integrations. If the server rejects that token with 401 (revoked despite
+// the local expiry clock), the refresh token is rotated once and fn is
+// retried with the fresh token. The refreshed pair is always stored, since
+// Converty rotates refresh tokens.
+func (s *Service) WithAccessToken(ctx context.Context, shopID, id uuid.UUID, fn func(ctx context.Context, accessToken string) error) error {
+	token, err := s.AccessToken(ctx, shopID, id)
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (s *Service) WithAccessToken(ctx context.Context, shopID uuid.UUID, fn func
 		if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusUnauthorized {
 			return err
 		}
-		integ, iErr := s.Integration(ctx, shopID)
+		integ, iErr := s.IntegrationByID(ctx, shopID, id)
 		if iErr != nil {
 			return err
 		}
@@ -106,6 +107,64 @@ func (s *Service) WithAccessToken(ctx context.Context, shopID uuid.UUID, fn func
 	return nil
 }
 
+// RefreshIntegrationToken force-rotates an integration's Converty tokens via
+// the OAuth refresh grant and persists the fresh pair, so a shop client can
+// recover a connection whose server-side refresh token was rotated.
+func (s *Service) RefreshIntegrationToken(ctx context.Context, shopID, id uuid.UUID) error {
+	integ, err := s.IntegrationByID(ctx, shopID, id)
+	if err != nil {
+		return err
+	}
+	refreshToken, err := s.DecryptToken(integ.RefreshTokenEncrypted)
+	if err != nil {
+		return fmt.Errorf("decrypt refresh token: %w", err)
+	}
+	tok, err := s.RefreshToken(ctx, refreshToken)
+	if err != nil {
+		return fmt.Errorf("refresh converty token: %w", err)
+	}
+	if err := s.SaveTokens(ctx, shopID, id, tok, time.Now()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TestConnection calls Converty with the integration's access token (rotating
+// it first if needed), refreshes the displayed store details from the live
+// response, and records the connectivity status on the row.
+func (s *Service) TestConnection(ctx context.Context, shopID, id uuid.UUID) error {
+	integ, err := s.IntegrationByID(ctx, shopID, id)
+	if err != nil {
+		return err
+	}
+	err = s.WithAccessToken(ctx, shopID, id, func(ctx context.Context, accessToken string) error {
+		store, sErr := s.GetStore(ctx, accessToken)
+		if sErr != nil {
+			return sErr
+		}
+		if store.ID != "" && integ.ConvertyStoreID != "" && store.ID != integ.ConvertyStoreID {
+			return fmt.Errorf("token belongs to store %s, not %s", store.ID, integ.ConvertyStoreID)
+		}
+		if store.ID != "" {
+			_, uErr := s.pool.Exec(ctx, `
+				UPDATE converty_integrations
+				SET store_name = $3, store_slug = $4, store_domain = $5, updated_at = now()
+				WHERE id = $1 AND shop_id = $2`,
+				id, shopID, store.Name, store.Slug, store.Domain,
+			)
+			return uErr
+		}
+		return nil
+	})
+	if err != nil {
+		if sErr := s.SetIntegrationStatus(ctx, shopID, id, "error"); sErr != nil {
+			s.log.Warn("converty test: failed to record error status", "error", sErr)
+		}
+		return err
+	}
+	return s.SetIntegrationStatus(ctx, shopID, id, "connected")
+}
+
 func (s *Service) refreshAndSave(ctx context.Context, integ Integration, now time.Time) (string, error) {
 	refreshToken, err := s.DecryptToken(integ.RefreshTokenEncrypted)
 	if err != nil {
@@ -115,7 +174,7 @@ func (s *Service) refreshAndSave(ctx context.Context, integ Integration, now tim
 	if err != nil {
 		return "", fmt.Errorf("refresh converty token: %w", err)
 	}
-	if err := s.SaveTokens(ctx, integ.ShopID, tok, now); err != nil {
+	if err := s.SaveTokens(ctx, integ.ShopID, integ.ID, tok, now); err != nil {
 		return "", err
 	}
 	return tok.AccessToken, nil

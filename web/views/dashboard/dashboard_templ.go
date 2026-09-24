@@ -64,46 +64,7 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><div class=\"mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm\"><div class=\"flex items-center justify-between\"><div><h3 class=\"font-semibold text-slate-900\">Converty</h3><p class=\"text-sm text-slate-500\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if stats.ConvertyConnected {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "Connected to ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var3 string
-				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(stats.ConvertyStoreName)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 36, Col: 44}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "Link your Converty store to receive order events.")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if stats.ConvertyConnected {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center gap-3\"><span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> Connected</span> <a href=\"/auth/converty/connect\" class=\"inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700\">Reconnect</a><form method=\"post\" action=\"/auth/converty/disconnect\" onsubmit=\"return confirm('Disconnect your Converty store? Order updates will stop.')\"><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1 text-sm font-medium text-rose-600 transition hover:border-rose-300 hover:bg-rose-50\">Disconnect</button></form></div>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<a href=\"/auth/converty/connect\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Connect Converty</a>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div></div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -123,7 +84,7 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-8\"><h3 class=\"mb-3 text-sm font-semibold text-slate-700\">Getting started</h3><div class=\"grid grid-cols-1 gap-4 lg:grid-cols-3\"><a href=\"/whatsapp/onboard\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">1. Enable WhatsApp</h4><p class=\"mt-1 text-sm text-slate-500\">Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p></a> <a href=\"/automations\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">2. Create automations</h4><p class=\"mt-1 text-sm text-slate-500\">Map order statuses to approved message templates.</p></a> <a href=\"/messages\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">3. Monitor messages</h4><p class=\"mt-1 text-sm text-slate-500\">Track sent, delivered, read and failed messages.</p></a></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"mt-8\"><h3 class=\"mb-3 text-sm font-semibold text-slate-700\">Getting started</h3><div class=\"grid grid-cols-1 gap-4 lg:grid-cols-3\"><a href=\"/whatsapp/onboard\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">1. Enable WhatsApp</h4><p class=\"mt-1 text-sm text-slate-500\">Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p></a> <a href=\"/automations\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">2. Create automations</h4><p class=\"mt-1 text-sm text-slate-500\">Map order statuses to approved message templates.</p></a> <a href=\"/messages\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">3. Monitor messages</h4><p class=\"mt-1 text-sm text-slate-500\">Track sent, delivered, read and failed messages.</p></a></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -153,12 +114,12 @@ func Placeholder(page components.Page, section string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var4 == nil {
-			templ_7745c5c3_Var4 = templ.NopComponent
+		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var3 == nil {
+			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var4 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -176,7 +137,7 @@ func Placeholder(page components.Page, section string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.Shell(page).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.Shell(page).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/anthdm/superkit/kit"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/converty"
+	viewshared "whatsappconverty/web/views/components"
+	vdashboard "whatsappconverty/web/views/dashboard"
 )
 
 const maxWebhookBody = 2 << 20
@@ -65,6 +67,55 @@ func truncateBytes(b []byte, n int) string {
 	return string(b[:n]) + "..."
 }
 
+// handleIntegrations renders the Shop Integration page: every Converty store
+// connection for the shop with its management actions.
+func (a *App) handleIntegrations(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	shop, err := a.Shops.GetByID(k.Request.Context(), principal.User.ShopID)
+	if err != nil {
+		return err
+	}
+
+	integrations, err := a.Converty.Integrations(k.Request.Context(), principal.User.ShopID)
+	if err != nil {
+		return err
+	}
+
+	flash := vdashboard.IntegrationFlash{}
+	switch k.Request.URL.Query().Get("flash") {
+	case "connected":
+		flash.Info = "Store connected — order webhooks are now subscribed."
+	case "refreshed":
+		flash.Info = "Access token refreshed."
+	case "tested":
+		flash.Info = "Connection test passed — Converty responds correctly."
+	case "testfailed":
+		flash.Error = "Connection test failed — the tokens may be revoked. Try refreshing them or re-connect the store."
+	case "updated":
+		flash.Info = "Store details updated."
+	case "activated":
+		flash.Info = "Integration activated."
+	case "deactivated":
+		flash.Info = "Integration deactivated — new order events will not be processed until you activate it again."
+	case "deleted":
+		flash.Info = "Integration deleted — its webhook subscriptions were removed."
+	case "notfound":
+		flash.Error = "That integration no longer exists."
+	case "missing":
+		flash.Error = "A store name is required."
+	case "error", "internal":
+		flash.Error = "Something went wrong — try again."
+	}
+
+	page := viewshared.Page{
+		Title:    "Shop Integration",
+		Active:   "integrations",
+		ShopName: shop.Name,
+		UserName: principal.User.Name,
+	}
+	return k.Render(vdashboard.IntegrationsPage(page, integrations, a.Converty.Configured(), flash))
+}
+
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
 		return fmt.Errorf("converty is not configured on this deployment")
@@ -100,10 +151,10 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 
 	if !secureEqual(savedState, state) {
 		a.Log.Warn("converty callback rejected: state mismatch")
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=state")
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 	if code == "" {
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
 	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
@@ -112,7 +163,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	tok, err := a.Converty.ExchangeCode(ctx, code)
 	if err != nil {
 		a.Log.Error("converty code exchange failed", "error", err)
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
 	store, err := a.Converty.GetStore(ctx, tok.AccessToken)
@@ -120,47 +171,49 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		// A failed store sync should not discard the freshly connected tokens:
 		// persist them and subscribe webhooks, but flag the sync problem.
 		a.Log.Error("converty stores/me failed", "error", err)
-		if err := a.Converty.SaveIntegration(ctx, principal.User.ShopID, converty.Store{}, converty.DefaultScopes, tok, time.Now()); err != nil {
-			a.Log.Error("converty integration save failed", "error", err)
-			return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		integrationID, sErr := a.Converty.SaveIntegration(ctx, principal.User.ShopID, converty.Store{}, converty.DefaultScopes, tok, time.Now())
+		if sErr != nil {
+			a.Log.Error("converty integration save failed", "error", sErr)
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 		}
-		a.subscribeWebhooks(ctx, principal.User.ShopID)
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=store")
+		a.subscribeWebhooks(ctx, principal.User.ShopID, integrationID)
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 	}
 
-	if err := a.Converty.SaveIntegration(ctx, principal.User.ShopID, store, converty.DefaultScopes, tok, time.Now()); err != nil {
+	integrationID, err := a.Converty.SaveIntegration(ctx, principal.User.ShopID, store, converty.DefaultScopes, tok, time.Now())
+	if err != nil {
 		a.Log.Error("converty integration save failed", "error", err)
-		return k.Redirect(http.StatusSeeOther, "/dashboard?connect=error")
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
-	a.subscribeWebhooks(ctx, principal.User.ShopID)
+	a.subscribeWebhooks(ctx, principal.User.ShopID, integrationID)
 
-	a.Log.Info("converty connected", "shop_id", principal.User.ShopID, "store", store.Name)
-	return k.Redirect(http.StatusSeeOther, "/dashboard?connect=success")
+	a.Log.Info("converty connected", "shop_id", principal.User.ShopID, "store", store.Name, "integration_id", integrationID)
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 }
 
 // subscribeWebhooks registers the order events against the app's Converty
-// webhook endpoint, fetching/refreshing the access token as needed. The
-// returned Converty hook ids are merged into the stored subscription map (so
-// ids from hooks that already existed survive a reconnect) and persisted for
-// later removal on disconnect. Failures are logged but do not fail the
-// connect (the integration is already saved). A 409 means the hook already
-// exists and is treated as success.
-func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID) {
+// webhook endpoint for one integration, fetching/refreshing the access token
+// as needed. The returned Converty hook ids are merged into the stored
+// subscription map (so ids from hooks that already existed survive a
+// reconnect) and persisted for later removal on disconnect. Failures are
+// logged but do not fail the connect (the integration is already saved). A
+// 409 means the hook already exists and is treated as success.
+func (a *App) subscribeWebhooks(ctx context.Context, shopID, integrationID uuid.UUID) {
 	targetURL := a.Converty.WebhookURL(a.Cfg.AppURL)
 
 	subs := map[string]string{}
-	existing, err := a.Converty.Integration(ctx, shopID)
+	existing, err := a.Converty.IntegrationByID(ctx, shopID, integrationID)
 	if err == nil && existing.WebhookSubscriptions != nil {
 		subs = existing.WebhookSubscriptions
 	}
 
-	err = a.Converty.WithAccessToken(ctx, shopID, func(ctx context.Context, accessToken string) error {
+	err = a.Converty.WithAccessToken(ctx, shopID, integrationID, func(ctx context.Context, accessToken string) error {
 		for _, event := range converty.SupportedEvents() {
 			hookID, sErr := a.Converty.SubscribeHook(ctx, accessToken, targetURL, event)
 			if sErr == nil {
 				subs[event] = hookID
-				a.Log.Info("converty hook subscribed", "shop_id", shopID, "event", event, "hook_id", hookID, "target_url", targetURL)
+				a.Log.Info("converty hook subscribed", "shop_id", shopID, "integration_id", integrationID, "event", event, "hook_id", hookID, "target_url", targetURL)
 				continue
 			}
 			var apiErr converty.APIError
@@ -190,29 +243,132 @@ func (a *App) subscribeWebhooks(ctx context.Context, shopID uuid.UUID) {
 		a.Log.Error("converty hook subscribe skipped, no access token", "shop_id", shopID, "error", err)
 	}
 
-	if err := a.Converty.SaveWebhookSubscriptions(ctx, shopID, subs); err != nil {
+	if err := a.Converty.SaveWebhookSubscriptions(ctx, shopID, integrationID, subs); err != nil {
 		a.Log.Error("converty webhook subscriptions save failed", "shop_id", shopID, "error", err)
 	}
 }
 
-// handleConvertyDisconnect removes every stored Converty webhook subscription
-// (with an auto-refreshed token), then drops the integration row. Unsubscribe
-// failures are logged but never block the local disconnect, so the user is
-// always freed from their account.
-func (a *App) handleConvertyDisconnect(k *kit.Kit) error {
+// handleIntegrationRefresh forces a Converty OAuth token rotation for one
+// integration.
+func (a *App) handleIntegrationRefresh(k *kit.Kit) error {
 	principal := auth.FromKit(k)
+	id, err := integrationID(k)
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+	}
+
 	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
 	defer cancel()
 
-	integ, err := a.Converty.Integration(ctx, principal.User.ShopID)
+	if err := a.Converty.RefreshIntegrationToken(ctx, principal.User.ShopID, id); err != nil {
+		a.Log.Error("converty token refresh failed", "shop_id", principal.User.ShopID, "integration_id", id, "error", err)
+		if errors.Is(err, converty.ErrNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	a.Log.Info("converty token refreshed", "shop_id", principal.User.ShopID, "integration_id", id)
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash=refreshed")
+}
+
+// handleIntegrationTest verifies an integration by calling Converty with its
+// access token (rotating first if needed).
+func (a *App) handleIntegrationTest(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	id, err := integrationID(k)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return k.Redirect(http.StatusSeeOther, "/dashboard")
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+	}
+
+	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
+	defer cancel()
+
+	if err := a.Converty.TestConnection(ctx, principal.User.ShopID, id); err != nil {
+		a.Log.Warn("converty connection test failed", "shop_id", principal.User.ShopID, "integration_id", id, "error", err)
+		if errors.Is(err, converty.ErrNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=testfailed")
+	}
+
+	a.Log.Info("converty connection test passed", "shop_id", principal.User.ShopID, "integration_id", id)
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash=tested")
+}
+
+// handleIntegrationUpdate edits the display details of one integration.
+func (a *App) handleIntegrationUpdate(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	id, err := integrationID(k)
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+	}
+
+	name := k.Request.FormValue("store_name")
+	if name == "" {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=missing")
+	}
+	domain := k.Request.FormValue("store_domain")
+
+	if err := a.Converty.UpdateIntegrationInfo(k.Request.Context(), principal.User.ShopID, id, name, domain); err != nil {
+		a.Log.Error("converty integration update failed", "shop_id", principal.User.ShopID, "integration_id", id, "error", err)
+		if errors.Is(err, converty.ErrNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash=updated")
+}
+
+// handleIntegrationActivate toggles whether one integration processes new
+// order events.
+func (a *App) handleIntegrationActivate(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	id, err := integrationID(k)
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+	}
+
+	active := k.Request.FormValue("active") == "1"
+	if err := a.Converty.SetIntegrationActive(k.Request.Context(), principal.User.ShopID, id, active); err != nil {
+		a.Log.Error("converty integration activation failed", "shop_id", principal.User.ShopID, "integration_id", id, "error", err)
+		if errors.Is(err, converty.ErrNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	flash := "activated"
+	if !active {
+		flash = "deactivated"
+	}
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash="+flash)
+}
+
+// handleIntegrationDelete removes one integration: every stored Converty
+// webhook subscription is unsubscribed (with an auto-refreshed token) before
+// the local row is dropped. Unsubscribe failures are logged but never block
+// the local delete, so the user is always freed from their account.
+func (a *App) handleIntegrationDelete(k *kit.Kit) error {
+	principal := auth.FromKit(k)
+	id, err := integrationID(k)
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
+	}
+
+	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
+	defer cancel()
+
+	integ, err := a.Converty.IntegrationByID(ctx, principal.User.ShopID, id)
+	if err != nil {
+		if errors.Is(err, converty.ErrNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
 		}
 		return err
 	}
 
-	err = a.Converty.WithAccessToken(ctx, principal.User.ShopID, func(ctx context.Context, accessToken string) error {
+	err = a.Converty.WithAccessToken(ctx, principal.User.ShopID, id, func(ctx context.Context, accessToken string) error {
 		for event, hookID := range integ.WebhookSubscriptions {
 			if hookID == "" {
 				continue
@@ -223,25 +379,33 @@ func (a *App) handleConvertyDisconnect(k *kit.Kit) error {
 					(apiErr.StatusCode == http.StatusNotFound || apiErr.StatusCode == http.StatusConflict)
 				if !alreadyGone {
 					a.Log.Warn("converty hook unsubscribe failed",
-						"shop_id", principal.User.ShopID, "event", event, "hook_id", hookID, "error", uErr)
+						"shop_id", principal.User.ShopID, "integration_id", id, "event", event, "hook_id", hookID, "error", uErr)
 				}
 				continue
 			}
-			a.Log.Info("converty hook unsubscribed", "shop_id", principal.User.ShopID, "event", event, "hook_id", hookID)
+			a.Log.Info("converty hook unsubscribed", "shop_id", principal.User.ShopID, "integration_id", id, "event", event, "hook_id", hookID)
 		}
 		return nil
 	})
 	if err != nil {
-		a.Log.Warn("converty disconnect: hook cleanup skipped, no access token", "shop_id", principal.User.ShopID, "error", err)
+		a.Log.Warn("converty delete: hook cleanup skipped, no access token", "shop_id", principal.User.ShopID, "error", err)
 	}
 
-	if err := a.Converty.DeleteIntegration(ctx, principal.User.ShopID); err != nil {
-		a.Log.Error("converty integration delete failed", "shop_id", principal.User.ShopID, "error", err)
+	if err := a.Converty.DeleteIntegration(ctx, principal.User.ShopID, id); err != nil {
+		a.Log.Error("converty integration delete failed", "shop_id", principal.User.ShopID, "integration_id", id, "error", err)
 		return err
 	}
 
-	a.Log.Info("converty disconnected", "shop_id", principal.User.ShopID)
-	return k.Redirect(http.StatusSeeOther, "/dashboard?disconnect=success")
+	a.Log.Info("converty integration deleted", "shop_id", principal.User.ShopID, "integration_id", id)
+	return k.Redirect(http.StatusSeeOther, "/integrations?flash=deleted")
+}
+
+func integrationID(k *kit.Kit) (uuid.UUID, error) {
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse integration id: %w", err)
+	}
+	return id, nil
 }
 
 func randomHex(n int) (string, error) {
