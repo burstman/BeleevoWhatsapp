@@ -83,7 +83,7 @@ func Load() Config {
 		RedisURL:       getenv("REDIS_URL", "redis://localhost:6379/0"),
 		SuperkitSecret: getenv("SUPERKIT_SECRET", "dev-only-change-me-please-32-bytes"),
 
-		AdminEmail:    getenv("ADMIN_EMAIL", "admin@converty.local"),
+		AdminEmail:    getenv("ADMIN_EMAIL", "admin@bleevoo.local"),
 		AdminPassword: getenv("ADMIN_PASSWORD", "change-me-admin-12345"),
 
 		ConvertyClientID:        getenv("CONVERTY_CLIENT_ID", ""),
