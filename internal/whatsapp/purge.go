@@ -78,16 +78,18 @@ func (s *Service) enqueuePurge(ctx context.Context, j PurgeMarketingTemplateJob)
 	return err
 }
 
-// PurgeExpiredMarketing deletes every flagged template whose purge deadline
-// has passed. It is the lazy fallback that keeps the "gone after N minutes"
-// promise even when no worker is running. Returns the number purged.
+// PurgeExpiredMarketing marks every flagged template whose purge deadline has
+// passed as deleted. It is the lazy fallback that keeps the "gone after N
+// minutes" promise even when no worker is running, and the row stays visible
+// to the merchant as "deleted". Returns the number newly deleted.
 func (s *Service) PurgeExpiredMarketing(ctx context.Context) (int, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, meta_template_name, language
 		FROM templates
 		WHERE marketing_flagged
 		  AND marketing_flagged_at IS NOT NULL
-		  AND marketing_flagged_at < now() - ($1::interval)`,
+		  AND marketing_flagged_at < now() - ($1::interval)
+		  AND approval_status <> 'deleted'`,
 		pgInterval(s.cfg.MarketingPurgeDelay),
 	)
 	if err != nil {
@@ -145,27 +147,34 @@ func pgInterval(d time.Duration) string {
 	return fmt.Sprintf("%d seconds", int64(d.Seconds()))
 }
 
-// purgeTemplate removes the template from the central messaging account
-// (best-effort) and then from the merchant's list. The local row is deleted
-// regardless so the flagged template disappears from the shop's view.
+// purgeTemplate moves the template to the "deleted" lifecycle state so the
+// merchant sees the deletion notice, after best-effort removal from the
+// central messaging account. Deleted templates can never be sent.
 func (s *Service) purgeTemplate(ctx context.Context, j PurgeMarketingTemplateJob) error {
-	s.log.Warn("purging marketing-flagged template",
+	s.log.Warn("deleting marketing-flagged template",
 		"shop_id", j.ShopID, "template_id", j.TemplateID, "name", j.Name, "language", j.Language)
 
 	if s.cfg.MetaSystemUserToken != "" && s.cfg.MetaMessagingAccountID != "" {
 		if err := s.DeleteTemplate(ctx, s.cfg.MetaSystemUserToken, s.cfg.MetaMessagingAccountID, j.Name, j.Language); err != nil {
 			// Best-effort: Meta may already have removed it (404). The local
-			// row still goes; the central account stays under Meta's policy.
+			// row still transitions to deleted; the central account stays under
+			// Meta's policy.
 			s.log.Warn("meta delete of marketing template failed", "name", j.Name, "error", err)
 		}
 	}
 
-	_, err := s.pool.Exec(ctx, `
-		DELETE FROM templates WHERE id = $1 AND shop_id = $2`,
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE templates
+		SET approval_status = 'deleted',
+		    purge_scheduled_at = NULL,
+		    updated_at        = now()
+		WHERE id = $1 AND shop_id = $2 AND approval_status <> 'deleted'`,
 		j.TemplateID, j.ShopID)
 	if err != nil {
 		return err
 	}
-	s.log.Info("marketing template purged", "shop_id", j.ShopID, "template_id", j.TemplateID)
+	if tag.RowsAffected() > 0 {
+		s.log.Info("marketing template deleted", "shop_id", j.ShopID, "template_id", j.TemplateID)
+	}
 	return nil
 }

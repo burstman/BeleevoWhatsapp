@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/anthdm/superkit/kit"
 
@@ -71,10 +72,12 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		return err
 	}
 
-	if purged, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
+	purged := 0
+	if n, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
 		a.Log.Warn("marketing purge check failed", "error", err.Error())
-	} else if purged > 0 {
-		a.Log.Info("expired marketing templates purged", "count", purged)
+	} else if n > 0 {
+		purged = n
+		a.Log.Info("expired marketing templates deleted", "count", n)
 	}
 
 	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
@@ -83,6 +86,13 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	}
 
 	flash := vdashboard.TemplateFlash{}
+	if purged > 0 {
+		plural := "s"
+		if purged == 1 {
+			plural = ""
+		}
+		flash.Info = "Deleted " + strconv.Itoa(purged) + " template" + plural + " automatically — Meta classified it as marketing content."
+	}
 	switch k.Request.URL.Query().Get("flash") {
 	case "created":
 		flash.Info = "Template submitted to Meta for review. Status refreshes here once decided."

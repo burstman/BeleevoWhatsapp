@@ -147,8 +147,12 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if t.MarketingFlagged {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<span class=\"inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Blocked — marketing</span><p class=\"mt-1 text-xs text-rose-600\">Meta treats this as marketing content; it will never be sent. Delete it and rewrite as a transactional update.</p>")
+					if t.ApprovalStatus == "deleted" {
+						templ_7745c5c3_Err = ApprovalBadge("deleted").Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " <p class=\"mt-1 text-xs text-slate-500\">Automatically deleted — Meta treated it as marketing content.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -160,7 +164,7 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 							var templ_7745c5c3_Var8 string
 							templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 121, Col: 74}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 118, Col: 74}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 							if templ_7745c5c3_Err != nil {
@@ -171,24 +175,20 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 								return templ_7745c5c3_Err
 							}
 						}
-					} else {
-						templ_7745c5c3_Err = ApprovalBadge(t.ApprovalStatus).Render(ctx, templ_7745c5c3_Buffer)
+					} else if t.MarketingFlagged {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span class=\"inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Blocked — marketing</span><p class=\"mt-1 text-xs text-rose-600\">Meta treats this as marketing content; it will never be sent. Delete it and rewrite as a transactional update.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"mt-1 text-xs text-rose-600\">")
+						if t.MetaWarnings != "" {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"mt-1 text-xs text-slate-400 italic\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var9 string
-							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
+							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 126, Col: 69}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 129, Col: 74}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 							if templ_7745c5c3_Err != nil {
@@ -199,18 +199,46 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 								return templ_7745c5c3_Err
 							}
 						}
+					} else {
+						templ_7745c5c3_Err = ApprovalBadge(t.ApprovalStatus).Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if t.ApprovalStatus == "rejected" && t.RejectionReason != "" {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-1 text-xs text-rose-600\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var10 string
+							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 134, Col: 69}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p>")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</td></tr>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</td></tr>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</tbody></table>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</tbody></table>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div></div><script>\n\t\t\t(function () {\n\t\t\t\tvar body = document.getElementById(\"tplBody\");\n\t\t\t\tvar varsBox = document.getElementById(\"tplVars\");\n\t\t\t\tvar status = document.getElementById(\"tplStatus\");\n\t\t\t\tvar LB = String.fromCharCode(123, 123);\n\t\t\t\tvar RB = String.fromCharCode(125, 125);\n\n\t\t\t\tfunction renderVars() {\n\t\t\t\t\tvar seen = [];\n\t\t\t\t\tvar re = new RegExp(LB + \"([0-9]+)\" + RB, \"g\");\n\t\t\t\t\tvar m;\n\t\t\t\t\twhile ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }\n\t\t\t\t\tseen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })\n\t\t\t\t\t\t.sort(function (a, b) { return a - b; });\n\t\t\t\t\tif (seen.length === 0) {\n\t\t\t\t\t\tvarsBox.innerHTML = \"\";\n\t\t\t\t\t\tstatus.textContent = \"\";\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tvar out = \"\";\n\t\t\t\t\tfor (var i = 0; i < seen.length; i++) {\n\t\t\t\t\t\tout += '<div><label class=\"block text-xs font-medium text-slate-600\" for=\"example_' + seen[i] + '\">Value for ' + LB + seen[i] + RB + '</label>' +\n\t\t\t\t\t\t\t'<input id=\"example_' + seen[i] + '\" name=\"example_' + seen[i] + '\" required placeholder=\"Sample value for ' + LB + seen[i] + RB + '\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\" /></div>';\n\t\t\t\t\t}\n\t\t\t\t\tvarsBox.innerHTML = out;\n\t\t\t\t\tstatus.textContent = seen.length + \" variable(s) detected\";\n\t\t\t\t}\n\n\t\t\t\tvar debounce;\n\t\t\t\tbody.addEventListener(\"input\", function () {\n\t\t\t\t\tclearTimeout(debounce);\n\t\t\t\t\tdebounce = setTimeout(renderVars, 150);\n\t\t\t\t});\n\t\t\t\trenderVars();\n\t\t\t})();\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div></div><script>\n\t\t\t(function () {\n\t\t\t\tvar body = document.getElementById(\"tplBody\");\n\t\t\t\tvar varsBox = document.getElementById(\"tplVars\");\n\t\t\t\tvar status = document.getElementById(\"tplStatus\");\n\t\t\t\tvar LB = String.fromCharCode(123, 123);\n\t\t\t\tvar RB = String.fromCharCode(125, 125);\n\n\t\t\t\tfunction renderVars() {\n\t\t\t\t\tvar seen = [];\n\t\t\t\t\tvar re = new RegExp(LB + \"([0-9]+)\" + RB, \"g\");\n\t\t\t\t\tvar m;\n\t\t\t\t\twhile ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }\n\t\t\t\t\tseen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })\n\t\t\t\t\t\t.sort(function (a, b) { return a - b; });\n\t\t\t\t\tif (seen.length === 0) {\n\t\t\t\t\t\tvarsBox.innerHTML = \"\";\n\t\t\t\t\t\tstatus.textContent = \"\";\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tvar out = \"\";\n\t\t\t\t\tfor (var i = 0; i < seen.length; i++) {\n\t\t\t\t\t\tout += '<div><label class=\"block text-xs font-medium text-slate-600\" for=\"example_' + seen[i] + '\">Value for ' + LB + seen[i] + RB + '</label>' +\n\t\t\t\t\t\t\t'<input id=\"example_' + seen[i] + '\" name=\"example_' + seen[i] + '\" required placeholder=\"Sample value for ' + LB + seen[i] + RB + '\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\" /></div>';\n\t\t\t\t\t}\n\t\t\t\t\tvarsBox.innerHTML = out;\n\t\t\t\t\tstatus.textContent = seen.length + \" variable(s) detected\";\n\t\t\t\t}\n\n\t\t\t\tvar debounce;\n\t\t\t\tbody.addEventListener(\"input\", function () {\n\t\t\t\t\tclearTimeout(debounce);\n\t\t\t\t\tdebounce = setTimeout(renderVars, 150);\n\t\t\t\t});\n\t\t\t\trenderVars();\n\t\t\t})();\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

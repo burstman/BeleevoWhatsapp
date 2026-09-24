@@ -109,7 +109,15 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
 									<td class="px-6 py-3">
-										if t.MarketingFlagged {
+										if t.ApprovalStatus == "deleted" {
+											@ApprovalBadge("deleted")
+											<p class="mt-1 text-xs text-slate-500">
+												Automatically deleted — Meta treated it as marketing content.
+											</p>
+											if t.MetaWarnings != "" {
+												<p class="mt-1 text-xs text-slate-400 italic">{ t.MetaWarnings }</p>
+											}
+										} else if t.MarketingFlagged {
 											<span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
 												Blocked — marketing
 											</span>
