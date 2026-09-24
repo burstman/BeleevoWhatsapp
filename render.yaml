@@ -29,9 +29,9 @@ services:
       - key: CONVERTY_REDIRECT_URI
         value: https://converty-whatsapp-api-t3f9.onrender.com/auth/converty/callback
       - key: CONVERTY_CLIENT_ID
-        sync: false # paste your Converty OAuth client id
+        sync: false # legacy: ignored; merchant app credentials are entered per integration in the app
       - key: CONVERTY_CLIENT_SECRET
-        sync: false # paste your Converty OAuth client secret
+        sync: false # legacy: ignored; merchant app credentials are entered per integration in the app
       - key: CONVERTY_ENCRYPTION_KEY
         sync: false # openssl rand -hex 32; keeps the same value across restarts
       - key: DATABASE_URL

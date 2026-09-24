@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/anthdm/superkit/kit"
@@ -104,14 +105,21 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 		flash.Error = "That integration no longer exists."
 	case "missing":
 		flash.Error = "A store name is required."
+	case "credsmissing":
+		flash.Error = "Enter your Converty app client ID and client secret to connect."
 	case "error", "internal":
 		flash.Error = "Something went wrong — try again."
 	}
 
 	page := a.dashboardPage(k, "Shop Integration", "integrations", active, all)
-	return k.Render(vdashboard.IntegrationsPage(page, integrations, a.Converty.Configured(), flash))
+	return k.Render(vdashboard.IntegrationsPage(page, integrations, flash))
 }
 
+// handleConvertyConnect starts the OAuth round-trip for one shop using the
+// Converty app credentials that merchant pasted in (each merchant's app lives
+// inside their own Converty store). The credentials are recorded on a pending
+// integration row before redirecting to Converty, because the callback must
+// authenticate with them when exchanging the code.
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
 		return fmt.Errorf("converty is not configured on this deployment")
@@ -122,6 +130,24 @@ func (a *App) handleConvertyConnect(k *kit.Kit) error {
 		return err
 	}
 
+	clientID := strings.TrimSpace(k.Request.FormValue("converty_client_id"))
+	clientSecret := k.Request.FormValue("converty_client_secret")
+	if clientID == "" || clientSecret == "" {
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=credsmissing")
+	}
+
+	encSecret, err := a.Converty.EncryptClientSecret(clientSecret)
+	if err != nil {
+		a.Log.Error("converty client secret encryption failed", "shop_id", active.ID, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	integrationID, err := a.Converty.CreatePendingIntegration(k.Request.Context(), active.ID, clientID, encSecret)
+	if err != nil {
+		a.Log.Error("converty pending integration create failed", "shop_id", active.ID, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
 	state, err := randomHex(32)
 	if err != nil {
 		return err
@@ -129,12 +155,14 @@ func (a *App) handleConvertyConnect(k *kit.Kit) error {
 
 	sess := k.GetSession(auth.SessionCookieName)
 	sess.Values["converty_oauth_state"] = state
+	sess.Values["converty_oauth_integration_id"] = integrationID.String()
 	if err := sess.Save(k.Request, k.Response); err != nil {
 		return err
 	}
 
-	a.Log.Info("converty connect started", "shop_id", active.ID, "redirect", a.Cfg.ConvertyRedirectURI)
-	return k.Redirect(http.StatusFound, a.Converty.AuthorizeURL(state))
+	a.Log.Info("converty connect started",
+		"shop_id", active.ID, "integration_id", integrationID, "redirect", a.Cfg.ConvertyRedirectURI)
+	return k.Redirect(http.StatusFound, a.Converty.AuthorizeURL(clientID, a.Cfg.ConvertyRedirectURI, state))
 }
 
 func (a *App) handleConvertyCallback(k *kit.Kit) error {
@@ -145,26 +173,48 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 
 	sess := k.GetSession(auth.SessionCookieName)
 	savedState, _ := sess.Values["converty_oauth_state"].(string)
+	integrationIDStr, _ := sess.Values["converty_oauth_integration_id"].(string)
 	delete(sess.Values, "converty_oauth_state")
+	delete(sess.Values, "converty_oauth_integration_id")
 	_ = sess.Save(k.Request, k.Response)
 
 	state := k.Request.URL.Query().Get("state")
 	code := k.Request.URL.Query().Get("code")
 
-	if !secureEqual(savedState, state) {
-		a.Log.Warn("converty callback rejected: state mismatch")
+	dropPending := func() {
+		if id, pErr := uuid.Parse(integrationIDStr); pErr == nil {
+			if dErr := a.Converty.DeleteIntegration(k.Request.Context(), active.ID, id); dErr != nil {
+				a.Log.Warn("converty pending integration cleanup failed", "error", dErr)
+			}
+		}
+	}
+
+	if !secureEqual(savedState, state) || code == "" {
+		a.Log.Warn("converty callback rejected: state or code mismatch")
+		dropPending()
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
-	if code == "" {
+
+	integrationID, err := uuid.Parse(integrationIDStr)
+	if err != nil {
+		a.Log.Warn("converty callback rejected: missing integration id", "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
 	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
 	defer cancel()
 
-	tok, err := a.Converty.ExchangeCode(ctx, code)
+	clientID, clientSecret, err := a.Converty.ClientCredentials(ctx, active.ID, integrationID)
 	if err != nil {
-		a.Log.Error("converty code exchange failed", "error", err)
+		a.Log.Error("converty client credentials load failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
+		dropPending()
+		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
+	}
+
+	tok, err := a.Converty.ExchangeCode(ctx, clientID, clientSecret, code)
+	if err != nil {
+		a.Log.Error("converty code exchange failed", "shop_id", active.ID, "error", err)
+		dropPending()
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
@@ -173,24 +223,24 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		// A failed store sync should not discard the freshly connected tokens:
 		// persist them and subscribe webhooks, but flag the sync problem.
 		a.Log.Error("converty stores/me failed", "error", err)
-		integrationID, sErr := a.Converty.SaveIntegration(ctx, active.ID, converty.Store{}, converty.DefaultScopes, tok, time.Now())
-		if sErr != nil {
-			a.Log.Error("converty integration save failed", "error", sErr)
+		cErr := a.Converty.CompleteIntegration(ctx, active.ID, integrationID, converty.Store{}, converty.DefaultScopes, tok, time.Now())
+		if cErr != nil {
+			a.Log.Error("converty integration save failed", "error", cErr)
 			return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 		}
 		a.subscribeWebhooks(ctx, active.ID, integrationID)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 	}
 
-	integrationID, err := a.Converty.SaveIntegration(ctx, active.ID, store, converty.DefaultScopes, tok, time.Now())
+	err = a.Converty.CompleteIntegration(ctx, active.ID, integrationID, store, converty.DefaultScopes, tok, time.Now())
 	if err != nil {
-		a.Log.Error("converty integration save failed", "error", err)
+		a.Log.Error("converty integration save failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
 	a.subscribeWebhooks(ctx, active.ID, integrationID)
 
-	a.Log.Info("converty connected", "shop_id", active.ID, "store", store.Name, "integration_id", integrationID)
+	a.Log.Info("converty connected", "shop_id", active.ID, "integration_id", integrationID, "store", store.Name)
 	return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 }
 

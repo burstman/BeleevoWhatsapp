@@ -84,7 +84,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/shops", kit.Handler(a.handleShopsCreate))
 		pr.Get("/shops/{id}/select", kit.Handler(a.handleShopsSelect))
 		pr.Post("/shops/{id}/update", kit.Handler(a.handleShopUpdate))
-		pr.Get("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
+		pr.Post("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Get("/integrations", kit.Handler(a.handleIntegrations))
 		pr.Post("/integrations/{id}/refresh", kit.Handler(a.handleIntegrationRefresh))

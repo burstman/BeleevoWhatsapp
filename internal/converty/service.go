@@ -44,9 +44,11 @@ func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Servic
 	}
 }
 
-// Configured reports whether OAuth credentials are present.
+// Configured reports whether Converty is reachable and the OAuth authorize
+// endpoint is known. Per-integration client credentials are entered by each
+// merchant, so this no longer depends on global client id/secret values.
 func (s *Service) Configured() bool {
-	return s.cfg.ConvertyClientID != "" && s.cfg.ConvertyClientSecret != ""
+	return s.cfg.ConvertyBaseURL != ""
 }
 
 // SupportedEvents are the webhook events subscribed after connecting.
@@ -60,6 +62,15 @@ func (s *Service) DecryptToken(encrypted string) (string, error) {
 		return "", errors.New("converty encryption not configured")
 	}
 	return s.cipher.Decrypt(encrypted)
+}
+
+// EncryptClientSecret wraps a merchant's Converty client secret; it is stored
+// per integration and decrypted only when an OAuth call needs it.
+func (s *Service) EncryptClientSecret(secret string) (string, error) {
+	if s.cipher == nil {
+		return "", errors.New("converty encryption not configured")
+	}
+	return s.cipher.Encrypt(secret)
 }
 
 // AccessToken returns an access token for one of the shop's integrations
@@ -119,7 +130,11 @@ func (s *Service) RefreshIntegrationToken(ctx context.Context, shopID, id uuid.U
 	if err != nil {
 		return fmt.Errorf("decrypt refresh token: %w", err)
 	}
-	tok, err := s.RefreshToken(ctx, refreshToken)
+	clientID, clientSecret, err := s.ClientCredentials(ctx, integ.ShopID, integ.ID)
+	if err != nil {
+		return fmt.Errorf("load client credentials: %w", err)
+	}
+	tok, err := s.RefreshToken(ctx, clientID, clientSecret, refreshToken)
 	if err != nil {
 		return fmt.Errorf("refresh converty token: %w", err)
 	}
@@ -170,7 +185,11 @@ func (s *Service) refreshAndSave(ctx context.Context, integ Integration, now tim
 	if err != nil {
 		return "", fmt.Errorf("decrypt refresh token: %w", err)
 	}
-	tok, err := s.RefreshToken(ctx, refreshToken)
+	clientID, clientSecret, err := s.ClientCredentials(ctx, integ.ShopID, integ.ID)
+	if err != nil {
+		return "", fmt.Errorf("load client credentials: %w", err)
+	}
+	tok, err := s.RefreshToken(ctx, clientID, clientSecret, refreshToken)
 	if err != nil {
 		return "", fmt.Errorf("refresh converty token: %w", err)
 	}

@@ -131,26 +131,52 @@ templ IntegrationCard(integration converty.Integration) {
 	</div>
 }
 
-templ IntegrationsPage(page components.Page, integrations []converty.Integration, configured bool, flash IntegrationFlash) {
+templ integretyClientCredentialsForm() {
+	<details class="group">
+		<summary
+			class="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+			Connect a store
+		</summary>
+		<form method="post" action="/auth/converty/connect"
+			class="mt-3 w-full max-w-xl rounded-lg border border-slate-200 bg-slate-50 p-4">
+			<p class="text-sm text-slate-600">
+				Paste the <b>Client ID</b> and <b>Client Secret</b> of your Converty app. Each merchant uses their own app,
+				which must allow the callback URI below.
+			</p>
+			<div class="mt-3 grid gap-3 sm:grid-cols-2">
+				<div>
+					<label class="block text-xs font-medium text-slate-600">Client ID</label>
+					<input name="converty_client_id" required autocomplete="off" spellcheck="false"
+						class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+				</div>
+				<div>
+					<label class="block text-xs font-medium text-slate-600">Client Secret</label>
+					<input name="converty_client_secret" type="password" required autocomplete="off"
+						class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+				</div>
+			</div>
+			<div class="mt-3 flex items-center gap-3">
+				<button type="submit"
+					class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+					Authorize Converty
+				</button>
+				<span class="text-xs text-slate-500">Stored encrypted — used only to reach your Converty app.</span>
+			</div>
+		</form>
+	</details>
+}
+
+templ IntegrationsPage(page components.Page, integrations []converty.Integration, flash IntegrationFlash) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
+			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-xl font-semibold text-slate-900">Shop Integration</h2>
 					<p class="text-sm text-slate-500">
-						Connect your Converty stores. Each store appears here with its token and connection tools.
+						Connect your Converty store. Enter your own Converty app credentials, then authorize the connection.
 					</p>
 				</div>
-				if configured {
-					<a href="/auth/converty/connect"
-						class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-						Connect a store
-					</a>
-				} else {
-					<span class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-						Integrations not configured on this deployment
-					</span>
-				}
+				@integretyClientCredentialsForm()
 			</div>
 
 			if flash.Error != "" {

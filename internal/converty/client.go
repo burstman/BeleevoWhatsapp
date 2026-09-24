@@ -56,34 +56,39 @@ func (e APIError) Error() string {
 	return fmt.Sprintf("converty api error (status %d): %s", e.StatusCode, e.Message)
 }
 
-// AuthorizeURL builds the OAuth authorization redirect URL for a state value.
-func (s *Service) AuthorizeURL(state string) string {
+// AuthorizeURL builds the OAuth authorization redirect URL for a state value
+// using the integration's own Converty client id (each merchant's app lives
+// inside their store). The redirect URI is the platform's callback and must be
+// registered in that app.
+func (s *Service) AuthorizeURL(clientID, redirectURI, state string) string {
 	q := url.Values{}
 	q.Set("response_type", "code")
-	q.Set("client_id", s.cfg.ConvertyClientID)
-	q.Set("redirect_uri", s.cfg.ConvertyRedirectURI)
+	q.Set("client_id", clientID)
+	q.Set("redirect_uri", redirectURI)
 	q.Set("scope", DefaultScopes)
 	q.Set("state", state)
 	return s.cfg.ConvertyBaseURL + "/oauth2/authorize?" + q.Encode()
 }
 
-// ExchangeCode trades an authorization code for tokens.
-func (s *Service) ExchangeCode(ctx context.Context, code string) (Token, error) {
+// ExchangeCode trades an authorization code for tokens. The client id/secret
+// are the connected integration's own Converty app credentials.
+func (s *Service) ExchangeCode(ctx context.Context, clientID, clientSecret, code string) (Token, error) {
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
-	form.Set("client_id", s.cfg.ConvertyClientID)
-	form.Set("client_secret", s.cfg.ConvertyClientSecret)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
 	return s.requestToken(ctx, form)
 }
 
-// RefreshToken exchanges a refresh token for fresh tokens.
-func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (Token, error) {
+// RefreshToken exchanges a refresh token for fresh tokens using the
+// integration's own Converty app credentials.
+func (s *Service) RefreshToken(ctx context.Context, clientID, clientSecret, refreshToken string) (Token, error) {
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", refreshToken)
-	form.Set("client_id", s.cfg.ConvertyClientID)
-	form.Set("client_secret", s.cfg.ConvertyClientSecret)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
 	return s.requestToken(ctx, form)
 }
 
