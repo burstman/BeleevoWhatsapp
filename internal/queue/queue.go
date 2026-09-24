@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -18,11 +19,19 @@ const (
 )
 
 // RedisClientOpt converts a redis:// or rediss:// URL into the options Asynq
-// expects. Credentials and db index are preserved.
+// expects. Credentials, db index and TLS are preserved. Use rediss:// for
+// services that require encryption (e.g. Upstash), redis:// for plain local
+// instances.
 func RedisClientOpt(redisURL string) (asynq.RedisClientOpt, error) {
 	u, err := url.Parse(redisURL)
 	if err != nil {
 		return asynq.RedisClientOpt{}, fmt.Errorf("parse redis url: %w", err)
+	}
+
+	switch u.Scheme {
+	case "redis", "rediss":
+	default:
+		return asynq.RedisClientOpt{}, fmt.Errorf("unsupported redis url scheme %q", u.Scheme)
 	}
 
 	opt := asynq.RedisClientOpt{
@@ -45,7 +54,10 @@ func RedisClientOpt(redisURL string) (asynq.RedisClientOpt, error) {
 	}
 
 	if u.Scheme == "rediss" {
-		opt.TLSConfig = nil // handled by redis client via tls when set; explicit TLS servers set REDIS_TLS separately
+		opt.TLSConfig = &tls.Config{
+			ServerName: u.Hostname(),
+			MinVersion: tls.VersionTLS12,
+		}
 	}
 
 	return opt, nil
