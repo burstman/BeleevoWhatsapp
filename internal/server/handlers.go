@@ -71,6 +71,12 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		return err
 	}
 
+	if purged, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
+		a.Log.Warn("marketing purge check failed", "error", err.Error())
+	} else if purged > 0 {
+		a.Log.Info("expired marketing templates purged", "count", purged)
+	}
+
 	templates, err := a.WhatsApp.Templates(k.Request.Context(), principal.User.ShopID)
 	if err != nil {
 		return err

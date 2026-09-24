@@ -16,6 +16,12 @@ import (
 // handleTemplateRefresh re-syncs the merchant's template approval statuses
 // from Meta's review engine and returns to the templates page.
 func (a *App) handleTemplateRefresh(k *kit.Kit) error {
+	if purged, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
+		a.Log.Warn("marketing purge check failed", "error", err.Error())
+	} else if purged > 0 {
+		a.Log.Info("expired marketing templates purged", "count", purged)
+	}
+
 	updated, err := a.WhatsApp.SyncTemplates(k.Request.Context())
 	if err != nil {
 		a.Log.Warn("template refresh failed", "error", err.Error())

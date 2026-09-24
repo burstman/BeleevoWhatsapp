@@ -10,8 +10,10 @@ import (
 	"github.com/hibiken/asynq"
 
 	"whatsappconverty/internal/config"
+	"whatsappconverty/internal/database"
 	"whatsappconverty/internal/logutil"
 	"whatsappconverty/internal/queue"
+	"whatsappconverty/internal/whatsapp"
 )
 
 func main() {
@@ -26,6 +28,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	pool, err := database.Connect(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("database connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	svc := whatsapp.NewService(cfg, pool, logger)
+
 	srv := asynq.NewServer(redisOpt, asynq.Config{
 		Concurrency: 10,
 		Logger:      asynqLogger{logger},
@@ -33,9 +44,7 @@ func main() {
 	})
 
 	mux := asynq.NewServeMux()
-	// Handlers for send:whatsapp_template, sync:whatsapp_templates and
-	// process:meta_webhook are registered in later phases.
-	registerHandlers(mux)
+	registerHandlers(mux, svc)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -51,8 +60,8 @@ func main() {
 	srv.Shutdown()
 }
 
-func registerHandlers(mux *asynq.ServeMux) {
-	// Placeholder: task handlers land with the WhatsApp/automation phases.
+func registerHandlers(mux *asynq.ServeMux, svc *whatsapp.Service) {
+	mux.HandleFunc(queue.TaskPurgeMarketingTemplate, svc.HandlePurgeMarketingTemplate)
 }
 
 type asynqLogger struct{ log *slog.Logger }

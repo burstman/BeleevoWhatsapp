@@ -11,9 +11,10 @@ import (
 
 // Task type names used across the platform. Handlers are registered by phase.
 const (
-	TaskSendWhatsAppTemplate  = "send:whatsapp_template"
-	TaskSyncWhatsAppTemplates = "sync:whatsapp_templates"
-	TaskProcessMetaWebhook    = "process:meta_webhook"
+	TaskSendWhatsAppTemplate   = "send:whatsapp_template"
+	TaskSyncWhatsAppTemplates  = "sync:whatsapp_templates"
+	TaskProcessMetaWebhook     = "process:meta_webhook"
+	TaskPurgeMarketingTemplate = "purge:marketing_template"
 )
 
 // RedisClientOpt converts a redis:// or rediss:// URL into the options Asynq

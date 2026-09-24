@@ -189,6 +189,12 @@ func TestMarketingSignal(t *testing.T) {
 	}
 }
 
+func TestPgInterval(t *testing.T) {
+	if got := pgInterval(15 * time.Minute); got != "900 seconds" {
+		t.Fatalf("pgInterval(15m) = %q, want %q", got, "900 seconds")
+	}
+}
+
 func TestEvaluateSendRulePurposeMismatch(t *testing.T) {
 	editorial := optedIn()
 	editorial.Category = "marketing" // matches the requested purpose, not the template

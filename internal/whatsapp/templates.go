@@ -95,29 +95,47 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 	rowErr := s.pool.QueryRow(ctx, `
 		INSERT INTO templates (
 			shop_id, meta_template_name, meta_template_id, language, category,
-			status, approval_status, rejection_reason, marketing_flagged, meta_warnings, components
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+			status, approval_status, rejection_reason, marketing_flagged, meta_warnings,
+			marketing_flagged_at, components
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
 		ON CONFLICT (shop_id, meta_template_name, language) DO UPDATE SET
-			meta_template_id  = EXCLUDED.meta_template_id,
-			category          = EXCLUDED.category,
-			status            = EXCLUDED.status,
-			approval_status   = EXCLUDED.approval_status,
-			rejection_reason  = EXCLUDED.rejection_reason,
-			marketing_flagged = EXCLUDED.marketing_flagged,
-			meta_warnings     = EXCLUDED.meta_warnings,
-			components        = EXCLUDED.components,
-			updated_at        = now()
+			meta_template_id   = EXCLUDED.meta_template_id,
+			category           = EXCLUDED.category,
+			status             = EXCLUDED.status,
+			approval_status    = EXCLUDED.approval_status,
+			rejection_reason   = EXCLUDED.rejection_reason,
+			marketing_flagged  = EXCLUDED.marketing_flagged,
+			meta_warnings      = EXCLUDED.meta_warnings,
+			marketing_flagged_at = COALESCE(templates.marketing_flagged_at, EXCLUDED.marketing_flagged_at),
+			purge_scheduled_at = CASE WHEN NOT EXCLUDED.marketing_flagged THEN NULL ELSE templates.purge_scheduled_at END,
+			components         = EXCLUDED.components,
+			updated_at         = now()
 		RETURNING id, created_at, updated_at`,
 		shopID, draft.Name, resp.ID, draft.Language, draft.Category,
-		t.Status, approval, rejection, t.MarketingFlagged, t.MetaWarnings, draft.Components,
+		t.Status, approval, rejection, t.MarketingFlagged, t.MetaWarnings,
+		flaggedAtExpr(t.MarketingFlagged), draft.Components,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 	if rowErr != nil {
 		return MerchantTemplate{}, fmt.Errorf("store template: %w", rowErr)
+	}
+	if t.MarketingFlagged {
+		if err := s.enqueueUnscheduledPurges(ctx); err != nil {
+			s.log.Warn("marketing purge scheduling failed", "error", err)
+		}
 	}
 	if err != nil {
 		return t, &SendRejection{Code: ErrCodeMetaAPIError, Reason: rejection}
 	}
 	return t, nil
+}
+
+// flaggedAtExpr yields the column value assigned on insert: now() when Meta
+// flagged the template right now, NULL otherwise.
+func flaggedAtExpr(flagged bool) any {
+	if flagged {
+		return time.Now()
+	}
+	return nil
 }
 
 // warningStrings joins Meta's warning messages into a single display string.
@@ -177,7 +195,9 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 		tag, uErr := s.pool.Exec(ctx, `
 			UPDATE templates
 			SET approval_status = $2, updated_at = now(),
-			    marketing_flagged = $4
+			    marketing_flagged = $4,
+			    marketing_flagged_at = CASE WHEN $4 THEN COALESCE(marketing_flagged_at, now()) ELSE NULL END,
+			    purge_scheduled_at = CASE WHEN $4 THEN purge_scheduled_at ELSE NULL END
 			WHERE meta_template_name = $1 AND language = $3
 			  AND (approval_status <> $2 OR marketing_flagged <> $4)`,
 			t.Name, NormalizeApproval(t.Status), t.Language, marketing,
@@ -186,6 +206,9 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 			return updated, uErr
 		}
 		updated += int(tag.RowsAffected())
+	}
+	if err := s.enqueueUnscheduledPurges(ctx); err != nil {
+		s.log.Warn("marketing purge scheduling failed after sync", "error", err)
 	}
 	return updated, nil
 }

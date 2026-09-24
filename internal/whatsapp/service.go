@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/encrypt"
+	"whatsappconverty/internal/queue"
 )
 
 // ErrNotConfigured is returned when no WhatsApp integration exists for the
@@ -29,6 +31,7 @@ type Service struct {
 	cipher *encrypt.Cipher
 	http   *http.Client
 	rate   *RateLimiter
+	queue  *asynq.Client
 }
 
 func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Service {
@@ -43,7 +46,22 @@ func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Servic
 		cipher: cipher,
 		http:   &http.Client{Timeout: 20 * time.Second},
 		rate:   rateLimiterFor(cfg, log),
+		queue:  asynqClientFor(cfg, log),
 	}
+}
+
+// asynqClientFor builds the task queue client used for delayed jobs (e.g.
+// marketing template purge), or nil when Redis is unavailable.
+func asynqClientFor(cfg config.Config, log *slog.Logger) *asynq.Client {
+	if cfg.RedisURL == "" {
+		return nil
+	}
+	opt, err := queue.RedisClientOpt(cfg.RedisURL)
+	if err != nil {
+		log.Warn("whatsapp: invalid REDIS_URL, delayed jobs disabled", "error", err)
+		return nil
+	}
+	return asynq.NewClient(opt)
 }
 
 // rateLimiterFor builds the Redis-backed send limiter, or a no-op limiter when
