@@ -1,5 +1,7 @@
 # Render Blueprint for Converty WhatsApp Notification Platform.
-# Creates: web service, background worker, and Redis.
+# Creates: web service and Redis. Background jobs (e.g. the marketing-template
+# purge) run inside the web service, because Render free tier has no
+# background-worker service type. The web build also produces ./migrate.
 # PostgreSQL is provided by Neon (external) — set DATABASE_URL manually.
 #
 # All secrets are provided via Render environment variables (not stored here).
@@ -61,22 +63,22 @@ services:
         sync: false # hub.verify_token echo challenge
       - key: META_APP_SECRET
         sync: false # verifies X-Hub-Signature-256 on Meta webhook deliveries
-
-  - type: worker
-    name: converty-whatsapp-worker
-    runtime: go
-    plan: free
-    buildCommand: go build -o bin/worker ./cmd/worker
-    startCommand: ./bin/worker
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: DATABASE_URL
-        sync: false # paste your Neon connection string (use the direct, non-pooled one)
-      - key: REDIS_URL
-        fromService:
-          name: converty-whatsapp-redis
-          type: redis
-          property: connectionString
-      - key: SUPERKIT_SECRET
-        sync: false
+    # Background jobs run inside this web service (see internal/worker) so the
+    # free plan needs no separate worker. On a paid plan you may instead run
+    # cmd/worker as its own service:
+    #
+    # - type: worker
+    #   name: converty-whatsapp-worker
+    #   runtime: go
+    #   envVars:
+    #     - key: APP_ENV
+    #       value: production
+    #     - key: DATABASE_URL
+    #       sync: false
+    #     - key: REDIS_URL
+    #       fromService:
+    #         name: converty-whatsapp-redis
+    #         type: redis
+    #         property: connectionString
+    #     - key: SUPERKIT_SECRET
+    #       sync: false

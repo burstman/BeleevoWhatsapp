@@ -17,6 +17,7 @@ import (
 	"whatsappconverty/internal/database"
 	"whatsappconverty/internal/logutil"
 	"whatsappconverty/internal/server"
+	"whatsappconverty/internal/worker"
 	"whatsappconverty/web/static"
 )
 
@@ -62,6 +63,22 @@ func main() {
 	if err := app.Auth.EnsureAdmin(rootCtx, cfg); err != nil {
 		logger.Error("admin bootstrap failed", "error", err)
 		os.Exit(1)
+	}
+
+	// Run the background job processor in-process so Render's free tier (which
+	// has no background-worker service type) still processes delayed jobs, e.g.
+	// the marketing-template purge. cmd/worker can run it standalone on paid
+	// plans. If Redis is misconfigured the API must keep serving, so only stop
+	// the process when the database itself is unreachable.
+	var bg *worker.Server
+	if cfg.RedisURL != "" {
+		if bg, err = worker.Start(cfg, logger); err != nil {
+			logger.Error("background worker disabled", "error", err)
+		} else {
+			defer bg.Shutdown()
+		}
+	} else {
+		logger.Warn("no REDIS_URL set; background jobs disabled")
 	}
 
 	router := chi.NewMux()
