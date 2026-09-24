@@ -21,13 +21,13 @@ services:
       - key: APP_ENV
         value: production
       - key: APP_URL
-        value: https://converty-whatsapp-api.onrender.com
+        value: https://converty-whatsapp-api-t3f9.onrender.com
       - key: CONVERTY_BASE_URL
         value: https://partner.converty.shop
       - key: CONVERTY_API_URL
         value: https://api.converty.shop
       - key: CONVERTY_REDIRECT_URI
-        value: https://converty-whatsapp-api.onrender.com/auth/converty/callback
+        value: https://converty-whatsapp-api-t3f9.onrender.com/auth/converty/callback
       - key: CONVERTY_CLIENT_ID
         sync: false # paste your Converty OAuth client id
       - key: CONVERTY_CLIENT_SECRET
