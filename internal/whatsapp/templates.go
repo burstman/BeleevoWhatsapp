@@ -199,7 +199,8 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 			    marketing_flagged_at = CASE WHEN $4 THEN COALESCE(marketing_flagged_at, now()) ELSE NULL END,
 			    purge_scheduled_at = CASE WHEN $4 THEN purge_scheduled_at ELSE NULL END
 			WHERE meta_template_name = $1 AND language = $3
-			  AND (approval_status <> $2 OR marketing_flagged <> $4)`,
+			  AND (approval_status <> $2 OR marketing_flagged <> $4
+			       OR (marketing_flagged AND marketing_flagged_at IS NULL))`,
 			t.Name, NormalizeApproval(t.Status), t.Language, marketing,
 		)
 		if uErr != nil {
