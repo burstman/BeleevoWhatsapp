@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"github.com/anthdm/superkit/kit"
@@ -13,8 +14,26 @@ import (
 	errortpl "whatsappconverty/web/views/errors"
 )
 
+// emailRule accepts any syntactically valid mailbox instead of superkit's
+// validate.Email, whose regex caps the TLD at four characters and would reject
+// the operator default "admin@bleevoo.local".
+var emailRule = validate.RuleSet{
+	Name: "email",
+	MessageFunc: func(_ validate.RuleSet) string {
+		return "is not a valid email address"
+	},
+	ValidateFunc: func(set validate.RuleSet) bool {
+		email, ok := set.FieldValue.(string)
+		if !ok {
+			return false
+		}
+		addr, err := mail.ParseAddress(email)
+		return err == nil && addr.Address == email
+	},
+}
+
 var loginSchema = validate.Schema{
-	"email":    validate.Rules(validate.Email),
+	"email":    validate.Rules(emailRule),
 	"password": validate.Rules(validate.Required),
 }
 
