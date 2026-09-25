@@ -3,10 +3,12 @@ package automations
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"whatsappconverty/internal/delivery"
 )
@@ -21,69 +23,121 @@ const (
 // exists (the unique constraint mirrors the UI rule "one template per trigger").
 var ErrDuplicate = errors.New("automation already exists for this trigger")
 
-// Automation maps a trigger (an order or delivery event) to a message template.
-// EventSource disambiguates which origin the trigger key belongs to, so the same
-// status string can be automated independently for Converty and for delivery.
-// SendTime is the time-of-day the send waits for (day-fixed window); nil means
-// the event fires the send instantly.
+// Automation maps a trigger (an order or delivery event) to an approved message
+// template. EventSource disambiguates which origin the trigger key belongs to.
+// The delivery rule is stored split across SendTime/SendTimezone/SendDays (a
+// fixed daily window), DelayMinutes (delayed by N minutes), or neither (instant).
 type Automation struct {
 	ID           uuid.UUID
 	ShopID       uuid.UUID
+	Name         string
+	Description  string
 	EventSource  string
 	OrderStatus  string
 	TemplateID   uuid.UUID
 	Enabled      bool
 	SendTime     *time.Time
 	SendTimezone string
+	SendDays     []int
+	DelayMinutes *int
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
 // Schedule captures the deliverability rule the UI writes to an automation.
+// Both SendMinute and DelayMinute are nullable; a schedule with neither is an
+// instant automation. Days is the ISO weekday set (1=Monday .. 7=Sunday) the
+// fixed window is allowed to fire on.
 type Schedule struct {
-	SendMinute *int   // minute of day 0..1439; nil = instant
-	Timezone   string // IANA name (any zone, defaults to UTC)
+	SendMinute  *int
+	DelayMinute *int
+	Timezone    string
+	Days        []int
 }
 
-// ParseSchedule validates the "fixed time of day" form inputs. A non-fixed
-// (instant) automation returns a nil schedule. An empty timezone falls back to
-// UTC; invalid time or timezone is reported so the handler can flash.
-func ParseSchedule(mode, hm, tz string) (*Schedule, error) {
-	if mode != "fixed" || hm == "" {
+// AllDays is the default weekday set (every day).
+func AllDays() []int {
+	return []int{1, 2, 3, 4, 5, 6, 7}
+}
+
+// ParseSchedule validates the "how to fire" form inputs and turns them into a
+// rule. Modes: ""|"instant" (fire immediately), "fixed" (daily window at HH:MM
+// on chosen weekdays in the given IANA zone), "delayed" (N minutes after the
+// event). Validates the fixed window strictly (time, timezone, at least one
+// day) and the delay strictly (positive).
+func ParseSchedule(mode, hm, tz string, days []string, delayMinutes int) (*Schedule, error) {
+	switch mode {
+	case "", "instant":
 		return nil, nil
+	case "fixed":
+		t, err := time.Parse("15:04", hm)
+		if err != nil {
+			return nil, errors.New("invalid send time")
+		}
+		if tz == "" {
+			tz = "UTC"
+		}
+		if _, err := time.LoadLocation(tz); err != nil {
+			return nil, errors.New("invalid timezone")
+		}
+		var sendDays []int
+		for _, d := range days {
+			n, err := strconv.Atoi(d)
+			if err != nil || n < 1 || n > 7 {
+				return nil, errors.New("invalid send day")
+			}
+			sendDays = append(sendDays, n)
+		}
+		if len(sendDays) == 0 {
+			return nil, errors.New("select at least one send day")
+		}
+		minute := t.Hour()*60 + t.Minute()
+		return &Schedule{SendMinute: &minute, Timezone: tz, Days: sendDays}, nil
+	case "delayed":
+		if delayMinutes <= 0 {
+			return nil, errors.New("delay must be a positive number of minutes")
+		}
+		return &Schedule{DelayMinute: &delayMinutes, Days: AllDays()}, nil
+	default:
+		return nil, errors.New("unknown automation type")
 	}
-	t, err := time.Parse("15:04", hm)
-	if err != nil {
-		return nil, errors.New("invalid send time")
-	}
-	if tz == "" {
-		tz = "UTC"
-	}
-	if _, err := time.LoadLocation(tz); err != nil {
-		return nil, errors.New("invalid timezone")
-	}
-	minute := t.Hour()*60 + t.Minute()
-	return &Schedule{SendMinute: &minute, Timezone: tz}, nil
 }
 
-// Schedule returns the automation's deliverability rule, or nil when it fires
+// Schedule returns the automation's delivery rule, or nil when it fires
 // instantly.
 func (a Automation) Schedule() *Schedule {
-	if a.SendTime == nil {
+	s := &Schedule{
+		Timezone: a.SendTimezone,
+		Days:     a.SendDays,
+	}
+	if a.SendTime != nil {
+		m := a.SendTime.Hour()*60 + a.SendTime.Minute()
+		s.SendMinute = &m
+	}
+	if a.DelayMinutes != nil {
+		d := *a.DelayMinutes
+		s.DelayMinute = &d
+	}
+	if s.SendMinute == nil && s.DelayMinute == nil {
 		return nil
 	}
-	minute := a.SendTime.Hour()*60 + a.SendTime.Minute()
-	return &Schedule{SendMinute: &minute, Timezone: a.SendTimezone}
+	if len(s.Days) == 0 {
+		s.Days = AllDays()
+	}
+	if s.Timezone == "" {
+		s.Timezone = "UTC"
+	}
+	return s
 }
 
 // ListByShop returns the automations configured for a shop.
 func (p *Processor) ListByShop(ctx context.Context, shopID uuid.UUID) ([]Automation, error) {
 	rows, err := p.pool.Query(ctx, `
-		SELECT id, shop_id, event_source, order_status, template_id, enabled,
-		       send_time, send_timezone, created_at, updated_at
+		SELECT id, shop_id, name, description, event_source, order_status, template_id, enabled,
+		       send_time, send_timezone, send_days, delay_minutes, created_at, updated_at
 		FROM automations
 		WHERE shop_id = $1
-		ORDER BY created_at`,
+		ORDER BY name, created_at`,
 		shopID,
 	)
 	if err != nil {
@@ -94,8 +148,9 @@ func (p *Processor) ListByShop(ctx context.Context, shopID uuid.UUID) ([]Automat
 	var out []Automation
 	for rows.Next() {
 		var a Automation
-		if err := rows.Scan(&a.ID, &a.ShopID, &a.EventSource, &a.OrderStatus, &a.TemplateID,
-			&a.Enabled, &a.SendTime, &a.SendTimezone, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.ShopID, &a.Name, &a.Description, &a.EventSource, &a.OrderStatus,
+			&a.TemplateID, &a.Enabled, &a.SendTime, &a.SendTimezone, &a.SendDays, &a.DelayMinutes,
+			&a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -103,10 +158,39 @@ func (p *Processor) ListByShop(ctx context.Context, shopID uuid.UUID) ([]Automat
 	return out, rows.Err()
 }
 
+// createFields turns a schedule into the column values INSERT/UPDATE share.
+type scheduleColumns struct {
+	sendTime    *time.Time
+	timezone    string
+	days        []int
+	delayMinute *int
+}
+
+func scheduleToColumns(s *Schedule) scheduleColumns {
+	cols := scheduleColumns{timezone: "UTC", days: AllDays()}
+	if s == nil {
+		return cols
+	}
+	if s.Timezone != "" {
+		cols.timezone = s.Timezone
+	}
+	if len(s.Days) > 0 {
+		cols.days = s.Days
+	}
+	if s.SendMinute != nil {
+		tm := time.Date(0, time.January, 1, *s.SendMinute/60, *s.SendMinute%60, 0, 0, time.UTC)
+		cols.sendTime = &tm
+	}
+	if s.DelayMinute != nil {
+		cols.delayMinute = s.DelayMinute
+	}
+	return cols
+}
+
 // Create records a new automation. The source must be one of the known event
 // sources; the pair (shop, source, status) is unique. A nil schedule fires the
 // automation the moment the event arrives.
-func (p *Processor) Create(ctx context.Context, shopID uuid.UUID, source, status string, templateID uuid.UUID, schedule *Schedule) error {
+func (p *Processor) Create(ctx context.Context, shopID uuid.UUID, source, status string, templateID uuid.UUID, schedule *Schedule, name, description string) error {
 	if source != SourceConverty && source != SourceDelivery {
 		return errors.New("unknown automation event source")
 	}
@@ -117,29 +201,55 @@ func (p *Processor) Create(ctx context.Context, shopID uuid.UUID, source, status
 		return errors.New("automation template is required")
 	}
 
-	var sendTime *time.Time
-	sendTimezone := "UTC"
-	if schedule != nil {
-		if schedule.Timezone != "" {
-			sendTimezone = schedule.Timezone
-		}
-		if schedule.SendMinute != nil {
-			tm := time.Date(0, time.January, 1, *schedule.SendMinute/60, *schedule.SendMinute%60, 0, 0, time.UTC)
-			sendTime = &tm
-		}
-	}
-
+	cols := scheduleToColumns(schedule)
 	tag, err := p.pool.Exec(ctx, `
-		INSERT INTO automations (shop_id, event_source, order_status, template_id, enabled, send_time, send_timezone)
-		VALUES ($1, $2, $3, $4, true, $5, $6)
+		INSERT INTO automations (
+			shop_id, name, description, event_source, order_status, template_id, enabled,
+			send_time, send_timezone, send_days, delay_minutes
+		) VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $9, $10)
 		ON CONFLICT (shop_id, event_source, order_status) DO NOTHING`,
-		shopID, source, status, templateID, sendTime, sendTimezone,
+		shopID, name, description, source, status, templateID,
+		cols.sendTime, cols.timezone, cols.days, cols.delayMinute,
 	)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrDuplicate
+	}
+	return nil
+}
+
+// Update overwrites everything about an existing automation (trigger, template,
+// naming, delivery rule) for one shop. Changing the trigger onto an already
+// used one surfaces ErrDuplicate via the unique constraint.
+func (p *Processor) Update(ctx context.Context, shopID, id uuid.UUID, source, status string, templateID uuid.UUID, schedule *Schedule, name, description string) error {
+	if source != SourceConverty && source != SourceDelivery {
+		return errors.New("unknown automation event source")
+	}
+	if status == "" {
+		return errors.New("automation trigger is required")
+	}
+	if templateID == uuid.Nil {
+		return errors.New("automation template is required")
+	}
+
+	cols := scheduleToColumns(schedule)
+	_, err := p.pool.Exec(ctx, `
+		UPDATE automations
+		SET name = $3, description = $4, event_source = $5, order_status = $6, template_id = $7,
+		    send_time = $8, send_timezone = $9, send_days = $10, delay_minutes = $11,
+		    updated_at = now()
+		WHERE id = $1 AND shop_id = $2`,
+		id, shopID, name, description, source, status, templateID,
+		cols.sendTime, cols.timezone, cols.days, cols.delayMinute,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrDuplicate
+		}
+		return err
 	}
 	return nil
 }
@@ -165,21 +275,40 @@ func (p *Processor) Delete(ctx context.Context, shopID, id uuid.UUID) error {
 	return err
 }
 
+// Automation returns one automation by id, or nil when it does not belong to
+// the shop.
+func (p *Processor) Automation(ctx context.Context, shopID, id uuid.UUID) (*Automation, error) {
+	var a Automation
+	err := p.pool.QueryRow(ctx, `
+		SELECT id, shop_id, name, description, event_source, order_status, template_id, enabled,
+		       send_time, send_timezone, send_days, delay_minutes, created_at, updated_at
+		FROM automations
+		WHERE id = $1 AND shop_id = $2`,
+		id, shopID,
+	).Scan(&a.ID, &a.ShopID, &a.Name, &a.Description, &a.EventSource, &a.OrderStatus,
+		&a.TemplateID, &a.Enabled, &a.SendTime, &a.SendTimezone, &a.SendDays, &a.DelayMinutes,
+		&a.CreatedAt, &a.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return &a, err
+}
+
 // match returns the enabled automation for a trigger, or an empty automation
 // when none (or one whose template was deleted) is configured.
 func (p *Processor) match(ctx context.Context, shopID uuid.UUID, source, status string) (Automation, error) {
 	var a Automation
 	err := p.pool.QueryRow(ctx, `
-		SELECT a.id, a.shop_id, a.event_source, a.order_status, a.template_id, a.enabled,
-		       a.send_time, a.send_timezone, a.created_at, a.updated_at
+		SELECT a.id, a.shop_id, a.name, a.description, a.event_source, a.order_status, a.template_id, a.enabled,
+		       a.send_time, a.send_timezone, a.send_days, a.delay_minutes, a.created_at, a.updated_at
 		FROM automations a
 		JOIN templates t ON t.id = a.template_id
 		WHERE a.shop_id = $1 AND a.event_source = $2 AND a.order_status = $3
 		  AND a.enabled AND t.approval_status = 'approved' AND t.marketing_flagged = false
 		LIMIT 1`,
 		shopID, source, status,
-	).Scan(&a.ID, &a.ShopID, &a.EventSource, &a.OrderStatus, &a.TemplateID,
-		&a.Enabled, &a.SendTime, &a.SendTimezone, &a.CreatedAt, &a.UpdatedAt)
+	).Scan(&a.ID, &a.ShopID, &a.Name, &a.Description, &a.EventSource, &a.OrderStatus, &a.TemplateID,
+		&a.Enabled, &a.SendTime, &a.SendTimezone, &a.SendDays, &a.DelayMinutes, &a.CreatedAt, &a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Automation{}, nil
 	}
@@ -187,7 +316,7 @@ func (p *Processor) match(ctx context.Context, shopID uuid.UUID, source, status 
 }
 
 // DeliveryStatuses returns the delivery trigger statuses to present in the
-// automation creation form.
+// automation form.
 func DeliveryStatuses() []string {
 	return delivery.KnownStatuses()
 }

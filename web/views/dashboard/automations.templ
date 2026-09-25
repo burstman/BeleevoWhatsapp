@@ -2,6 +2,7 @@ package viewsdashboard
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -16,37 +17,178 @@ type AutomationFlash struct {
 	Info  string
 }
 
-// automationStatusLabel renders the trigger key with a friendly origin label.
-templ triggerCell(a automations.Automation) {
-	<div>
-		<span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{ automations.SourceLabel(a.EventSource) }</span>
-		<span class="mt-1 block text-sm font-medium text-slate-900">{ a.OrderStatus }</span>
+func typeLabel(a automations.Automation) string {
+	if a.DelayMinutes != nil {
+		return "Retardée"
+	}
+	if a.SendTime != nil {
+		return "Programmée"
+	}
+	return "Instantanée"
+}
+
+func typeDetail(a automations.Automation) string {
+	if a.DelayMinutes != nil {
+		return fmt.Sprintf("%d min après l'événement", *a.DelayMinutes)
+	}
+	if a.SendTime != nil {
+		tz := a.SendTimezone
+		if tz == "" {
+			tz = "UTC"
+		}
+		return fmt.Sprintf("%02d:%02d · %s", a.SendTime.Hour(), a.SendTime.Minute(), tz)
+	}
+	return ""
+}
+
+var dayNames = [7]string{"Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"}
+
+func daysLabel(days []int) string {
+	if len(days) == 0 {
+		return "Tous les jours"
+	}
+	if len(days) == 7 {
+		return "Tous les jours"
+	}
+	var parts []string
+	for _, d := range days {
+		if d >= 1 && d <= 7 {
+			parts = append(parts, dayNames[d-1])
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func dayChecked(a *automations.Automation, weekday int) bool {
+	if a == nil {
+		return true
+	}
+	for _, d := range a.SendDays {
+		if d == weekday {
+			return true
+		}
+	}
+	return false
+}
+
+func sendTimeValue(a *automations.Automation) string {
+	if a == nil || a.SendTime == nil {
+		return ""
+	}
+	return fmt.Sprintf("%02d:%02d", a.SendTime.Hour(), a.SendTime.Minute())
+}
+
+func delayValue(a *automations.Automation) int {
+	if a == nil || a.DelayMinutes == nil {
+		return 0
+	}
+	return *a.DelayMinutes
+}
+
+func selectedMode(a *automations.Automation) string {
+	if a == nil {
+		return "instant"
+	}
+	if a.DelayMinutes != nil {
+		return "delayed"
+	}
+	if a.SendTime != nil {
+		return "fixed"
+	}
+	return "instant"
+}
+
+templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string) {
+	<div class="p-5">
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<div class="flex items-center gap-2">
+					<span class="text-base font-bold text-slate-900">{ a.Name }</span>
+					if a.Enabled {
+						<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Activé</span>
+					} else {
+						<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">En pause</span>
+					}
+				</div>
+				if a.Description != "" {
+					<div class="mt-1 text-sm text-slate-500">{ a.Description }</div>
+				}
+			</div>
+			<div class="flex items-center gap-2">
+				<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/toggle") }
+					onsubmit="return true">
+					if a.Enabled {
+						<input type="hidden" name="enabled" value="0" />
+						<button type="submit"
+							class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Pause</button>
+					} else {
+						<input type="hidden" name="enabled" value="1" />
+						<button type="submit"
+							class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Activer</button>
+					}
+				</form>
+				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/edit") }
+					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Modifier</a>
+				<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/delete") }
+					onsubmit="return confirm('Supprimer cette automation ?')">
+					<button type="submit"
+						class="rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">Supprimer</button>
+				</form>
+			</div>
+		</div>
+
+		<div class="mt-4 grid grid-cols-2 gap-4 border-y border-slate-100 py-3 lg:grid-cols-4">
+			<div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Type</div>
+				<div class="mt-1 text-sm font-medium text-slate-700">{ typeLabel(a) }</div>
+				if a.SendTime != nil && len(a.SendDays) > 0 {
+					<div class="text-xs text-slate-400">{ daysLabel(a.SendDays) }</div>
+				}
+				<div class="text-xs text-slate-400">{ typeDetail(a) }</div>
+			</div>
+			<div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Déclencheur</div>
+				<div class="mt-1">
+					<span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{ automations.SourceLabel(a.EventSource) }</span>
+				</div>
+				<div class="mt-1 text-sm font-semibold text-slate-900">{ a.OrderStatus }</div>
+			</div>
+			<div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Template</div>
+				if a.TemplateID == uuid.Nil {
+					<div class="mt-1">
+						<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600">Supprimé</span>
+					</div>
+				} else {
+					<div class="mt-1">
+						<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Approuvé</span>
+					</div>
+					<div class="mt-1 text-sm font-medium text-slate-900">{ templateNames[a.TemplateID] }</div>
+				}
+			</div>
+			<div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Message</div>
+				<div class="mt-1 truncate text-sm text-slate-500">{ templateBodies[a.TemplateID] }</div>
+			</div>
+		</div>
 	</div>
 }
 
-func scheduleLabel(a automations.Automation) string {
-	sch := a.Schedule()
-	if sch == nil || sch.SendMinute == nil {
-		return "Instant"
-	}
-	h := *sch.SendMinute / 60
-	m := *sch.SendMinute % 60
-	tz := sch.Timezone
-	if tz == "" {
-		tz = "UTC"
-	}
-	return fmt.Sprintf("%02d:%02d (%s)", h, m, tz)
-}
-
-templ AutomationsPage(page components.Page, list []automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, deliveryStatuses []string, flash AutomationFlash) {
+templ AutomationsPage(page components.Page, list []automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, deliveryStatuses []string, flash AutomationFlash) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
-			<div>
-				<h2 class="text-xl font-semibold text-slate-900">Automations</h2>
-				<p class="text-sm text-slate-500">
-					Map an order event — from Converty or from your delivery provider — to an approved
-					template, and the platform sends it automatically.
-				</p>
+			<div class="flex items-center justify-between gap-4">
+				<div>
+					<h2 class="text-2xl font-bold text-slate-900">Automations</h2>
+					<p class="mt-1 text-sm text-slate-500">
+						Chaque automation envoie un template approuvé quand un événement se produit —
+						Instantané, à heure fixe ou après un délai.
+					</p>
+				</div>
+				<a href="/automations/new"
+					class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-200">
+					Nouvelle automation
+				</a>
 			</div>
 
 			if flash.Error != "" {
@@ -56,211 +198,32 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 				<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash.Info }</div>
 			}
 
-			<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-				<div class="flex items-center justify-between">
-					<div>
-						<h3 class="text-sm font-semibold text-slate-700">New automation</h3>
-						<p class="mt-1 text-xs text-slate-500">
-							Trigger <span class="font-medium">once per order / parcel</span> — a send is
-							recorded and a retried webhook will never double-send.
-						</p>
+			if len(list) == 0 {
+				<div class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+					<div class="text-sm font-semibold text-slate-700">Aucune automation</div>
+					<div class="mt-1 text-sm text-slate-500">
+						Créez la première — par exemple un événement "delivered" qui envoie votre template
+						order_delivered à 10h00.
 					</div>
-					<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">UTILITY</span>
+					<a href="/automations/new"
+						class="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+						Creer une automation
+					</a>
 				</div>
-
-				<form method="post" action="/automations" class="mt-4 space-y-3">
-					<div class="grid gap-3 sm:grid-cols-3">
-						<div>
-							<label for="eventSource" class="block text-xs font-medium text-slate-600">Event source</label>
-							<select id="eventSource" name="event_source" required
-								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-								<option value="converty">Order event (Converty)</option>
-								<option value="delivery">Delivery event (provider)</option>
-							</select>
-						</div>
-						<div id="convertyTrigger">
-							<label for="eventStatus" class="block text-xs font-medium text-slate-600">Order status to trigger on</label>
-							<input id="eventStatus" name="event_status" required list="convertyStatuses"
-								placeholder="e.g. pending, confirmed, shipped, cancelled"
-								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-							<datalist id="convertyStatuses">
-								<option value="pending"></option>
-								<option value="confirmed"></option>
-								<option value="shipped"></option>
-								<option value="delivered"></option>
-								<option value="cancelled"></option>
-							</datalist>
-						</div>
-						<div id="deliveryTrigger" class="hidden">
-							<label for="eventStatusDelivery" class="block text-xs font-medium text-slate-600">Delivery status to trigger on</label>
-							<select id="eventStatusDelivery" name="event_status_delivery" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-								for _, s := range deliveryStatuses {
-									<option value={ s }>{ s }</option>
-								}
-							</select>
-						</div>
-						<div>
-							<label for="templateSelect" class="block text-xs font-medium text-slate-600">Template</label>
-							<select id="templateSelect" name="template_id" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-								if len(templates) == 0 {
-									<option value="">No approved templates yet</option>
-								} else {
-									for _, t := range templates {
-										<option value={ t.ID.String() }>{ t.Name } ({ t.Language })</option>
-									}
-								}
-							</select>
-						</div>
+			} else {
+				for _, a := range list {
+					<div class={ templ.SafeClass(borderClass(a.Enabled)) }>
+						@automationCardBody(a, templateNames, templateBodies)
 					</div>
-
-					<div class="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 sm:grid-cols-3">
-						<div>
-							<label for="sendMode" class="block text-xs font-medium text-slate-600">Send time</label>
-							<select id="sendMode" name="send_mode"
-								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-								<option value="instant">Instant — as soon as the event happens</option>
-								<option value="fixed">Fixed time of day</option>
-							</select>
-						</div>
-						<div id="fixedSend" class="hidden">
-							<label for="sendTime" class="block text-xs font-medium text-slate-600">Send at (daily)</label>
-							<input id="sendTime" name="send_time" type="time"
-								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-						</div>
-						<div id="fixedTimezone" class="hidden">
-							<label for="sendTimezone" class="block text-xs font-medium text-slate-600">Timezone (IANA)</label>
-							<input id="sendTimezone" name="send_timezone" type="text" value="UTC" placeholder="e.g. UTC (default), Africa/Tunis"
-								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-						</div>
-						<div class="sm:col-span-3">
-							<p class="text-xs text-slate-500">
-								An event arriving <span class="font-medium">before</span> the time waits until it;
-								an event arriving <span class="font-medium">at or after</span> the time is sent right away.
-							</p>
-						</div>
-					</div>
-
-					<div class="flex items-center gap-3">
-						<button type="submit"
-							class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-							Create automation
-						</button>
-						<span class="text-xs text-slate-500">Variables: {"{{1}}"} customer, {"{{2}}"} order, {"{{3}}"} status</span>
-					</div>
-				</form>
-			</div>
-
-			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-				<div class="border-b border-slate-100 px-6 py-4">
-					<h3 class="text-sm font-semibold text-slate-700">Your automations</h3>
-				</div>
-				if len(list) == 0 {
-					<div class="px-6 py-10 text-center text-sm text-slate-500">
-						No automations yet. Create one above — for example "delivered" → your order_delivered template.
-					</div>
-				} else {
-					<table class="w-full text-left text-sm">
-						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
-							<tr>
-								<th class="px-6 py-3 font-medium">Trigger</th>
-								<th class="px-6 py-3 font-medium">Template</th>
-								<th class="px-6 py-3 font-medium">Send time</th>
-								<th class="px-6 py-3 font-medium">Status</th>
-								<th class="px-6 py-3 font-medium"></th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-slate-100">
-							for _, a := range list {
-								<tr>
-									<td class="px-6 py-3">
-										@triggerCell(a)
-									</td>
-									<td class="px-6 py-3 font-medium text-slate-900">
-										if a.TemplateID == uuid.Nil {
-											<span class="text-slate-400">(template deleted)</span>
-										} else {
-											{ templateNames[a.TemplateID] }
-										}
-									</td>
-									<td class="px-6 py-3 text-slate-600">
-										if a.SendTime == nil {
-											<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Instant</span>
-										} else {
-											<span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{ scheduleLabel(a) }</span>
-										}
-									</td>
-									<td class="px-6 py-3">
-										if a.Enabled {
-											<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
-										} else {
-											<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Paused</span>
-										}
-									</td>
-									<td class="px-6 py-3">
-										<div class="flex items-center justify-end gap-2">
-											<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/toggle") }>
-												if a.Enabled {
-													<input type="hidden" name="enabled" value="0" />
-													<button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Pause</button>
-												} else {
-													<input type="hidden" name="enabled" value="1" />
-													<button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Resume</button>
-												}
-											</form>
-											<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/delete") }
-												onsubmit="return confirm('Delete this automation?')">
-												<button type="submit" class="rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">Delete</button>
-											</form>
-										</div>
-									</td>
-								</tr>
-							}
-						</tbody>
-					</table>
 				}
-			</div>
+			}
 		</div>
-
-		<script>
-			(function () {
-				var source = document.getElementById("eventSource");
-				var conv = document.getElementById("convertyTrigger");
-				var del = document.getElementById("deliveryTrigger");
-				var status = document.getElementById("eventStatus");
-				var statusDel = document.getElementById("eventStatusDelivery");
-				if (!source || !conv || !del || !status || !statusDel) return;
-				function sync() {
-					if (source.value === "delivery") {
-						conv.classList.add("hidden");
-						del.classList.remove("hidden");
-						status.required = false;
-						statusDel.name = "event_status";
-					} else {
-						del.classList.add("hidden");
-						conv.classList.remove("hidden");
-						status.required = true;
-						statusDel.name = "event_status_delivery";
-					}
-				}
-				source.addEventListener("change", sync);
-				sync();
-
-				var mode = document.getElementById("sendMode");
-				var fixedTime = document.getElementById("fixedSend");
-				var fixedTz = document.getElementById("fixedTimezone");
-				var timeInput = document.getElementById("sendTime");
-				var tzInput = document.getElementById("sendTimezone");
-				if (!mode || !fixedTime || !fixedTz || !timeInput || !tzInput) return;
-				function syncMode() {
-					var isFixed = mode.value === "fixed";
-					fixedTime.classList.toggle("hidden", !isFixed);
-					fixedTz.classList.toggle("hidden", !isFixed);
-					timeInput.disabled = !isFixed;
-					tzInput.disabled = !isFixed;
-				}
-				mode.addEventListener("change", syncMode);
-				syncMode();
-			})();
-		</script>
 	}
+}
+
+func borderClass(enabled bool) string {
+	if enabled {
+		return "rounded-xl border border-slate-200 border-l-4 border-l-emerald-500 bg-white shadow-sm"
+	}
+	return "rounded-xl border border-slate-200 border-l-4 border-l-slate-300 bg-white shadow-sm"
 }

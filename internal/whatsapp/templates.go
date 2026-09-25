@@ -31,6 +31,25 @@ type MerchantTemplate struct {
 	UpdatedAt        time.Time
 }
 
+// TemplateBody extracts the BODY text of a template's components, used by the
+// automations UI to preview what a message looks like. Returns "" when the
+// components cannot be parsed or carry no body.
+func TemplateBody(t MerchantTemplate) string {
+	var comps []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(t.Components, &comps); err != nil {
+		return ""
+	}
+	for _, c := range comps {
+		if c.Type == "BODY" {
+			return c.Text
+		}
+	}
+	return ""
+}
+
 // TemplateDraft is what a merchant submits. Raw components are validated by
 // Meta itself on creation; the platform stores them verbatim so the send gate
 // can count variables and the frontend can never claim approval.

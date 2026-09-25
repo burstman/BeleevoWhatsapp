@@ -1,0 +1,320 @@
+package viewsdashboard
+
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+
+	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+templ AutomationFormPage(page components.Page, automation *automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, deliveryStatuses []string, isEdit bool, flash AutomationFlash) {
+	@layouts.Shell(page) {
+		<div class="mx-auto max-w-6xl">
+			<div class="flex items-center justify-between">
+				<div>
+					<h2 class="text-2xl font-bold text-slate-900">
+						if isEdit {
+							Modifier l'automation
+						} else {
+							Nouvelle automation
+						}
+					</h2>
+					<p class="mt-1 text-sm text-slate-500">
+						Le template est choisi parmi vos templates approuvés — son contenu se modifie
+						depuis le menu Templates.
+					</p>
+				</div>
+				<a href="/automations" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Retour</a>
+			</div>
+
+			if flash.Error != "" {
+				<div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{ flash.Error }</div>
+			}
+
+			<form method="post" action={ templ.SafeURL(formAction(automation)) } class="mt-6 grid gap-6 lg:grid-cols-3">
+				<div class="space-y-6 lg:col-span-2">
+					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div>
+								<label for="name" class="block text-sm font-medium text-slate-700">Nom de l'automation</label>
+								<input id="name" name="name" type="text" required value={ automationName(automation) }
+									placeholder="Ex: Notification de livraison"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+							</div>
+							<div>
+								<label for="description" class="block text-sm font-medium text-slate-700">Description (optionnel)</label>
+								<input id="description" name="description" type="text" value={ automationDescription(automation) }
+									placeholder="Ce que cette automation fait"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+							</div>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-slate-700">Type d'envoi</label>
+							<div class="mt-2 flex flex-col gap-2">
+								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+									<input type="radio" name="send_mode" value="instant" checked={ selectedMode(automation) == "instant" }
+										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
+									Instantanée — envoyer dès que l'événement arrive
+								</label>
+								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+									<input type="radio" name="send_mode" value="fixed" checked={ selectedMode(automation) == "fixed" }
+										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
+									Programmée — envoyer à une heure fixe les jours choisis
+								</label>
+								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+									<input type="radio" name="send_mode" value="delayed" checked={ selectedMode(automation) == "delayed" }
+										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
+									Retardée — envoyer quelques minutes après l'événement
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+						<div class="grid gap-4 sm:grid-cols-3">
+							<div>
+								<label for="eventSource" class="block text-sm font-medium text-slate-700">Source d'événement</label>
+								<select id="eventSource" name="event_source"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+									<option value="converty" selected={ automationEventSource(automation) == "converty" }>Order event (Converty)</option>
+									<option value="delivery" selected={ automationEventSource(automation) == "delivery" }>Delivery event (provider)</option>
+								</select>
+							</div>
+							<div id="convertyTrigger">
+								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
+								<input id="eventStatus" name="event_status" required list="convertyStatuses" value={ automationStatus(automation) }
+									placeholder="e.g. delivered, cancelled"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+								<datalist id="convertyStatuses">
+									<option value="pending"></option>
+									<option value="confirmed"></option>
+									<option value="shipped"></option>
+									<option value="delivered"></option>
+									<option value="cancelled"></option>
+								</datalist>
+							</div>
+							<div id="deliveryTrigger" class="hidden">
+								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
+								<select id="eventStatusDelivery" name="event_status_delivery" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+									for _, s := range deliveryStatuses {
+										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
+									}
+								</select>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-slate-700">Intégration</label>
+								<input type="text" readonly value={ page.ShopName }
+									class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500" />
+							</div>
+						</div>
+					</div>
+
+					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+						<label for="templateSelect" class="block text-sm font-medium text-slate-700">Message (template approuvé)</label>
+						if len(templates) == 0 {
+							<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+								Aucun template approuvé pour cette boutique. Créez et faites approuver un template dans le menu Templates.
+							</div>
+						} else {
+							<select id="templateSelect" name="template_id" required
+								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+								<option value="" disabled selected={ automation == nil && automationTemplateID(automation) == uuid.Nil }>Choisir un template…</option>
+								for _, t := range templates {
+									<option value={ t.ID.String() } selected={ automationTemplateID(automation) == t.ID }>{ t.Name } ({ t.Language })</option>
+								}
+							</select>
+						}
+					</div>
+
+					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+						<h3 class="text-sm font-semibold text-slate-700">Paramètres de planification</h3>
+
+						<div id="fixedSchedule" class="hidden">
+							<div class="grid gap-4 sm:grid-cols-2">
+								<div>
+									<label class="block text-sm font-medium text-slate-700">Jours d'envoi</label>
+									<div class="mt-2 grid grid-cols-4 gap-2">
+										for d := 1; d <= 7; d++ {
+											<label class="flex cursor-pointer items-center gap-1.5 text-sm text-slate-700">
+												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) }
+													class="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500" />
+												{ dayNames[d-1] }
+											</label>
+										}
+									</div>
+								</div>
+								<div>
+									<label for="sendTime" class="block text-sm font-medium text-slate-700">Heure d'envoi</label>
+									<input id="sendTime" name="send_time" type="time" value={ sendTimeValue(automation) }
+										class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+								</div>
+							</div>
+							<div class="mt-4">
+								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Fuseau horaire (IANA)</label>
+								<input id="sendTimezone" name="send_timezone" type="text" value={ sendTimezoneValue(automation) }
+									placeholder="Ex: Africa/Tunis, UTC"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+							</div>
+							<p class="mt-3 text-xs text-slate-500">
+								Un événement arrivant avant l'heure attend jusqu'à celle-ci ; arrivant à l'heure ou
+								après, il est envoyé immédiatement. Sur un jour non sélectionné, l'envoi attend le
+								prochain jour choisi à la même heure.
+							</p>
+						</div>
+
+						<div id="delayedSchedule" class="hidden">
+							<div class="sm:w-64">
+								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Délai après l'événement (minutes)</label>
+								<input id="sendDelay" name="send_delay_minutes" type="number" min="1" max="20160" value={ delayValue(automation) }
+									placeholder="Ex: 30"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+							</div>
+							<p class="mt-3 text-xs text-slate-500">Le message part { delayValue(automation) } minutes après l'événement, même si l'heure d'envoi quotidienne est passée.</p>
+						</div>
+					</div>
+
+					<div class="flex items-center gap-3 pb-6">
+						<button type="submit"
+							class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
+							if isEdit {
+								Enregistrer
+							} else {
+								Créer l'automation
+							}
+						</button>
+						<a href="/automations" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700">Annuler</a>
+					</div>
+				</div>
+
+				<aside class="lg:col-span-1">
+					<div class="sticky top-6 rounded-xl border border-slate-200 bg-[#edf6ff] p-5">
+						<div class="text-sm font-semibold text-slate-800">Aperçu du message</div>
+						<div class="mt-1 text-xs text-slate-500">Ce que le client recevra</div>
+						<div id="previewBody" class="mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+							Sélectionnez un template pour l'aperçu.
+						</div>
+						<div class="mt-3 text-xs text-slate-500">
+							Les variables du template ({"{{1}}"} client, {"{{2}}"} commande, {"{{3}}"} statut) sont
+							remplies automatiquement à l'envoi.
+						</div>
+					</div>
+				</aside>
+			</form>
+
+			for _, t := range templates {
+				<div id={ templ.SafeURL("template-body-" + t.ID.String()) } class="hidden">{ templateBodies[t.ID] }</div>
+			}
+		</div>
+
+		<script>
+			(function () {
+				var modeInputs = document.querySelectorAll("input[name=send_mode]");
+				var fixed = document.getElementById("fixedSchedule");
+				var delayed = document.getElementById("delayedSchedule");
+				if (modeInputs.length && fixed && delayed) {
+					function syncMode() {
+						var value = null;
+						for (var i = 0; i < modeInputs.length; i++) {
+							if (modeInputs[i].checked) { value = modeInputs[i].value; break; }
+						}
+						fixed.classList.toggle("hidden", value !== "fixed");
+						delayed.classList.toggle("hidden", value !== "delayed");
+					}
+					for (var i = 0; i < modeInputs.length; i++) {
+						modeInputs[i].addEventListener("change", syncMode);
+					}
+					syncMode();
+				}
+
+				var source = document.getElementById("eventSource");
+				var conv = document.getElementById("convertyTrigger");
+				var del = document.getElementById("deliveryTrigger");
+				var status = document.getElementById("eventStatus");
+				var statusDel = document.getElementById("eventStatusDelivery");
+				if (source && conv && del && status && statusDel) {
+					function syncSource() {
+						if (source.value === "delivery") {
+							conv.classList.add("hidden");
+							del.classList.remove("hidden");
+							status.required = false;
+							statusDel.name = "event_status";
+						} else {
+							del.classList.add("hidden");
+							conv.classList.remove("hidden");
+							status.required = true;
+							statusDel.name = "event_status_delivery";
+						}
+					}
+					source.addEventListener("change", syncSource);
+					syncSource();
+				}
+
+				var preview = document.getElementById("previewBody");
+				var select = document.getElementById("templateSelect");
+				if (preview && select) {
+					function syncPreview() {
+						var el = document.getElementById("template-body-" + select.value);
+						preview.textContent = el ? el.textContent.trim() : "Sélectionnez un template pour l'aperçu.";
+						if (preview.textContent === "") { preview.textContent = "Sélectionnez un template pour l'aperçu."; }
+					}
+					select.addEventListener("change", syncPreview);
+					syncPreview();
+				}
+			})();
+		</script>
+	}
+}
+
+func formAction(a *automations.Automation) string {
+	if a == nil {
+		return "/automations"
+	}
+	return "/automations/" + a.ID.String() + "/update"
+}
+
+func automationName(a *automations.Automation) string {
+	if a == nil {
+		return ""
+	}
+	return a.Name
+}
+
+func automationDescription(a *automations.Automation) string {
+	if a == nil {
+		return ""
+	}
+	return a.Description
+}
+
+func automationEventSource(a *automations.Automation) string {
+	if a == nil || a.EventSource == "" {
+		return "converty"
+	}
+	return a.EventSource
+}
+
+func automationStatus(a *automations.Automation) string {
+	if a == nil {
+		return ""
+	}
+	return a.OrderStatus
+}
+
+func automationTemplateID(a *automations.Automation) uuid.UUID {
+	if a == nil {
+		return uuid.Nil
+	}
+	return a.TemplateID
+}
+
+func sendTimezoneValue(a *automations.Automation) string {
+	if a == nil || a.SendTimezone == "" {
+		return "UTC"
+	}
+	return a.SendTimezone
+}

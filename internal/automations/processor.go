@@ -92,18 +92,16 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		return nil
 	}
 
-	sch := automation.Schedule()
 	return p.send(ctx, SendInput{
-		ShopID:          e.ShopID,
-		CustomerID:      cid,
-		TemplateID:      automation.TemplateID,
-		CustomerName:    e.CustomerName,
-		CustomerPhone:   e.CustomerPhone,
-		OrderID:         e.OrderID,
-		StatusLabel:     e.OrderStatus,
-		IdempotencyKey:  "conv:" + e.ShopID.String() + ":" + e.OrderStatus + ":" + e.OrderID,
-		SendMinute:      schMinute(sch),
-		SendTimezone:    schTimezone(sch),
+		ShopID:         e.ShopID,
+		CustomerID:     cid,
+		TemplateID:     automation.TemplateID,
+		CustomerName:   e.CustomerName,
+		CustomerPhone:  e.CustomerPhone,
+		OrderID:        e.OrderID,
+		StatusLabel:    e.OrderStatus,
+		IdempotencyKey: "conv:" + e.ShopID.String() + ":" + e.OrderStatus + ":" + e.OrderID,
+		fire:           ruleFromSchedule(automation.Schedule()),
 	})
 }
 
@@ -154,8 +152,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		OrderID:        orderID,
 		StatusLabel:    change.Label,
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
-		SendMinute:     schMinute(sch),
-		SendTimezone:   schTimezone(sch),
+		fire:           ruleFromSchedule(sch),
 	})
 }
 
@@ -170,9 +167,8 @@ func (p *Processor) ReconcileDelivery(ctx context.Context) error {
 	})
 }
 
-// SendInput is the resolved, ready-to-send automation input. SendMinute (minute
-// of day 0..1439) plus SendTimezone park the send until that wall-clock moment;
-// nil SendMinute means send at once.
+// SendInput is the resolved, ready-to-send automation input. fire decides when
+// the send may happen (see fireRule below).
 type SendInput struct {
 	ShopID         uuid.UUID
 	CustomerID     uuid.UUID
@@ -182,47 +178,93 @@ type SendInput struct {
 	OrderID        string
 	StatusLabel    string
 	IdempotencyKey string
-	SendMinute     *int
-	SendTimezone   string
+	fire           fireRule
 }
 
-func schMinute(s *Schedule) *int {
+// fireRule is the normalized deliverability rule for one automation.
+type fireRule struct {
+	minute   *int   // minute of day 0..1439, set for a fixed daily window
+	delay    *int   // minutes to wait after the event, set for a delayed send
+	timezone string // IANA zone the wall-clock rule lives in
+	days     []int  // ISO weekdays 1..7 the daily window is allowed on
+}
+
+func ruleFromSchedule(s *Schedule) fireRule {
+	r := fireRule{timezone: "UTC", days: AllDays()}
 	if s == nil {
-		return nil
+		return r
 	}
-	return s.SendMinute
+	if s.Timezone != "" {
+		r.timezone = s.Timezone
+	}
+	if len(s.Days) > 0 {
+		r.days = s.Days
+	}
+	r.minute = s.SendMinute
+	r.delay = s.DelayMinute
+	return r
 }
 
-func schTimezone(s *Schedule) string {
-	if s == nil {
-		return "UTC"
+func (r fireRule) location() *time.Location {
+	if l, err := time.LoadLocation(r.timezone); err == nil {
+		return l
 	}
-	if s.Timezone == "" {
-		return "UTC"
-	}
-	return s.Timezone
+	return time.UTC
 }
 
-// nextSendAt resolves the fixed-time-of-day rule into an absolute delivery
-// instant. Events that arrive before the configured time wait until it; events
-// that arrive at or after it fire immediately (the daily window has already
-// opened, so the customer waits no longer). A zero return means "right now".
-func nextSendAt(minute *int, timezone string) time.Time {
-	return resolveSendAt(minute, timezone, time.Now())
+// isoWeekday maps a time to 1..7 with Monday=1, Sunday=7 (ISO 8601).
+// time.Weekday() returns 0 for Sunday, so Sunday must land on 7.
+func isoWeekday(t time.Time) int {
+	return (int(t.Weekday())+6)%7 + 1
 }
 
-func resolveSendAt(minute *int, timezone string, now time.Time) time.Time {
-	if minute == nil {
+func (r fireRule) allows(isoWeekday int) bool {
+	for _, d := range r.days {
+		if d == isoWeekday {
+			return true
+		}
+	}
+	return false
+}
+
+// scheduledFire resolves the delivery rule into an absolute send instant.
+//
+//   - delayed:  the event time + the configured delay.
+//   - instant:  zero — send right now.
+//   - fixed:    on an allowed weekday, an event before the window waits until
+//     it, and an event at/after it fires immediately (the window already
+//     opened). On a non-allowed weekday the send waits for the next allowed
+//     weekday at the same window.
+func scheduledFire(r fireRule, now time.Time) time.Time {
+	loc := r.location()
+	now = now.In(loc)
+
+	if r.delay != nil {
+		return now.Add(time.Duration(*r.delay) * time.Minute)
+	}
+	if r.minute == nil {
 		return time.Time{}
 	}
-	loc := time.UTC
-	if l, err := time.LoadLocation(timezone); err == nil {
-		loc = l
+	if !r.allows(isoWeekday(now)) {
+		return r.nextAllowedDay(now, loc)
 	}
-	now = now.In(loc)
-	at := time.Date(now.Year(), now.Month(), now.Day(), *minute/60, *minute%60, 0, 0, loc)
+	at := time.Date(now.Year(), now.Month(), now.Day(), *r.minute/60, *r.minute%60, 0, 0, loc)
 	if at.After(now) {
 		return at
+	}
+	return time.Time{}
+}
+
+// nextAllowedDay scans the next two weeks for the first allowed weekday and
+// returns that day's window time. Empty day sets never match (treat as today).
+func (r fireRule) nextAllowedDay(now time.Time, loc *time.Location) time.Time {
+	for d := 1; d <= 14; d++ {
+		candidate := now.AddDate(0, 0, d)
+		if !r.allows(isoWeekday(candidate)) {
+			continue
+		}
+		return time.Date(candidate.Year(), candidate.Month(), candidate.Day(),
+			*r.minute/60, *r.minute%60, 0, 0, loc)
 	}
 	return time.Time{}
 }
@@ -261,7 +303,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		IdempotencyKey:  in.IdempotencyKey,
 	}
 
-	queued, err := p.whatsapp.EnqueueSendAt(ctx, job, nextSendAt(in.SendMinute, in.SendTimezone))
+	queued, err := p.whatsapp.EnqueueSendAt(ctx, job, scheduledFire(in.fire, time.Now()))
 	if err != nil {
 		p.log.Warn("automation: enqueue failed, sending inline", "error", err)
 		queued = false
