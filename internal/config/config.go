@@ -42,6 +42,10 @@ type Config struct {
 	// tests and mirrors can point elsewhere.
 	MetaGraphURL string
 
+	// MescolisBaseURL is the Mes Colis Express API base. Overridable so tests
+	// and mirrors can point elsewhere; defaults to https://api.mescolis.tn/api.
+	MescolisBaseURL string
+
 	// DEPRECATED: platform-wide Meta credentials. Every shop now brings its
 	// own WhatsApp number + long-lived token (stored encrypted per shop in
 	// whatsapp_integrations), so sends and template creation no longer read
@@ -91,6 +95,7 @@ func Load() Config {
 		ConvertyRedirectURI:     getenv("CONVERTY_REDIRECT_URI", "http://localhost:"+port+"/auth/converty/callback"),
 		ConvertyEncryptionKey:   getenv("CONVERTY_ENCRYPTION_KEY", ""),
 		MetaGraphURL:            getenv("META_GRAPH_URL", "https://graph.facebook.com"),
+		MescolisBaseURL:         getenv("MESCOLIS_BASE_URL", ""),
 		MetaSystemUserToken:     getenv("META_SYSTEM_USER_TOKEN", ""),
 		MetaPhoneNumberID:       getenv("META_PHONE_NUMBER_ID", ""),
 		MetaMessagingAccountID:  getenv("META_MESSAGING_ACCOUNT_ID", "2883242225383967"),

@@ -45,7 +45,7 @@ func (a *App) handleOverview(k *kit.Kit) error {
 		return err
 	}
 	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	stats, err := a.Dashboard.Stats(k.Request.Context(), active.ID)
@@ -65,7 +65,7 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		return err
 	}
 	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	purged := 0
@@ -123,7 +123,7 @@ func (a *App) handleMessages(k *kit.Kit) error {
 		return err
 	}
 	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	messages, err := a.WhatsApp.Messages(k.Request.Context(), active.ID)
@@ -154,7 +154,7 @@ func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 			return err
 		}
 		if len(all) == 0 {
-			return k.Redirect(http.StatusSeeOther, "/shops")
+			return k.Redirect(http.StatusSeeOther, "/integrations")
 		}
 		page := a.dashboardPage(k, sectionTitle(section), section, active, all)
 		return k.Render(vdashboard.Placeholder(page, section))

@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/auth"
+	"whatsappconverty/internal/automations"
 	"whatsappconverty/internal/converty"
 	vdashboard "whatsappconverty/web/views/dashboard"
 )
@@ -54,6 +55,23 @@ func (a *App) handleConvertyWebhook(k *kit.Kit) error {
 	if event.ShopID != uuid.Nil && event.CustomerPhone != "" {
 		if _, cErr := a.WhatsApp.UpsertCustomer(k.Request.Context(), event.ShopID, event.CustomerName, event.CustomerPhone); cErr != nil {
 			a.Log.Warn("converty webhook customer upsert failed", "shop_id", event.ShopID, "error", cErr)
+		}
+	}
+
+	// Feed the event to the automation engine: order-status automations fire,
+	// and any tracking barcode in the payload registers the parcel so delivery
+	// status changes can trigger automations later. A failure must never fail
+	// the webhook — the event itself is already persisted.
+	if event.ShopID != uuid.Nil && !event.Duplicate {
+		if aErr := a.Automations.OnConvertyEvent(k.Request.Context(), automations.ConvertyEvent{
+			ShopID:        event.ShopID,
+			OrderStatus:   event.OrderStatus,
+			OrderID:       event.OrderID,
+			CustomerName:  event.CustomerName,
+			CustomerPhone: event.CustomerPhone,
+			Barcode:       event.Barcode,
+		}); aErr != nil {
+			a.Log.Warn("converty webhook automation failed", "shop_id", event.ShopID, "error", aErr)
 		}
 	}
 

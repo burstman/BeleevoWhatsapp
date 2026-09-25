@@ -22,6 +22,7 @@ type WebhookEvent struct {
 	OrderStatus   string
 	CustomerPhone string
 	CustomerName  string
+	Barcode       string
 	Payload       []byte
 	PayloadHash   string
 	ReceivedAt    time.Time
@@ -39,6 +40,7 @@ type webhookDecoded struct {
 	StoreSlug     string
 	CustomerPhone string
 	CustomerName  string
+	Barcode       string
 }
 
 // CaptureWebhook ingests one Converty webhook delivery into order_events,
@@ -57,6 +59,7 @@ func (s *Service) CaptureWebhook(ctx context.Context, body []byte) (WebhookEvent
 	event.OrderStatus = decoded.OrderStatus
 	event.CustomerPhone = decoded.CustomerPhone
 	event.CustomerName = decoded.CustomerName
+	event.Barcode = decoded.Barcode
 	event.Payload = body
 	event.PayloadHash = hash
 	event.ReceivedAt = time.Now().UTC()
@@ -113,6 +116,7 @@ func decodeWebhook(body []byte) webhookDecoded {
 	d.StoreSlug = pick(root, "storeSlug", "store_slug", "slug")
 	d.CustomerPhone = pickCustomer(root, "phone", "phoneNumber", "phone_number")
 	d.CustomerName = pickCustomer(root, "name", "customerName", "customer_name", "fullName")
+	d.Barcode = pick(root, "barcode", "trackingNumber", "tracking_number", "trackingCode", "tracking_code", "trackingRef", "tracking_ref")
 	return d
 }
 

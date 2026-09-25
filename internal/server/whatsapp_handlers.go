@@ -21,7 +21,7 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 		return err
 	}
 	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	page := a.dashboardPage(k, "Settings", "settings", active, all)
@@ -111,7 +111,7 @@ func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 		return err
 	}
 	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/shops")
+		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	page := a.dashboardPage(k, "Enable WhatsApp", "settings", active, all)

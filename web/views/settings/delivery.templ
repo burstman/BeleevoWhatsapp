@@ -1,0 +1,161 @@
+package settings
+
+import (
+	"whatsappconverty/internal/delivery"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+type DeliveryFlash struct {
+	Error string
+	Info  string
+}
+
+templ Delivery(page components.Page, integ *delivery.Integration, tracked []delivery.TrackedOrder, flash DeliveryFlash) {
+	@layouts.Shell(page) {
+		<div class="mx-auto max-w-3xl space-y-6">
+			<div>
+				<h1 class="text-2xl font-bold text-slate-900">Delivery</h1>
+				<p class="mt-1 text-sm text-slate-500">
+					Connect a delivery provider so parcel status changes fire your order-event automations.
+					First provider: Mes Colis Express.
+				</p>
+			</div>
+
+			if flash.Error != "" {
+				<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{ flash.Error }</div>
+			}
+			if flash.Info != "" {
+				<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash.Info }</div>
+			}
+
+			if integ == nil {
+				<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+					<h2 class="text-lg font-semibold text-slate-900">Connect Mes Colis Express</h2>
+					<p class="mt-2 text-sm text-slate-600">
+						Paste the API access token of your Mes Colis account. The token is stored
+						encrypted and is validated against the Mes Colis API before saving. Parcels are
+						polled for status changes every couple of minutes.
+					</p>
+					<form method="post" action="/settings/delivery/connect" class="mt-6 space-y-4">
+						<div>
+							<label for="access-token" class="block text-sm font-medium text-slate-700">Mes Colis access token (x-access-token)</label>
+							<input id="access-token" name="access_token" type="password" required
+								placeholder="Paste your Mes Colis access token"
+								class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+						</div>
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<div>
+								<label for="account-code" class="block text-sm font-medium text-slate-700">Account code (optional)</label>
+								<input id="account-code" name="account_code" type="text"
+									placeholder="For sub-account access"
+									class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+							</div>
+							<div class="flex items-end pb-1">
+								<label class="flex items-center gap-2 text-sm text-slate-700">
+									<input type="checkbox" name="allow_sub_account" value="1"
+										class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+									Use sub-account access
+								</label>
+							</div>
+						</div>
+						<button type="submit"
+							class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+							Connect
+						</button>
+					</form>
+				</div>
+			} else {
+				<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+					<div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+						<div class="flex items-center gap-3">
+							<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+								<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Mes Colis connected
+							</span>
+						</div>
+						<form method="post" action="/settings/delivery/disconnect"
+							onsubmit="return confirm('Disconnect Mes Colis? Delivery automations will stop firing.')">
+							<button type="submit"
+								class="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
+								Disconnect
+							</button>
+						</form>
+					</div>
+					<div class="px-6 py-4 text-sm text-slate-600">
+						Parcel statuses are polled automatically. Add the barcodes the poller should
+						follow below — or they register themselves when Converty order events carry a
+						tracking reference.
+					</div>
+				</div>
+			}
+
+			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div class="border-b border-slate-100 px-6 py-4">
+					<h3 class="text-sm font-semibold text-slate-700">Tracked parcels</h3>
+				</div>
+				<form method="post" action="/settings/delivery/track" class="grid grid-cols-1 gap-3 border-b border-slate-100 px-6 py-4 sm:grid-cols-4">
+					<div class="sm:col-span-1">
+						<input name="barcode" required placeholder="Barcode"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+					</div>
+					<div class="sm:col-span-1">
+						<input name="order_id" placeholder="Order id"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+					</div>
+					<div class="sm:col-span-1">
+						<input name="customer_phone" placeholder="Customer phone (+216...)"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+					</div>
+					<div class="sm:col-span-1">
+						<input name="customer_name" placeholder="Customer name"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+					</div>
+					<div class="sm:col-span-4 flex items-center justify-between">
+						<span class="text-xs text-slate-500">The phone lets a delivery automation message the buyer.</span>
+						<button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Track parcel</button>
+					</div>
+				</form>
+				if len(tracked) == 0 {
+					<div class="px-6 py-10 text-center text-sm text-slate-500">
+						No parcels being watched yet. Add a barcode above or wait for Converty order events to register one.
+					</div>
+				} else {
+					<table class="w-full text-left text-sm">
+						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+							<tr>
+								<th class="px-6 py-3 font-medium">Barcode</th>
+								<th class="px-6 py-3 font-medium">Order</th>
+								<th class="px-6 py-3 font-medium">Customer</th>
+								<th class="px-6 py-3 font-medium">Status</th>
+								<th class="px-6 py-3 font-medium"></th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-slate-100">
+							for _, t := range tracked {
+								<tr>
+									<td class="px-6 py-3 font-medium text-slate-900">{ t.Barcode }</td>
+									<td class="px-6 py-3 text-slate-600">{ t.OrderID }</td>
+									<td class="px-6 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>
+									<td class="px-6 py-3">
+										if t.LastStatus == "" {
+											<span class="text-slate-400">waiting for first poll</span>
+										} else {
+											<span class="font-medium text-slate-900">{ t.StatusLabel }</span>
+											<span class="text-xs text-slate-400"> ({ t.LastStatus })</span>
+										}
+									</td>
+									<td class="px-6 py-3 text-right">
+										<form method="post" action={ templ.SafeURL("/settings/delivery/track/" + t.Barcode + "/remove") }
+											onsubmit="return confirm('Stop tracking this parcel?')">
+											<button type="submit" class="text-sm font-medium text-rose-600 transition hover:text-rose-700">Remove</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</div>
+		</div>
+	}
+}

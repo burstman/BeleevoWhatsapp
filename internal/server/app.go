@@ -9,36 +9,44 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"whatsappconverty/internal/auth"
+	"whatsappconverty/internal/automations"
 	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/converty"
 	"whatsappconverty/internal/dashboard"
+	"whatsappconverty/internal/delivery"
 	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
 )
 
 // App wires the dependencies for the web/API process and owns the HTTP router.
 type App struct {
-	Cfg       config.Config
-	Log       *slog.Logger
-	Pool      *pgxpool.Pool
-	Auth      *auth.Service
-	Shops     *shops.Repository
-	Dashboard *dashboard.Repository
-	Converty  *converty.Service
-	WhatsApp  *whatsapp.Service
+	Cfg         config.Config
+	Log         *slog.Logger
+	Pool        *pgxpool.Pool
+	Auth        *auth.Service
+	Shops       *shops.Repository
+	Dashboard   *dashboard.Repository
+	Converty    *converty.Service
+	WhatsApp    *whatsapp.Service
+	Delivery    *delivery.Service
+	Automations *automations.Processor
 }
 
 func New(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *App {
 	shopsRepo := shops.NewRepository(pool)
+	wa := whatsapp.NewService(cfg, pool, log)
+	del := delivery.NewService(cfg, pool, log)
 	return &App{
-		Cfg:       cfg,
-		Log:       log,
-		Pool:      pool,
-		Auth:      auth.NewService(pool),
-		Shops:     shopsRepo,
-		Dashboard: dashboard.NewRepository(pool),
-		Converty:  converty.NewService(cfg, pool, log),
-		WhatsApp:  whatsapp.NewService(cfg, pool, log),
+		Cfg:         cfg,
+		Log:         log,
+		Pool:        pool,
+		Auth:        auth.NewService(pool),
+		Shops:       shopsRepo,
+		Dashboard:   dashboard.NewRepository(pool),
+		Converty:    converty.NewService(cfg, pool, log),
+		WhatsApp:    wa,
+		Delivery:    del,
+		Automations: automations.NewProcessor(cfg, pool, log, wa, del),
 	}
 }
 
@@ -89,12 +97,20 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/integrations/{id}/update", kit.Handler(a.handleIntegrationUpdate))
 		pr.Post("/integrations/{id}/activate", kit.Handler(a.handleIntegrationActivate))
 		pr.Post("/integrations/{id}/delete", kit.Handler(a.handleIntegrationDelete))
-		pr.Get("/automations", kit.Handler(a.handlePlaceholder("automations")))
+		pr.Get("/automations", kit.Handler(a.handleAutomations))
+		pr.Post("/automations", kit.Handler(a.handleAutomationCreate))
+		pr.Post("/automations/{id}/toggle", kit.Handler(a.handleAutomationToggle))
+		pr.Post("/automations/{id}/delete", kit.Handler(a.handleAutomationDelete))
 		pr.Get("/templates", kit.Handler(a.handleTemplates))
 		pr.Post("/templates/create", kit.Handler(a.handleTemplateCreate))
 		pr.Get("/templates/refresh", kit.Handler(a.handleTemplateRefresh))
 		pr.Get("/messages", kit.Handler(a.handleMessages))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
+		pr.Get("/settings/delivery", kit.Handler(a.handleDeliverySettings))
+		pr.Post("/settings/delivery/connect", kit.Handler(a.handleDeliveryConnect))
+		pr.Post("/settings/delivery/disconnect", kit.Handler(a.handleDeliveryDisconnect))
+		pr.Post("/settings/delivery/track", kit.Handler(a.handleDeliveryTrack))
+		pr.Post("/settings/delivery/track/{barcode}/remove", kit.Handler(a.handleDeliveryTrackRemove))
 		pr.Get("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboard))
 		pr.Post("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboardPost))
 		pr.Post("/whatsapp/connect", kit.Handler(a.handleWhatsappConnect))
