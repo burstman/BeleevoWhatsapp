@@ -95,7 +95,10 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	case "marketing":
 		flash.Error = "Meta flagged this template as marketing content. It will NEVER be sent — delete it and rewrite as a transactional update (order status, delivery, billing…)."
 	case "rejected":
-		flash.Error = "Meta rejected the submission — check the rejection reason on the row below."
+		flash.Error = "Meta rejected the submission from below (row-level reason, if any)."
+		if reason := k.Request.URL.Query().Get("reason"); reason != "" {
+			flash.Error = "Meta rejected the submission: " + reason
+		}
 	case "synced":
 		flash.Info = "Approval statuses refreshed from Meta."
 	case "missing":

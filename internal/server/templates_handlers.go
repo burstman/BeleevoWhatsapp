@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -83,16 +84,20 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	if err != nil {
 		var rej *whatsapp.SendRejection
 		if errors.As(err, &rej) {
-			// Meta refused the submission; the row is stored rejected with the
-			// reason. The template page already surfaces the reason.
-			return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected")
+			// Meta refused the submission at submit time — no review wait. The
+			// row is stored rejected with the reason; surface that reason now.
+			a.Log.Warn("template rejected by meta at submit",
+				"shop_id", active.ID, "name", name, "language", language, "reason", rej.Reason)
+			return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(rej.Reason))
 		}
 		a.Log.Error("template create internal failure", "error", err.Error())
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=internal")
 	}
 
 	if tmpl.ApprovalStatus == "rejected" {
-		return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected")
+		a.Log.Warn("template rejected by meta",
+			"shop_id", active.ID, "name", tmpl.Name, "language", tmpl.Language, "reason", tmpl.RejectionReason)
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(tmpl.RejectionReason))
 	}
 	if tmpl.MarketingFlagged {
 		a.Log.Warn("template flagged as marketing by meta",
