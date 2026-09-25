@@ -53,6 +53,8 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "An automation for this trigger already exists — edit it instead."
 	case "missing":
 		flash.Error = "Event source, trigger event and template are required."
+	case "badtime":
+		flash.Error = "Invalid send time or timezone — use a HH:MM send time and a valid IANA timezone."
 	case "notemplate":
 		flash.Error = "Create and get an approved template first."
 	case "toggled":
@@ -86,7 +88,16 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=missing")
 	}
 
-	if err := a.Automations.Create(ctx, active.ID, source, status, templateID); err != nil {
+	schedule, sErr := automations.ParseSchedule(
+		k.Request.FormValue("send_mode"),
+		k.Request.FormValue("send_time"),
+		k.Request.FormValue("send_timezone"),
+	)
+	if sErr != nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=badtime")
+	}
+
+	if err := a.Automations.Create(ctx, active.ID, source, status, templateID, schedule); err != nil {
 		if errors.Is(err, automations.ErrDuplicate) {
 			return k.Redirect(http.StatusSeeOther, "/automations?flash=duplicate")
 		}

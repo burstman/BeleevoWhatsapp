@@ -2,6 +2,7 @@ package automations
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -67,6 +68,83 @@ func TestToSendRequestRoundTrip(t *testing.T) {
 	}
 	if req.Variables["1"] != "x" {
 		t.Fatal("variables lost after round trip")
+	}
+}
+
+func TestResolveSendAtInstant(t *testing.T) {
+	if at := resolveSendAt(nil, "UTC", time.Now()); !at.IsZero() {
+		t.Fatalf("instant automation should send now, got %v", at)
+	}
+}
+
+func TestResolveSendAtBeforeTimeWaits(t *testing.T) {
+	now := time.Date(2026, 9, 25, 9, 0, 0, 0, time.UTC) // 09:00 UTC
+	minute := 10 * 60                                   // 10:00
+	at := resolveSendAt(&minute, "UTC", now)
+	want := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
+	if !at.Equal(want) {
+		t.Fatalf("at = %v, want %v", at.UTC(), want.UTC())
+	}
+}
+
+func TestResolveSendAtAfterTimeFiresImmediately(t *testing.T) {
+	now := time.Date(2026, 9, 25, 11, 15, 0, 0, time.UTC) // 11:15 > 10:00
+	minute := 10 * 60
+	if at := resolveSendAt(&minute, "UTC", now); !at.IsZero() {
+		t.Fatalf("event after the daily time should go now, got %v", at.UTC())
+	}
+}
+
+func TestResolveSendAtExactTimeFiresImmediately(t *testing.T) {
+	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC) // == the daily time
+	minute := 10 * 60
+	if at := resolveSendAt(&minute, "UTC", now); !at.IsZero() {
+		t.Fatalf("event exactly at the daily time should go now, got %v", at.UTC())
+	}
+}
+
+func TestResolveSendAtUsesTimezone(t *testing.T) {
+	now := time.Date(2026, 9, 25, 8, 30, 0, 0, time.UTC) // 09:30 in Africa/Tunis (UTC+1, no DST)
+	minute := 10 * 60                                    // 10:00 Africa/Tunis = 09:00 UTC
+	at := resolveSendAt(&minute, "Africa/Tunis", now)
+	want := time.Date(2026, 9, 25, 9, 0, 0, 0, time.UTC)
+	if !at.Equal(want) {
+		t.Fatalf("at = %v, want %v", at.UTC(), want.UTC())
+	}
+}
+
+func TestResolveSendAtFallsBackToUTC(t *testing.T) {
+	now := time.Date(2026, 9, 25, 9, 0, 0, 0, time.UTC)
+	minute := 10 * 60
+	at := resolveSendAt(&minute, "Not/AZone", now)
+	want := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
+	if !at.Equal(want) {
+		t.Fatalf("invalid timezone should fall back to UTC, at = %v", at.UTC())
+	}
+}
+
+func TestParseSchedule(t *testing.T) {
+	if s, err := ParseSchedule("instant", "10:00", "UTC"); err != nil || s != nil {
+		t.Fatalf("instant mode should yield nil schedule, got %v err %v", s, err)
+	}
+	s, err := ParseSchedule("fixed", "10:00", "Africa/Tunis")
+	if err != nil {
+		t.Fatalf("ParseSchedule: %v", err)
+	}
+	if s == nil || s.SendMinute == nil || *s.SendMinute != 10*60 {
+		t.Fatalf("wrong schedule: %+v", s)
+	}
+	if s.Timezone != "Africa/Tunis" {
+		t.Fatalf("wrong timezone: %q", s.Timezone)
+	}
+	if _, err := ParseSchedule("fixed", "25:99", "UTC"); err == nil {
+		t.Fatal("expected error for invalid time")
+	}
+	if _, err := ParseSchedule("fixed", "10:00", "Mars/Olympus"); err == nil {
+		t.Fatal("expected error for invalid timezone")
+	}
+	if s, err := ParseSchedule("fixed", "10:00", ""); err != nil || s == nil || s.Timezone != "UTC" {
+		t.Fatalf("empty timezone should default to UTC, got %+v err %v", s, err)
 	}
 }
 

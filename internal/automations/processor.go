@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -91,6 +92,7 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		return nil
 	}
 
+	sch := automation.Schedule()
 	return p.send(ctx, SendInput{
 		ShopID:          e.ShopID,
 		CustomerID:      cid,
@@ -100,6 +102,8 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		OrderID:         e.OrderID,
 		StatusLabel:     e.OrderStatus,
 		IdempotencyKey:  "conv:" + e.ShopID.String() + ":" + e.OrderStatus + ":" + e.OrderID,
+		SendMinute:      schMinute(sch),
+		SendTimezone:    schTimezone(sch),
 	})
 }
 
@@ -140,6 +144,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		orderID = change.OrderID
 	}
 
+	sch := automation.Schedule()
 	return p.send(ctx, SendInput{
 		ShopID:         change.ShopID,
 		CustomerID:     cid,
@@ -149,6 +154,8 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		OrderID:        orderID,
 		StatusLabel:    change.Label,
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
+		SendMinute:     schMinute(sch),
+		SendTimezone:   schTimezone(sch),
 	})
 }
 
@@ -163,16 +170,61 @@ func (p *Processor) ReconcileDelivery(ctx context.Context) error {
 	})
 }
 
-// SendInput is the resolved, ready-to-send automation input.
+// SendInput is the resolved, ready-to-send automation input. SendMinute (minute
+// of day 0..1439) plus SendTimezone park the send until that wall-clock moment;
+// nil SendMinute means send at once.
 type SendInput struct {
-	ShopID          uuid.UUID
-	CustomerID      uuid.UUID
-	TemplateID      uuid.UUID
-	CustomerName    string
-	CustomerPhone   string
-	OrderID         string
-	StatusLabel     string
-	IdempotencyKey  string
+	ShopID         uuid.UUID
+	CustomerID     uuid.UUID
+	TemplateID     uuid.UUID
+	CustomerName   string
+	CustomerPhone  string
+	OrderID        string
+	StatusLabel    string
+	IdempotencyKey string
+	SendMinute     *int
+	SendTimezone   string
+}
+
+func schMinute(s *Schedule) *int {
+	if s == nil {
+		return nil
+	}
+	return s.SendMinute
+}
+
+func schTimezone(s *Schedule) string {
+	if s == nil {
+		return "UTC"
+	}
+	if s.Timezone == "" {
+		return "UTC"
+	}
+	return s.Timezone
+}
+
+// nextSendAt resolves the fixed-time-of-day rule into an absolute delivery
+// instant. Events that arrive before the configured time wait until it; events
+// that arrive at or after it fire immediately (the daily window has already
+// opened, so the customer waits no longer). A zero return means "right now".
+func nextSendAt(minute *int, timezone string) time.Time {
+	return resolveSendAt(minute, timezone, time.Now())
+}
+
+func resolveSendAt(minute *int, timezone string, now time.Time) time.Time {
+	if minute == nil {
+		return time.Time{}
+	}
+	loc := time.UTC
+	if l, err := time.LoadLocation(timezone); err == nil {
+		loc = l
+	}
+	now = now.In(loc)
+	at := time.Date(now.Year(), now.Month(), now.Day(), *minute/60, *minute%60, 0, 0, loc)
+	if at.After(now) {
+		return at
+	}
+	return time.Time{}
 }
 
 // send executes one automation: it resolves the template (driving the variable
@@ -209,7 +261,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		IdempotencyKey:  in.IdempotencyKey,
 	}
 
-	queued, err := p.whatsapp.EnqueueSend(ctx, job)
+	queued, err := p.whatsapp.EnqueueSendAt(ctx, job, nextSendAt(in.SendMinute, in.SendTimezone))
 	if err != nil {
 		p.log.Warn("automation: enqueue failed, sending inline", "error", err)
 		queued = false

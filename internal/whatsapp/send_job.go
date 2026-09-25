@@ -31,6 +31,14 @@ type SendWhatsAppTemplateJob struct {
 // caller falls back to an inline SendTemplateMessage so automation keeps
 // working in degraded mode.
 func (s *Service) EnqueueSend(ctx context.Context, job SendWhatsAppTemplateJob) (queued bool, err error) {
+	return s.EnqueueSendAt(ctx, job, time.Time{})
+}
+
+// EnqueueSendAt is EnqueueSend with an optional absolute delivery moment. A
+// zero time sends immediately; otherwise the task is parked in Redis until the
+// worker clock reaches it (survives restarts). Times already in the past are
+// sent immediately.
+func (s *Service) EnqueueSendAt(ctx context.Context, job SendWhatsAppTemplateJob, at time.Time) (queued bool, err error) {
 	if s.queue == nil {
 		return false, nil
 	}
@@ -39,12 +47,16 @@ func (s *Service) EnqueueSend(ctx context.Context, job SendWhatsAppTemplateJob) 
 		return false, err
 	}
 	task := asynq.NewTask(queue.TaskSendWhatsAppTemplate, payload)
-	_, err = s.queue.Enqueue(task,
+	opts := []asynq.Option{
 		asynq.Queue("critical"),
 		asynq.MaxRetry(5),
-		asynq.Timeout(60*time.Second),
-		asynq.Retention(24*time.Hour),
-	)
+		asynq.Timeout(60 * time.Second),
+		asynq.Retention(24 * time.Hour),
+	}
+	if !at.IsZero() && at.After(time.Now()) {
+		opts = append(opts, asynq.ProcessAt(at))
+	}
+	_, err = s.queue.Enqueue(task, opts...)
 	if err != nil {
 		return false, err
 	}

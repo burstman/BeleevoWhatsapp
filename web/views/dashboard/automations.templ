@@ -1,6 +1,8 @@
 package viewsdashboard
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/automations"
@@ -20,6 +22,20 @@ templ triggerCell(a automations.Automation) {
 		<span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{ automations.SourceLabel(a.EventSource) }</span>
 		<span class="mt-1 block text-sm font-medium text-slate-900">{ a.OrderStatus }</span>
 	</div>
+}
+
+func scheduleLabel(a automations.Automation) string {
+	sch := a.Schedule()
+	if sch == nil || sch.SendMinute == nil {
+		return "Instant"
+	}
+	h := *sch.SendMinute / 60
+	m := *sch.SendMinute % 60
+	tz := sch.Timezone
+	if tz == "" {
+		tz = "UTC"
+	}
+	return fmt.Sprintf("%02d:%02d (%s)", h, m, tz)
 }
 
 templ AutomationsPage(page components.Page, list []automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, deliveryStatuses []string, flash AutomationFlash) {
@@ -97,6 +113,33 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 						</div>
 					</div>
 
+					<div class="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 sm:grid-cols-3">
+						<div>
+							<label for="sendMode" class="block text-xs font-medium text-slate-600">Send time</label>
+							<select id="sendMode" name="send_mode"
+								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+								<option value="instant">Instant — as soon as the event happens</option>
+								<option value="fixed">Fixed time of day</option>
+							</select>
+						</div>
+						<div id="fixedSend" class="hidden">
+							<label for="sendTime" class="block text-xs font-medium text-slate-600">Send at (daily)</label>
+							<input id="sendTime" name="send_time" type="time"
+								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+						</div>
+						<div id="fixedTimezone" class="hidden">
+							<label for="sendTimezone" class="block text-xs font-medium text-slate-600">Timezone (IANA)</label>
+							<input id="sendTimezone" name="send_timezone" type="text" value="UTC" placeholder="e.g. UTC (default), Africa/Tunis"
+								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+						</div>
+						<div class="sm:col-span-3">
+							<p class="text-xs text-slate-500">
+								An event arriving <span class="font-medium">before</span> the time waits until it;
+								an event arriving <span class="font-medium">at or after</span> the time is sent right away.
+							</p>
+						</div>
+					</div>
+
 					<div class="flex items-center gap-3">
 						<button type="submit"
 							class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
@@ -121,6 +164,7 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 							<tr>
 								<th class="px-6 py-3 font-medium">Trigger</th>
 								<th class="px-6 py-3 font-medium">Template</th>
+								<th class="px-6 py-3 font-medium">Send time</th>
 								<th class="px-6 py-3 font-medium">Status</th>
 								<th class="px-6 py-3 font-medium"></th>
 							</tr>
@@ -136,6 +180,13 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 											<span class="text-slate-400">(template deleted)</span>
 										} else {
 											{ templateNames[a.TemplateID] }
+										}
+									</td>
+									<td class="px-6 py-3 text-slate-600">
+										if a.SendTime == nil {
+											<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Instant</span>
+										} else {
+											<span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{ scheduleLabel(a) }</span>
 										}
 									</td>
 									<td class="px-6 py-3">
@@ -193,6 +244,22 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 				}
 				source.addEventListener("change", sync);
 				sync();
+
+				var mode = document.getElementById("sendMode");
+				var fixedTime = document.getElementById("fixedSend");
+				var fixedTz = document.getElementById("fixedTimezone");
+				var timeInput = document.getElementById("sendTime");
+				var tzInput = document.getElementById("sendTimezone");
+				if (!mode || !fixedTime || !fixedTz || !timeInput || !tzInput) return;
+				function syncMode() {
+					var isFixed = mode.value === "fixed";
+					fixedTime.classList.toggle("hidden", !isFixed);
+					fixedTz.classList.toggle("hidden", !isFixed);
+					timeInput.disabled = !isFixed;
+					tzInput.disabled = !isFixed;
+				}
+				mode.addEventListener("change", syncMode);
+				syncMode();
 			})();
 		</script>
 	}
