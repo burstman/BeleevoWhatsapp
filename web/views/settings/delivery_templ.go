@@ -100,17 +100,17 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"flex items-center justify-between border-b border-slate-100 px-6 py-4\"><div class=\"flex items-center gap-3\"><span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> Mes Colis connected</span></div><form method=\"post\" action=\"/settings/delivery/disconnect\" onsubmit=\"return confirm('Disconnect Mes Colis? Delivery automations will stop firing.')\"><button type=\"submit\" class=\"rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50\">Disconnect</button></form></div><div class=\"px-6 py-4 text-sm text-slate-600\">Parcel statuses are polled automatically. Add the barcodes the poller should follow below — or they register themselves when Converty order events carry a tracking reference.</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"flex items-center justify-between border-b border-slate-100 px-6 py-4\"><div class=\"flex items-center gap-3\"><span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> Mes Colis connected</span></div><form method=\"post\" action=\"/settings/delivery/disconnect\" onsubmit=\"return confirm('Disconnect Mes Colis? Delivery automations will stop firing.')\"><button type=\"submit\" class=\"rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50\">Disconnect</button></form></div><div class=\"px-6 py-4 text-sm text-slate-600\">Parcel statuses are polled automatically. A parcel starts being tracked by itself on every Converty upload event that carries the tracking reference — the barcode, order id, customer name and phone are all captured from the order, so there is nothing to enter here.</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Tracked parcels</h3></div><form method=\"post\" action=\"/settings/delivery/track\" class=\"grid grid-cols-1 gap-3 border-b border-slate-100 px-6 py-4 sm:grid-cols-4\"><div class=\"sm:col-span-1\"><input name=\"barcode\" required placeholder=\"Barcode\" class=\"w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div class=\"sm:col-span-1\"><input name=\"order_id\" placeholder=\"Order id\" class=\"w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div class=\"sm:col-span-1\"><input name=\"customer_phone\" placeholder=\"Customer phone (+216...)\" class=\"w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div class=\"sm:col-span-1\"><input name=\"customer_name\" placeholder=\"Customer name\" class=\"w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div class=\"sm:col-span-4 flex items-center justify-between\"><span class=\"text-xs text-slate-500\">The phone lets a delivery automation message the buyer.</span> <button type=\"submit\" class=\"rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Track parcel</button></div></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Tracked parcels</h3></div><div class=\"border-b border-slate-100 px-6 py-3 text-xs text-slate-500\">Parcels appear when a Converty order event carries a tracking reference. You can remove one here to stop polling it.</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(tracked) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No parcels being watched yet. Add a barcode above or wait for Converty order events to register one.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No parcels being watched yet. Once a Converty order event carries a tracking reference, the parcel appears here automatically.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -127,7 +127,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Barcode)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 136, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 119, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -140,7 +140,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.OrderID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 137, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 120, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -153,7 +153,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.CustomerName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 138, Col: 62}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 121, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -166,7 +166,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.CustomerPhone)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 138, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 121, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -189,7 +189,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var9 string
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.StatusLabel)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 143, Col: 67}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 126, Col: 67}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
@@ -202,7 +202,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var10 string
 						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.LastStatus)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 144, Col: 64}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 127, Col: 64}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
@@ -220,7 +220,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var11 templ.SafeURL
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/delivery/track/" + t.Barcode + "/remove"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 148, Col: 105}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 131, Col: 105}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {

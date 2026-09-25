@@ -82,9 +82,10 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 						</form>
 					</div>
 					<div class="px-6 py-4 text-sm text-slate-600">
-						Parcel statuses are polled automatically. Add the barcodes the poller should
-						follow below — or they register themselves when Converty order events carry a
-						tracking reference.
+						Parcel statuses are polled automatically. A parcel starts being tracked by
+						itself on every Converty upload event that carries the tracking reference —
+						the barcode, order id, customer name and phone are all captured from the
+						order, so there is nothing to enter here.
 					</div>
 				</div>
 			}
@@ -93,31 +94,13 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 				<div class="border-b border-slate-100 px-6 py-4">
 					<h3 class="text-sm font-semibold text-slate-700">Tracked parcels</h3>
 				</div>
-				<form method="post" action="/settings/delivery/track" class="grid grid-cols-1 gap-3 border-b border-slate-100 px-6 py-4 sm:grid-cols-4">
-					<div class="sm:col-span-1">
-						<input name="barcode" required placeholder="Barcode"
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-					</div>
-					<div class="sm:col-span-1">
-						<input name="order_id" placeholder="Order id"
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-					</div>
-					<div class="sm:col-span-1">
-						<input name="customer_phone" placeholder="Customer phone (+216...)"
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-					</div>
-					<div class="sm:col-span-1">
-						<input name="customer_name" placeholder="Customer name"
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-					</div>
-					<div class="sm:col-span-4 flex items-center justify-between">
-						<span class="text-xs text-slate-500">The phone lets a delivery automation message the buyer.</span>
-						<button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Track parcel</button>
-					</div>
-				</form>
+				<div class="border-b border-slate-100 px-6 py-3 text-xs text-slate-500">
+					Parcels appear when a Converty order event carries a tracking reference. You can
+					remove one here to stop polling it.
+				</div>
 				if len(tracked) == 0 {
 					<div class="px-6 py-10 text-center text-sm text-slate-500">
-						No parcels being watched yet. Add a barcode above or wait for Converty order events to register one.
+						No parcels being watched yet. Once a Converty order event carries a tracking reference, the parcel appears here automatically.
 					</div>
 				} else {
 					<table class="w-full text-left text-sm">

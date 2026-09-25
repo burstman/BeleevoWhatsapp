@@ -6,7 +6,6 @@ import (
 
 	"github.com/anthdm/superkit/kit"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"whatsappconverty/internal/delivery"
 	vsettings "whatsappconverty/web/views/settings"
@@ -51,8 +50,6 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	case "disconnected":
 		flash.Info = "Delivery provider disconnected."
-	case "tracked":
-		flash.Info = "Parcel registered — the poller will follow it."
 	case "removed":
 		flash.Info = "Parcel removed from tracking."
 	}
@@ -105,40 +102,6 @@ func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
 	}
 	a.Log.Info("delivery provider disconnected", "shop_id", active.ID, "provider", delivery.ProviderMescolis)
 	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=disconnected")
-}
-
-// handleDeliveryTrack registers a parcel (barcode) for the shop to watch,
-// optionally linked to an order id and customer so delivery automations can
-// reach the buyer.
-func (a *App) handleDeliveryTrack(k *kit.Kit) error {
-	active, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
-
-	ctx := k.Request.Context()
-	barcode := strings.TrimSpace(k.Request.FormValue("barcode"))
-	orderID := strings.TrimSpace(k.Request.FormValue("order_id"))
-	name := strings.TrimSpace(k.Request.FormValue("customer_name"))
-	phone := strings.TrimSpace(k.Request.FormValue("customer_phone"))
-	if barcode == "" {
-		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=missing")
-	}
-
-	cid := uuid.Nil
-	if phone != "" {
-		cid, err = a.WhatsApp.UpsertCustomer(ctx, active.ID, name, phone)
-		if err != nil {
-			a.Log.Warn("delivery track customer upsert failed", "shop_id", active.ID, "error", err)
-		}
-	}
-	if err := a.Delivery.UpsertTracked(ctx, active.ID, barcode, orderID, cid, name, phone); err != nil {
-		a.Log.Error("delivery track failed", "shop_id", active.ID, "barcode", barcode, "error", err)
-		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=error")
-	}
-
-	a.Log.Info("delivery barcode tracked", "shop_id", active.ID, "barcode", barcode)
-	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=tracked")
 }
 
 // handleDeliveryTrackRemove stops watching a parcel.

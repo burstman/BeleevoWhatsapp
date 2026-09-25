@@ -109,7 +109,6 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/settings/delivery", kit.Handler(a.handleDeliverySettings))
 		pr.Post("/settings/delivery/connect", kit.Handler(a.handleDeliveryConnect))
 		pr.Post("/settings/delivery/disconnect", kit.Handler(a.handleDeliveryDisconnect))
-		pr.Post("/settings/delivery/track", kit.Handler(a.handleDeliveryTrack))
 		pr.Post("/settings/delivery/track/{barcode}/remove", kit.Handler(a.handleDeliveryTrackRemove))
 		pr.Get("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboard))
 		pr.Post("/whatsapp/onboard", kit.Handler(a.handleWhatsappOnboardPost))
