@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"whatsappconverty/internal/config"
@@ -175,6 +176,14 @@ type StatusChange struct {
 func (s *Service) Reconcile(ctx context.Context, onChanged func(context.Context, StatusChange) error) error {
 	integrations, err := s.ListIntegrations(ctx)
 	if err != nil {
+		// A worker that boots before the migrations land would otherwise log a
+		// hard failure every tick. Pause the poller with one clear warning
+		// instead; the next deploy applies the schema and it resumes.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "42P01" {
+			s.log.Warn("delivery poller paused: delivery tables missing — redeploy or run migrations")
+			return nil
+		}
 		return err
 	}
 

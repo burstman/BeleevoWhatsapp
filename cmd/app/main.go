@@ -51,11 +51,12 @@ func main() {
 	}
 	defer pool.Close()
 
-	if cfg.IsDevelopment() {
-		if err := database.Migrate(rootCtx, cfg.DatabaseURL, logger); err != nil {
-			logger.Error("migrations failed", "error", err)
-			os.Exit(1)
-		}
+	// Apply pending schema migrations on every boot (dev and production alike)
+	// so a deploy to Render both ships new code and upgrades the database.
+	// goose serializes concurrent bootstraps with an advisory lock.
+	if err := database.Migrate(rootCtx, cfg.DatabaseURL, logger); err != nil {
+		logger.Error("migrations failed", "error", err)
+		os.Exit(1)
 	}
 
 	app := server.New(cfg, logger, pool)
