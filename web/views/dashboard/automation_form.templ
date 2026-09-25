@@ -87,20 +87,18 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</div>
 							<div id="convertyTrigger">
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
-								<input id="eventStatus" name="event_status" required list="convertyStatuses" value={ automationStatus(automation) }
-									placeholder="e.g. delivered, cancelled"
-									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-								<datalist id="convertyStatuses">
-									<option value="pending"></option>
-									<option value="confirmed"></option>
-									<option value="shipped"></option>
-									<option value="delivered"></option>
-									<option value="cancelled"></option>
-								</datalist>
+								<select id="eventStatus" name="event_status" required
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+									<option value="" disabled selected={ automationStatus(automation) == "" }>Choisir un statut…</option>
+									for _, s := range automations.ConvertyStatuses() {
+										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
+									}
+								</select>
 							</div>
 							<div id="deliveryTrigger" class="hidden">
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
 								<select id="eventStatusDelivery" name="event_status_delivery" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+									<option value="" disabled selected={ automationStatus(automation) == "" }>Choisir un statut…</option>
 									for _, s := range deliveryStatuses {
 										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
 									}

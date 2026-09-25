@@ -321,6 +321,24 @@ func DeliveryStatuses() []string {
 	return delivery.KnownStatuses()
 }
 
+// ConvertyStatuses returns the order trigger statuses the automation form
+// offers for Converty, exactly as documented in the Converty OAuth docs
+// (POST /orders + PATCH /orders/:id).
+func ConvertyStatuses() []string {
+	return []string{
+		"pending",
+		"confirmed",
+		"exchange",
+		"packed",
+		"attempt",
+		"uploaded",
+		"rejected",
+		"in transit",
+		"delivered",
+		"returned",
+	}
+}
+
 // SourceLabel is a human label for the event-source select.
 func SourceLabel(source string) string {
 	switch source {

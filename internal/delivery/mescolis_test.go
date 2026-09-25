@@ -123,12 +123,12 @@ func TestNewMescolisClientUsesConfigBaseURL(t *testing.T) {
 }
 
 func TestStatusTerminal(t *testing.T) {
-	for _, terminal := range []string{"delivered", "delivered-and-paid", "return-sender", "final-return", "cancelled-by-sender"} {
+	for _, terminal := range []string{"delivered", "delivered-and-paid", "return-sender", "final-return"} {
 		if !StatusTerminal(terminal) {
 			t.Fatalf("%q should be terminal", terminal)
 		}
 	}
-	for _, active := range []string{"", "pending", "in-progress"} {
+	for _, active := range []string{"", "pending", "in-progress", "inter-depot", "at-agency", "cancelled-by-sender"} {
 		if StatusTerminal(active) {
 			t.Fatalf("%q should NOT be terminal", active)
 		}

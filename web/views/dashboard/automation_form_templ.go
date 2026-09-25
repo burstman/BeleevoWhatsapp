@@ -194,24 +194,24 @@ func AutomationFormPage(page components.Page, automation *automations.Automation
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">Delivery event (provider)</option></select></div><div id=\"convertyTrigger\"><label for=\"eventStatus\" class=\"block text-sm font-medium text-slate-700\">Déclencher sur</label> <input id=\"eventStatus\" name=\"event_status\" required list=\"convertyStatuses\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">Delivery event (provider)</option></select></div><div id=\"convertyTrigger\"><label for=\"eventStatus\" class=\"block text-sm font-medium text-slate-700\">Déclencher sur</label> <select id=\"eventStatus\" name=\"event_status\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"><option value=\"\" disabled selected=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationStatus(automation))
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationStatus(automation) == "")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 90, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 92, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" placeholder=\"e.g. delivered, cancelled\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"> <datalist id=\"convertyStatuses\"><option value=\"pending\"></option> <option value=\"confirmed\"></option> <option value=\"shipped\"></option> <option value=\"delivered\"></option> <option value=\"cancelled\"></option></datalist></div><div id=\"deliveryTrigger\" class=\"hidden\"><label for=\"eventStatusDelivery\" class=\"block text-sm font-medium text-slate-700\">Déclencher sur</label> <select id=\"eventStatusDelivery\" name=\"event_status_delivery\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\">Choisir un statut…</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, s := range deliveryStatuses {
+			for _, s := range automations.ConvertyStatuses() {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<option value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -219,7 +219,7 @@ func AutomationFormPage(page components.Page, automation *automations.Automation
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 105, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 94, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 				if templ_7745c5c3_Err != nil {
@@ -232,7 +232,7 @@ func AutomationFormPage(page components.Page, automation *automations.Automation
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationStatus(automation) == s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 105, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 94, Col: 74}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 				if templ_7745c5c3_Err != nil {
@@ -245,7 +245,7 @@ func AutomationFormPage(page components.Page, automation *automations.Automation
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 105, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 94, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -256,301 +256,363 @@ func AutomationFormPage(page components.Page, automation *automations.Automation
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</select></div><div><label class=\"block text-sm font-medium text-slate-700\">Intégration</label> <input type=\"text\" readonly value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</select></div><div id=\"deliveryTrigger\" class=\"hidden\"><label for=\"eventStatusDelivery\" class=\"block text-sm font-medium text-slate-700\">Déclencher sur</label> <select id=\"eventStatusDelivery\" name=\"event_status_delivery\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"><option value=\"\" disabled selected=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(page.ShopName)
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationStatus(automation) == "")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 111, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 101, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" class=\"mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500\"></div></div></div><div class=\"space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><label for=\"templateSelect\" class=\"block text-sm font-medium text-slate-700\">Message (template approuvé)</label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">Choisir un statut…</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(templates) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800\">Aucun template approuvé pour cette boutique. Créez et faites approuver un template dans le menu Templates.</div>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<select id=\"templateSelect\" name=\"template_id\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"><option value=\"\" disabled selected=\"")
+			for _, s := range deliveryStatuses {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<option value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var17 string
-				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(automation == nil && automationTemplateID(automation) == uuid.Nil)
+				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 126, Col: 110}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 103, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">Choisir un template…</option> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" selected=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, t := range templates {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<option value=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var18 string
-					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.ID.String())
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 128, Col: 38}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" selected=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var19 string
-					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationTemplateID(automation) == t.ID)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 128, Col: 92}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var20 string
-					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 128, Col: 103}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " (")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var21 string
-					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 128, Col: 119}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, ")</option>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
+				var templ_7745c5c3_Var18 string
+				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationStatus(automation) == s)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 103, Col: 74}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select>")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var19 string
+				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(s)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 103, Col: 80}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</option>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div><div class=\"space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><h3 class=\"text-sm font-semibold text-slate-700\">Paramètres de planification</h3><div id=\"fixedSchedule\" class=\"hidden\"><div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"block text-sm font-medium text-slate-700\">Jours d'envoi</label><div class=\"mt-2 grid grid-cols-4 gap-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</select></div><div><label class=\"block text-sm font-medium text-slate-700\">Intégration</label> <input type=\"text\" readonly value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for d := 1; d <= 7; d++ {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<label class=\"flex cursor-pointer items-center gap-1.5 text-sm text-slate-700\"><input type=\"checkbox\" name=\"send_days\" value=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var22 string
-				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(d))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 144, Col: 75}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" checked=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var23 string
-				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(dayChecked(automation, d))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 144, Col: 113}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500\"> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var24 string
-				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(dayNames[d-1])
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 146, Col: 27}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</label>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(page.ShopName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 109, Col: 57}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div></div><div><label for=\"sendTime\" class=\"block text-sm font-medium text-slate-700\">Heure d'envoi</label> <input id=\"sendTime\" name=\"send_time\" type=\"time\" value=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var25 string
-			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(sendTimeValue(automation))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 153, Col: 92}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" class=\"mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500\"></div></div></div><div class=\"space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><label for=\"templateSelect\" class=\"block text-sm font-medium text-slate-700\">Message (template approuvé)</label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div></div><div class=\"mt-4\"><label for=\"sendTimezone\" class=\"block text-sm font-medium text-slate-700\">Fuseau horaire (IANA)</label> <input id=\"sendTimezone\" name=\"send_timezone\" type=\"text\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var26 string
-			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(sendTimezoneValue(automation))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 159, Col: 103}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" placeholder=\"Ex: Africa/Tunis, UTC\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div><p class=\"mt-3 text-xs text-slate-500\">Un événement arrivant avant l'heure attend jusqu'à celle-ci ; arrivant à l'heure ou après, il est envoyé immédiatement. Sur un jour non sélectionné, l'envoi attend le prochain jour choisi à la même heure.</p></div><div id=\"delayedSchedule\" class=\"hidden\"><div class=\"sm:w-64\"><label for=\"sendDelay\" class=\"block text-sm font-medium text-slate-700\">Délai après l'événement (minutes)</label> <input id=\"sendDelay\" name=\"send_delay_minutes\" type=\"number\" min=\"1\" max=\"20160\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var27 string
-			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(delayValue(automation))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 173, Col: 120}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" placeholder=\"Ex: 30\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div><p class=\"mt-3 text-xs text-slate-500\">Le message part ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(delayValue(automation))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 177, Col: 86}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, " minutes après l'événement, même si l'heure d'envoi quotidienne est passée.</p></div></div><div class=\"flex items-center gap-3 pb-6\"><button type=\"submit\" class=\"rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if isEdit {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "Enregistrer")
+			if len(templates) == 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800\">Aucun template approuvé pour cette boutique. Créez et faites approuver un template dans le menu Templates.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "Créer l'automation")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<select id=\"templateSelect\" name=\"template_id\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"><option value=\"\" disabled selected=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(automation == nil && automationTemplateID(automation) == uuid.Nil)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 124, Col: 110}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\">Choisir un template…</option> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				for _, t := range templates {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<option value=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var22 string
+					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.ID.String())
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 126, Col: 38}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" selected=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var23 string
+					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(automationTemplateID(automation) == t.ID)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 126, Col: 92}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var24 string
+					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 126, Col: 103}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " (")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var25 string
+					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 126, Col: 119}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, ")</option>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</select>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</button> <a href=\"/automations\" class=\"rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700\">Annuler</a></div></div><aside class=\"lg:col-span-1\"><div class=\"sticky top-6 rounded-xl border border-slate-200 bg-[#edf6ff] p-5\"><div class=\"text-sm font-semibold text-slate-800\">Aperçu du message</div><div class=\"mt-1 text-xs text-slate-500\">Ce que le client recevra</div><div id=\"previewBody\" class=\"mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700\">Sélectionnez un template pour l'aperçu.</div><div class=\"mt-3 text-xs text-slate-500\">Les variables du template (")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div><div class=\"space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><h3 class=\"text-sm font-semibold text-slate-700\">Paramètres de planification</h3><div id=\"fixedSchedule\" class=\"hidden\"><div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"block text-sm font-medium text-slate-700\">Jours d'envoi</label><div class=\"mt-2 grid grid-cols-4 gap-2\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for d := 1; d <= 7; d++ {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<label class=\"flex cursor-pointer items-center gap-1.5 text-sm text-slate-700\"><input type=\"checkbox\" name=\"send_days\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var26 string
+				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(d))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 142, Col: 75}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" checked=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var27 string
+				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(dayChecked(automation, d))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 142, Col: 113}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\" class=\"h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var28 string
+				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(dayNames[d-1])
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 144, Col: 27}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</div></div><div><label for=\"sendTime\" class=\"block text-sm font-medium text-slate-700\">Heure d'envoi</label> <input id=\"sendTime\" name=\"send_time\" type=\"time\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs("{{1}}")
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(sendTimeValue(automation))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 202, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 151, Col: 92}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, " client, ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div></div><div class=\"mt-4\"><label for=\"sendTimezone\" class=\"block text-sm font-medium text-slate-700\">Fuseau horaire (IANA)</label> <input id=\"sendTimezone\" name=\"send_timezone\" type=\"text\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
-			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs("{{2}}")
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(sendTimezoneValue(automation))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 202, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 157, Col: 103}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " commande, ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" placeholder=\"Ex: Africa/Tunis, UTC\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div><p class=\"mt-3 text-xs text-slate-500\">Un événement arrivant avant l'heure attend jusqu'à celle-ci ; arrivant à l'heure ou après, il est envoyé immédiatement. Sur un jour non sélectionné, l'envoi attend le prochain jour choisi à la même heure.</p></div><div id=\"delayedSchedule\" class=\"hidden\"><div class=\"sm:w-64\"><label for=\"sendDelay\" class=\"block text-sm font-medium text-slate-700\">Délai après l'événement (minutes)</label> <input id=\"sendDelay\" name=\"send_delay_minutes\" type=\"number\" min=\"1\" max=\"20160\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var31 string
-			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs("{{3}}")
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(delayValue(automation))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 202, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 171, Col: 120}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, " statut) sont remplies automatiquement à l'envoi.</div></div></aside></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" placeholder=\"Ex: 30\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\"></div><p class=\"mt-3 text-xs text-slate-500\">Le message part ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var32 string
+			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(delayValue(automation))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 175, Col: 86}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, " minutes après l'événement, même si l'heure d'envoi quotidienne est passée.</p></div></div><div class=\"flex items-center gap-3 pb-6\"><button type=\"submit\" class=\"rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if isEdit {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "Enregistrer")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "Créer l'automation")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</button> <a href=\"/automations\" class=\"rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700\">Annuler</a></div></div><aside class=\"lg:col-span-1\"><div class=\"sticky top-6 rounded-xl border border-slate-200 bg-[#edf6ff] p-5\"><div class=\"text-sm font-semibold text-slate-800\">Aperçu du message</div><div class=\"mt-1 text-xs text-slate-500\">Ce que le client recevra</div><div id=\"previewBody\" class=\"mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700\">Sélectionnez un template pour l'aperçu.</div><div class=\"mt-3 text-xs text-slate-500\">Les variables du template (")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var33 string
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs("{{1}}")
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 200, Col: 42}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " client, ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var34 string
+			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs("{{2}}")
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 200, Col: 60}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, " commande, ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var35 string
+			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs("{{3}}")
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 200, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " statut) sont remplies automatiquement à l'envoi.</div></div></aside></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, t := range templates {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<div id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<div id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var32 string
-				templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("template-body-" + t.ID.String()))
+				var templ_7745c5c3_Var36 string
+				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("template-body-" + t.ID.String()))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 210, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 208, Col: 61}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"hidden\">")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var33 string
-				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(templateBodies[t.ID])
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 210, Col: 101}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" class=\"hidden\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</div>")
+				var templ_7745c5c3_Var37 string
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(templateBodies[t.ID])
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automation_form.templ`, Line: 208, Col: 101}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</div><script>\n\t\t\t(function () {\n\t\t\t\tvar modeInputs = document.querySelectorAll(\"input[name=send_mode]\");\n\t\t\t\tvar fixed = document.getElementById(\"fixedSchedule\");\n\t\t\t\tvar delayed = document.getElementById(\"delayedSchedule\");\n\t\t\t\tif (modeInputs.length && fixed && delayed) {\n\t\t\t\t\tfunction syncMode() {\n\t\t\t\t\t\tvar value = null;\n\t\t\t\t\t\tfor (var i = 0; i < modeInputs.length; i++) {\n\t\t\t\t\t\t\tif (modeInputs[i].checked) { value = modeInputs[i].value; break; }\n\t\t\t\t\t\t}\n\t\t\t\t\t\tfixed.classList.toggle(\"hidden\", value !== \"fixed\");\n\t\t\t\t\t\tdelayed.classList.toggle(\"hidden\", value !== \"delayed\");\n\t\t\t\t\t}\n\t\t\t\t\tfor (var i = 0; i < modeInputs.length; i++) {\n\t\t\t\t\t\tmodeInputs[i].addEventListener(\"change\", syncMode);\n\t\t\t\t\t}\n\t\t\t\t\tsyncMode();\n\t\t\t\t}\n\n\t\t\t\tvar source = document.getElementById(\"eventSource\");\n\t\t\t\tvar conv = document.getElementById(\"convertyTrigger\");\n\t\t\t\tvar del = document.getElementById(\"deliveryTrigger\");\n\t\t\t\tvar status = document.getElementById(\"eventStatus\");\n\t\t\t\tvar statusDel = document.getElementById(\"eventStatusDelivery\");\n\t\t\t\tif (source && conv && del && status && statusDel) {\n\t\t\t\t\tfunction syncSource() {\n\t\t\t\t\t\tif (source.value === \"delivery\") {\n\t\t\t\t\t\t\tconv.classList.add(\"hidden\");\n\t\t\t\t\t\t\tdel.classList.remove(\"hidden\");\n\t\t\t\t\t\t\tstatus.required = false;\n\t\t\t\t\t\t\tstatusDel.name = \"event_status\";\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tdel.classList.add(\"hidden\");\n\t\t\t\t\t\t\tconv.classList.remove(\"hidden\");\n\t\t\t\t\t\t\tstatus.required = true;\n\t\t\t\t\t\t\tstatusDel.name = \"event_status_delivery\";\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tsource.addEventListener(\"change\", syncSource);\n\t\t\t\t\tsyncSource();\n\t\t\t\t}\n\n\t\t\t\tvar preview = document.getElementById(\"previewBody\");\n\t\t\t\tvar select = document.getElementById(\"templateSelect\");\n\t\t\t\tif (preview && select) {\n\t\t\t\t\tfunction syncPreview() {\n\t\t\t\t\t\tvar el = document.getElementById(\"template-body-\" + select.value);\n\t\t\t\t\t\tpreview.textContent = el ? el.textContent.trim() : \"Sélectionnez un template pour l'aperçu.\";\n\t\t\t\t\t\tif (preview.textContent === \"\") { preview.textContent = \"Sélectionnez un template pour l'aperçu.\"; }\n\t\t\t\t\t}\n\t\t\t\t\tselect.addEventListener(\"change\", syncPreview);\n\t\t\t\t\tsyncPreview();\n\t\t\t\t}\n\t\t\t})();\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</div><script>\n\t\t\t(function () {\n\t\t\t\tvar modeInputs = document.querySelectorAll(\"input[name=send_mode]\");\n\t\t\t\tvar fixed = document.getElementById(\"fixedSchedule\");\n\t\t\t\tvar delayed = document.getElementById(\"delayedSchedule\");\n\t\t\t\tif (modeInputs.length && fixed && delayed) {\n\t\t\t\t\tfunction syncMode() {\n\t\t\t\t\t\tvar value = null;\n\t\t\t\t\t\tfor (var i = 0; i < modeInputs.length; i++) {\n\t\t\t\t\t\t\tif (modeInputs[i].checked) { value = modeInputs[i].value; break; }\n\t\t\t\t\t\t}\n\t\t\t\t\t\tfixed.classList.toggle(\"hidden\", value !== \"fixed\");\n\t\t\t\t\t\tdelayed.classList.toggle(\"hidden\", value !== \"delayed\");\n\t\t\t\t\t}\n\t\t\t\t\tfor (var i = 0; i < modeInputs.length; i++) {\n\t\t\t\t\t\tmodeInputs[i].addEventListener(\"change\", syncMode);\n\t\t\t\t\t}\n\t\t\t\t\tsyncMode();\n\t\t\t\t}\n\n\t\t\t\tvar source = document.getElementById(\"eventSource\");\n\t\t\t\tvar conv = document.getElementById(\"convertyTrigger\");\n\t\t\t\tvar del = document.getElementById(\"deliveryTrigger\");\n\t\t\t\tvar status = document.getElementById(\"eventStatus\");\n\t\t\t\tvar statusDel = document.getElementById(\"eventStatusDelivery\");\n\t\t\t\tif (source && conv && del && status && statusDel) {\n\t\t\t\t\tfunction syncSource() {\n\t\t\t\t\t\tif (source.value === \"delivery\") {\n\t\t\t\t\t\t\tconv.classList.add(\"hidden\");\n\t\t\t\t\t\t\tdel.classList.remove(\"hidden\");\n\t\t\t\t\t\t\tstatus.required = false;\n\t\t\t\t\t\t\tstatusDel.name = \"event_status\";\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tdel.classList.add(\"hidden\");\n\t\t\t\t\t\t\tconv.classList.remove(\"hidden\");\n\t\t\t\t\t\t\tstatus.required = true;\n\t\t\t\t\t\t\tstatusDel.name = \"event_status_delivery\";\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tsource.addEventListener(\"change\", syncSource);\n\t\t\t\t\tsyncSource();\n\t\t\t\t}\n\n\t\t\t\tvar preview = document.getElementById(\"previewBody\");\n\t\t\t\tvar select = document.getElementById(\"templateSelect\");\n\t\t\t\tif (preview && select) {\n\t\t\t\t\tfunction syncPreview() {\n\t\t\t\t\t\tvar el = document.getElementById(\"template-body-\" + select.value);\n\t\t\t\t\t\tpreview.textContent = el ? el.textContent.trim() : \"Sélectionnez un template pour l'aperçu.\";\n\t\t\t\t\t\tif (preview.textContent === \"\") { preview.textContent = \"Sélectionnez un template pour l'aperçu.\"; }\n\t\t\t\t\t}\n\t\t\t\t\tselect.addEventListener(\"change\", syncPreview);\n\t\t\t\t\tsyncPreview();\n\t\t\t\t}\n\t\t\t})();\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

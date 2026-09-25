@@ -184,7 +184,7 @@ func decodeMescolisError(resp *http.Response) error {
 // progress is expected, so the poller stops watching the parcel.
 func StatusTerminal(status string) bool {
 	switch status {
-	case "delivered", "delivered-and-paid", "return-sender", "final-return", "cancelled-by-sender":
+	case "delivered", "delivered-and-paid", "return-sender", "final-return":
 		return true
 	}
 	return false
@@ -206,8 +206,6 @@ func LabelFor(status string) string {
 		return "Return to sender"
 	case "final-return":
 		return "Returned"
-	case "cancelled-by-sender":
-		return "Cancelled"
 	}
 	if status == "" {
 		return "Unknown"
@@ -216,15 +214,30 @@ func LabelFor(status string) string {
 }
 
 // KnownStatuses lists the delivery statuses the automation UI offers for
-// Mes Colis, in trigger order.
+// Mes Colis, exactly as documented in "Documentation Socket" (Statuts list).
 func KnownStatuses() []string {
 	return []string{
 		"pending",
+		"to-be-picked-up",
+		"picked-up",
+		"at-agency",
+		"return-agency",
 		"in-progress",
+		"to-be-verified",
 		"delivered",
 		"delivered-and-paid",
-		"return-sender",
+		"exchanged",
+		"refunded",
 		"final-return",
-		"cancelled-by-sender",
+		"return-inter-agency",
+		"return-sender",
+		"return-received",
+		"inter-depot",
+		"unavailable-1",
+		"unavailable-2",
+		"paiement-received",
+		"order-refund",
+		"saisie-douane",
+		"anomalie",
 	}
 }
