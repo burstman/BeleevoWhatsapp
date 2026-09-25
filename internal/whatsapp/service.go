@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -90,16 +91,49 @@ func (s *Service) DecryptToken(encrypted string) (string, error) {
 // integration. A system-user token does not expire or rotate, so no refresh
 // logic is needed (unlike the Converty OAuth flow).
 func (s *Service) Token(ctx context.Context, shopID uuid.UUID) (string, error) {
-	integ, err := s.Integration(ctx, shopID)
+	creds, err := s.Credentials(ctx, shopID)
 	if err != nil {
 		return "", err
+	}
+	return creds.AccessToken, nil
+}
+
+// Credentials are the shop's owned Meta credentials (its own WhatsApp
+// Business number + messaging account). Every Meta call in the pipeline is
+// scoped to these, never to a platform-wide token.
+type Credentials struct {
+	AccessToken        string
+	PhoneNumberID      string
+	MessagingAccountID string
+	PhoneNumber        string
+}
+
+// Credentials returns the shop's decrypted Meta credentials from its stored
+// integration. ErrNotConfigured is returned when the shop never connected a
+// WhatsApp number in Settings.
+func (s *Service) Credentials(ctx context.Context, shopID uuid.UUID) (Credentials, error) {
+	integ, err := s.Integration(ctx, shopID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Credentials{}, ErrNotConfigured
+		}
+		return Credentials{}, err
 	}
 	token, err := s.DecryptToken(integ.AccessTokenEncrypted)
 	if err != nil {
-		return "", err
+		return Credentials{}, err
 	}
 	if token == "" {
-		return "", ErrNotConfigured
+		return Credentials{}, ErrNotConfigured
 	}
-	return token, nil
+	return Credentials{
+		AccessToken:        token,
+		PhoneNumberID:      integ.PhoneNumberID,
+		MessagingAccountID: integ.MessagingAccountID,
+		PhoneNumber:        integ.PhoneNumber,
+	}, nil
 }
+
+// NotConnectedReason is the user-facing text when a shop has no WhatsApp
+// number connected yet and tries to use number-bound features.
+const NotConnectedReason = "no WhatsApp number connected for this store — connect one in Settings first"

@@ -42,13 +42,11 @@ type Config struct {
 	// tests and mirrors can point elsewhere.
 	MetaGraphURL string
 
-	// MetaSystemUserToken is the platform's long-lived Meta system-user
-	// access token. Every shop's messages go through this centrally owned
-	// credential — merchants never supply or see a Meta token.
-	MetaSystemUserToken string
-
-	// Central WhatsApp sending identity: the single WABA + phone number the
-	// platform owns and sends all merchant traffic on behalf of.
+	// DEPRECATED: platform-wide Meta credentials. Every shop now brings its
+	// own WhatsApp number + long-lived token (stored encrypted per shop in
+	// whatsapp_integrations), so sends and template creation no longer read
+	// these. Kept for the legacy dev scripts (seedtemplates) and onboarding.
+	MetaSystemUserToken     string
 	MetaPhoneNumberID       string
 	MetaMessagingAccountID  string
 	MetaWaacID              string

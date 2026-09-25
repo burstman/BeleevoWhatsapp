@@ -149,15 +149,15 @@ func pgInterval(d time.Duration) string {
 
 // purgeTemplate moves the template to the "deleted" lifecycle state so the
 // merchant sees the deletion notice, after best-effort removal from the
-// central messaging account. Deleted templates can never be sent.
+// shop's own messaging account. Deleted templates can never be sent.
 func (s *Service) purgeTemplate(ctx context.Context, j PurgeMarketingTemplateJob) error {
 	s.log.Warn("deleting marketing-flagged template",
 		"shop_id", j.ShopID, "template_id", j.TemplateID, "name", j.Name, "language", j.Language)
 
-	if s.cfg.MetaSystemUserToken != "" && s.cfg.MetaMessagingAccountID != "" {
-		if err := s.DeleteTemplate(ctx, s.cfg.MetaSystemUserToken, s.cfg.MetaMessagingAccountID, j.Name, j.Language); err != nil {
+	if creds, cErr := s.Credentials(ctx, j.ShopID); cErr == nil {
+		if err := s.DeleteTemplate(ctx, creds.AccessToken, creds.MessagingAccountID, j.Name, j.Language); err != nil {
 			// Best-effort: Meta may already have removed it (404). The local
-			// row still transitions to deleted; the central account stays under
+			// row still transitions to deleted; the shop's account stays under
 			// Meta's policy.
 			s.log.Warn("meta delete of marketing template failed", "name", j.Name, "error", err)
 		}

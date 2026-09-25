@@ -379,14 +379,15 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		return nil, err
 	}
 
-	if s.cfg.MetaSystemUserToken == "" || s.cfg.MetaPhoneNumberID == "" {
-		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, "platform meta credentials not configured")
-		return nil, NewSendRejection(ErrCodeMetaAPIError, "platform meta credentials not configured")
+	creds, err := s.Credentials(ctx, req.ShopID)
+	if err != nil {
+		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, NotConnectedReason)
+		return nil, NewSendRejection(ErrCodeMetaAPIError, NotConnectedReason)
 	}
 
-	metaID, sendErr := s.SendTemplate(ctx, s.cfg.MetaSystemUserToken, s.cfg.MetaPhoneNumberID,
+	metaID, sendErr := s.SendTemplate(ctx, creds.AccessToken, creds.PhoneNumberID,
 		customer.Phone, template.Name, template.Language, components,
-		MessagingAccountParam(s.cfg.MetaMessagingAccountID))
+		MessagingAccountParam(creds.MessagingAccountID))
 	if sendErr != nil {
 		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error())
 		return nil, wrapMetaError(sendErr)

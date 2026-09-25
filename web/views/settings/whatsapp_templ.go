@@ -52,7 +52,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 				return templ_7745c5c3_Err
 			}
 			if integ == nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><h2 class=\"text-lg font-semibold text-slate-900\">Connect WhatsApp</h2><p class=\"mt-2 text-sm text-slate-600\">Paste the credentials from your Meta developer app. Steps:</p><ol class=\"mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600\"><li>Meta Developer Portal → your app → WhatsApp → <span class=\"font-medium text-slate-800\">Configuration</span>: copy the <span class=\"font-medium text-slate-800\">Temporary access token</span>.</li><li>Copy the <span class=\"font-medium text-slate-800\">Phone number ID</span> and <span class=\"font-medium text-slate-800\">Messaging account ID</span> from the same page.</li><li>Paste all three below and save.</li></ol><form method=\"post\" action=\"/whatsapp/connect\" class=\"mt-6 space-y-4\"><div><label for=\"token\" class=\"block text-sm font-medium text-slate-700\">Meta access token</label> <input id=\"token\" name=\"token\" type=\"password\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"EAAP...\"></div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2\"><div><label for=\"phone-number-id\" class=\"block text-sm font-medium text-slate-700\">Phone number ID</label> <input id=\"phone-number-id\" name=\"phone_number_id\" type=\"text\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"1302152316314738\"></div><div><label for=\"messaging-account-id\" class=\"block text-sm font-medium text-slate-700\">Messaging account ID</label> <input id=\"messaging-account-id\" name=\"messaging_account_id\" type=\"text\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"2883242225383967\"></div></div><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Connect</button></form></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><h2 class=\"text-lg font-semibold text-slate-900\">Connect WhatsApp</h2><p class=\"mt-2 text-sm text-slate-600\">Paste the credentials of the WhatsApp Business number your store sends through. These run the template and message pipelines, so each store should connect its own number.</p><ol class=\"mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600\"><li>Meta Business Manager or developer app: create a long-lived token (a temporary token from the app dashboard expires within hours).</li><li>Copy the Phone number ID and the WABA (WhatsApp Business Account) ID of that same number.</li><li>Paste all three below and save.</li></ol><form method=\"post\" action=\"/whatsapp/connect\" class=\"mt-6 space-y-4\"><div><label for=\"token\" class=\"block text-sm font-medium text-slate-700\">Meta access token</label> <input id=\"token\" name=\"token\" type=\"password\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"EAAP... long-lived\"></div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2\"><div><label for=\"phone-number-id\" class=\"block text-sm font-medium text-slate-700\">Phone number ID</label> <input id=\"phone-number-id\" name=\"phone_number_id\" type=\"text\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"e.g. 1302152316314738\"></div><div><label for=\"messaging-account-id\" class=\"block text-sm font-medium text-slate-700\">WABA (messaging account) ID</label> <input id=\"messaging-account-id\" name=\"messaging_account_id\" type=\"text\" required class=\"mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500\" placeholder=\"your WhatsApp Business Account ID\"></div></div><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Connect</button></form></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -64,7 +64,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(integ.PhoneNumber)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 82, Col: 79}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 75, Col: 79}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(integ.Status)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 86, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 79, Col: 74}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -90,7 +90,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(len(templates))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 90, Col: 115}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 83, Col: 115}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -108,7 +108,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 94, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 87, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -121,7 +121,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 96, Col: 98}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 89, Col: 98}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -156,7 +156,7 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.Status)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 97, Col: 96}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/whatsapp.templ`, Line: 90, Col: 96}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {

@@ -49,8 +49,9 @@ type TemplateDraft struct {
 // are never sendable). Re-submitting the same name+language refreshes the
 // existing row.
 func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft TemplateDraft) (MerchantTemplate, error) {
-	if s.cfg.MetaSystemUserToken == "" || s.cfg.MetaMessagingAccountID == "" {
-		return MerchantTemplate{}, &SendRejection{Code: ErrCodeMetaAPIError, Reason: "platform meta credentials not configured"}
+	creds, err := s.Credentials(ctx, shopID)
+	if err != nil {
+		return MerchantTemplate{}, &SendRejection{Code: ErrCodeMetaAPIError, Reason: NotConnectedReason}
 	}
 
 	body := map[string]any{
@@ -66,8 +67,8 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 			Message string `json:"message"`
 		} `json:"warnings"`
 	}
-	err := s.postJSON(ctx, s.cfg.MetaSystemUserToken,
-		fmt.Sprintf("%s/%s/%s/message_templates", s.cfg.MetaGraphURL, metaAPIVersion, s.cfg.MetaMessagingAccountID),
+	err = s.postJSON(ctx, creds.AccessToken,
+		fmt.Sprintf("%s/%s/%s/message_templates", s.cfg.MetaGraphURL, metaAPIVersion, creds.MessagingAccountID),
 		body, &resp)
 
 	approval := "pending"
@@ -176,16 +177,18 @@ type warnings []struct {
 	Message string `json:"message"`
 }
 
-// SyncTemplates refreshes the approval state of every merchant template whose
-// name+language now exists on the messaging account. Only status/rejection are
-// updated — ownership is never touched, and approval never comes from the
-// frontend. Templates Meta reports as MARKETING category (or rejected for
-// marketing) are also flagged unsendable.
-func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
-	if s.cfg.MetaSystemUserToken == "" || s.cfg.MetaMessagingAccountID == "" {
+// SyncTemplates refreshes the approval state of one shop's templates from its
+// own messaging account. Only status/rejection are updated — ownership is never
+// touched, and approval never comes from the frontend. Templates Meta reports
+// as MARKETING category (or rejected for marketing) are also flagged
+// unsendable.
+func (s *Service) SyncTemplates(ctx context.Context, shopID uuid.UUID) (int, error) {
+	creds, err := s.Credentials(ctx, shopID)
+	if err != nil {
+		// No number connected for this shop — nothing to sync.
 		return 0, nil
 	}
-	templates, err := s.ListTemplates(ctx, s.cfg.MetaSystemUserToken, s.cfg.MetaMessagingAccountID)
+	templates, err := s.ListTemplates(ctx, creds.AccessToken, creds.MessagingAccountID)
 	if err != nil {
 		return 0, err
 	}
@@ -198,10 +201,10 @@ func (s *Service) SyncTemplates(ctx context.Context) (int, error) {
 			    marketing_flagged = $4,
 			    marketing_flagged_at = CASE WHEN $4 THEN COALESCE(marketing_flagged_at, now()) ELSE NULL END,
 			    purge_scheduled_at = CASE WHEN $4 THEN purge_scheduled_at ELSE NULL END
-			WHERE meta_template_name = $1 AND language = $3
+			WHERE shop_id = $5 AND meta_template_name = $1 AND language = $3
 			  AND (approval_status <> $2 OR marketing_flagged <> $4
 			       OR (marketing_flagged AND marketing_flagged_at IS NULL))`,
-			t.Name, NormalizeApproval(t.Status), t.Language, marketing,
+			t.Name, NormalizeApproval(t.Status), t.Language, marketing, shopID,
 		)
 		if uErr != nil {
 			return updated, uErr
