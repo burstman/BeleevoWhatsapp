@@ -202,6 +202,81 @@ func (s *Service) Integrations(ctx context.Context, shopID uuid.UUID) ([]Integra
 	return out, rows.Err()
 }
 
+// IntegrationsAll lists every Converty store connection on the platform,
+// newest first. On this single-client deployment all stores belong to the
+// operator, so the Shop Integration page shows them in one place.
+func (s *Service) IntegrationsAll(ctx context.Context) ([]Integration, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, active, shop_id, converty_store_id, store_name, store_slug, store_domain,
+		       store_currency, store_country, scopes,
+		       converty_client_id, converty_client_secret_encrypted,
+		       access_token_encrypted, refresh_token_encrypted,
+		       access_token_expires_at, status, webhook_subscriptions
+		FROM converty_integrations
+		ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Integration
+	for rows.Next() {
+		var i Integration
+		var subs json.RawMessage
+		if err := rows.Scan(
+			&i.ID, &i.Active, &i.ShopID, &i.ConvertyStoreID, &i.StoreName, &i.StoreSlug, &i.StoreDomain,
+			&i.StoreCurrency, &i.StoreCountry, &i.Scopes,
+			&i.ConvertyClientID, &i.CSecretEncrypted,
+			&i.AccessTokenEncrypted, &i.RefreshTokenEncrypted,
+			&i.AccessTokenExpiresAt, &i.Status, &subs,
+		); err != nil {
+			return nil, err
+		}
+		if len(subs) > 0 && string(subs) != "{}" {
+			if err := json.Unmarshal(subs, &i.WebhookSubscriptions); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, i)
+	}
+	return out, rows.Err()
+}
+
+// IntegrationByIDAnyShop returns one Converty connection regardless of which
+// shop owns it, so cross-shop management actions can resolve the owning shop.
+func (s *Service) IntegrationByIDAnyShop(ctx context.Context, id uuid.UUID) (Integration, error) {
+	var i Integration
+	var subs json.RawMessage
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, active, shop_id, converty_store_id, store_name, store_slug, store_domain,
+		       store_currency, store_country, scopes,
+		       converty_client_id, converty_client_secret_encrypted,
+		       access_token_encrypted, refresh_token_encrypted,
+		       access_token_expires_at, status, webhook_subscriptions
+		FROM converty_integrations
+		WHERE id = $1`,
+		id,
+	).Scan(
+		&i.ID, &i.Active, &i.ShopID, &i.ConvertyStoreID, &i.StoreName, &i.StoreSlug, &i.StoreDomain,
+		&i.StoreCurrency, &i.StoreCountry, &i.Scopes,
+		&i.ConvertyClientID, &i.CSecretEncrypted,
+		&i.AccessTokenEncrypted, &i.RefreshTokenEncrypted,
+		&i.AccessTokenExpiresAt, &i.Status, &subs,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return i, ErrNotFound
+	}
+	if err != nil {
+		return i, err
+	}
+	if len(subs) > 0 && string(subs) != "{}" {
+		if err := json.Unmarshal(subs, &i.WebhookSubscriptions); err != nil {
+			return i, err
+		}
+	}
+	return i, nil
+}
+
 // CountIntegrations returns how many Converty connections a shop currently
 // has. Used to detect orphaned placeholder shops (created at connect time)
 // after an abandoned authorization.

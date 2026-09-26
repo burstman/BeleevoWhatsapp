@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modifier l'automatisation</title>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --card:#fff;
+    --border:#e2e5e9;
+    --text:#202124;
+    --muted:#687386;
+    --primary:#2563eb;
+    --green:#16a34a;
+    --yellow:#f6c343;
+    --blue-bg:#eef6ff;
+    --blue-border:#b9d7ff;
+    --danger:#ef4444;
+    --shadow:0 1px 2px rgba(0,0,0,.05);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:13px;
+  }
+
+  button,input,textarea,select{font:inherit}
+
+  .page{
+    min-height:100vh;
+    padding:0 8px 70px;
+  }
+
+  /* Top notification */
+  .notice{
+    margin:0 13px 10px;
+    border:1px solid var(--blue-border);
+    background:var(--blue-bg);
+    border-radius:5px;
+    min-height:54px;
+    padding:10px 12px;
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    color:#2563eb;
+  }
+  .notice-icon{
+    width:17px;
+    height:17px;
+    margin-top:1px;
+    border:2px solid #2563eb;
+    border-radius:50%;
+    position:relative;
+    flex:none;
+  }
+  .notice-icon:after{
+    content:"";
+    position:absolute;
+    width:1px;
+    height:5px;
+    background:#2563eb;
+    left:6px;
+    top:2px;
+  }
+  .notice-icon:before{
+    content:"";
+    position:absolute;
+    width:4px;
+    height:1px;
+    background:#2563eb;
+    left:6px;
+    top:7px;
+    transform:rotate(25deg);
+    transform-origin:left;
+  }
+  .notice-content strong{
+    display:block;
+    font-size:12px;
+    font-weight:500;
+    margin-bottom:5px;
+  }
+  .notice-content span{
+    color:#315fa8;
+    font-size:10px;
+  }
+  .notice-close{
+    margin-left:auto;
+    border:0;
+    background:transparent;
+    color:#2563eb;
+    cursor:pointer;
+    font-size:15px;
+  }
+
+  .header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:7px 12px 18px;
+  }
+  .header h1{
+    font-size:17px;
+    margin:0;
+    font-weight:700;
+  }
+  .btn{
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:5px;
+    padding:7px 13px;
+    cursor:pointer;
+    color:#333;
+    box-shadow:var(--shadow);
+  }
+  .btn:hover{background:#fafafa}
+  .btn-primary{
+    background:#f7c948;
+    border-color:#eab93b;
+    color:#1f2937;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0,2.05fr) minmax(300px,1fr);
+    gap:18px;
+    align-items:start;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:8px;
+    box-shadow:var(--shadow);
+  }
+
+  .form-card{
+    padding:17px 18px 25px;
+  }
+
+  .preview-card{
+    padding:17px 18px 20px;
+    position:sticky;
+    top:15px;
+  }
+
+  .field{margin-bottom:16px}
+  label{
+    display:block;
+    font-size:11px;
+    font-weight:500;
+    margin-bottom:7px;
+    color:#202124;
+  }
+
+  input[type="text"],
+  textarea,
+  select{
+    width:100%;
+    border:1px solid #dfe2e6;
+    border-radius:5px;
+    background:#fff;
+    color:#242424;
+    outline:none;
+  }
+
+  input[type="text"]{
+    height:29px;
+    padding:5px 9px;
+  }
+
+  textarea{
+    min-height:95px;
+    resize:vertical;
+    padding:9px;
+    line-height:1.65;
+  }
+
+  input:focus,textarea:focus,select:focus{
+    border-color:#93b4ee;
+    box-shadow:0 0 0 2px rgba(37,99,235,.08);
+  }
+
+  .radio-group{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .radio{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:11px;
+  }
+  .radio input{margin:0}
+
+  .row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:28px;
+  }
+
+  .select{
+    width:auto;
+    min-width:168px;
+    height:29px;
+    padding:3px 9px;
+  }
+
+  .trigger{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid #e0e2e5;
+    background:#fff;
+    border-radius:5px;
+    padding:5px 9px;
+    min-width:87px;
+  }
+  .trigger .status{
+    background:#c9f5d7;
+    color:#16803c;
+    border-radius:10px;
+    padding:3px 9px;
+    font-size:10px;
+  }
+
+  .message-meta{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    color:#657189;
+    font-size:9px;
+    margin-top:7px;
+  }
+  .message-meta .unicode{color:#e6a800}
+  .info-dot{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:12px;height:12px;
+    border:1px solid #aab2bf;
+    border-radius:50%;
+    font-size:8px;
+  }
+
+  .divider{
+    border:0;
+    border-top:1px solid #e5e7eb;
+    margin:16px 0;
+  }
+
+  .advanced{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    color:#596579;
+    font-size:11px;
+    cursor:pointer;
+    padding:3px 0;
+  }
+  .advanced .chevron{
+    font-size:11px;
+  }
+
+  .schedule-title{
+    font-size:13px;
+    font-weight:500;
+    margin:23px 0 18px;
+  }
+
+  .schedule-grid{
+    display:grid;
+    grid-template-columns:1.05fr .75fr .75fr;
+    gap:28px;
+  }
+
+  .days{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .day{
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+  }
+  .day input{
+    margin:1px 0 0;
+    accent-color:#f2bd18;
+  }
+  .day-name{
+    font-size:11px;
+    line-height:1.1;
+  }
+  .day-hours{
+    display:block;
+    color:#657189;
+    font-size:9px;
+    margin-top:3px;
+  }
+
+  .time-fields{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .time-fields label{
+    color:#5c6573;
+    font-size:10px;
+  }
+
+  .schedule-note{
+    color:#657189;
+    font-size:9px;
+    line-height:1.65;
+    margin-top:3px;
+  }
+  .schedule-note ul{
+    margin:4px 0 5px 15px;
+    padding:0;
+  }
+
+  /* Preview */
+  .preview-title{
+    font-size:12px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .preview-subtitle{
+    font-size:10px;
+    color:#687386;
+    margin-bottom:28px;
+  }
+  .preview-label{
+    font-size:10px;
+    color:#4e5a6d;
+    margin-bottom:8px;
+  }
+  .message-preview{
+    background:#edf6ff;
+    border:1px solid #c8def8;
+    border-radius:4px;
+    padding:11px;
+    min-height:79px;
+    direction:rtl;
+    text-align:left;
+    font-size:11px;
+    line-height:1.8;
+  }
+  .message-preview .number,
+  .message-preview .shop{
+    direction:ltr;
+    text-align:left;
+    display:block;
+    margin-top:7px;
+    line-height:1.2;
+  }
+  .message-preview .shop{margin-top:2px}
+  .preview-help{
+    color:#687386;
+    font-size:9px;
+    line-height:1.5;
+    margin-top:13px;
+  }
+
+  .support{
+    position:fixed;
+    right:14px;
+    bottom:10px;
+    border:0;
+    background:#f9c735;
+    color:#fff;
+    border-radius:22px;
+    padding:10px 17px 10px 10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+    cursor:pointer;
+    font-size:11px;
+  }
+  .support-dot{
+    display:inline-block;
+    width:15px;height:15px;
+    border-radius:50%;
+    background:#fff;
+    vertical-align:-3px;
+    margin-right:5px;
+  }
+
+  @media(max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .preview-card{position:static}
+  }
+
+  @media(max-width:600px){
+    .page{padding:0 4px 80px}
+    .notice{margin:0 4px 10px}
+    .header{margin:7px 5px 14px}
+    .row,.schedule-grid{grid-template-columns:1fr;gap:15px}
+    .layout{gap:12px}
+    .form-card,.preview-card{padding:14px}
+  }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <div class="notice">
+    <span class="notice-icon"></span>
+    <div class="notice-content">
+      <strong>Heures d'envoi SMS</strong>
+      <span>Les SMS seront envoyés à partir de 08h00 le matin. Conformément à la réglementation tunisienne, les SMS sont autorisés de 8h à 20h (10h–20h le dimanche).</span>
+    </div>
+    <button class="notice-close" aria-label="Fermer">×</button>
+  </div>
+
+  <header class="header">
+    <h1>Modifier l'automatisation</h1>
+    <button class="btn">Retour</button>
+  </header>
+
+  <main class="layout">
+
+    <section class="card form-card">
+
+      <div class="field">
+        <label for="name">Nom de l'automatisation</label>
+        <input id="name" type="text" value="1 - في مرحلة التوصيل">
+      </div>
+
+      <div class="field">
+        <label for="description">Description (optionnel)</label>
+        <input id="description" type="text" value="إشعار تلقائي عندما تكون الطلبية في مرحلة التوصيل">
+      </div>
+
+      <div class="field">
+        <label>Type d'automatisation</label>
+        <div class="radio-group">
+          <label class="radio"><input type="radio" name="type"> Instantanée</label>
+          <label class="radio"><input type="radio" name="type" checked> Programmée</label>
+          <label class="radio"><input type="radio" name="type"> Retardée</label>
+        </div>
+        <div style="font-size:10px;color:#687386;margin-top:8px">
+          Le type d'automatisation détermine quand et comment les messages seront envoyés
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Déclencheur</label>
+          <button class="trigger">
+            <span class="status">En transit</span>
+            <span>⌄</span>
+          </button>
+        </div>
+
+        <div class="field">
+          <label>Intégration</label>
+          <select class="select">
+            <option>https://topdeals2025.online/</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="message">Message à envoyer</label>
+        <textarea id="message">طلبك في مرحلة التوصيل يرجى انتظار عميل التوصيل
+
+54116584
+Top Deals</textarea>
+
+        <div class="message-meta">
+          <span>66 caractères</span>
+          <span>1 Crédits SMS</span>
+          <span class="unicode">Unicode</span>
+          <span>3 Caractères restants</span>
+          <span class="info-dot">i</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="advanced">
+        <span class="chevron">⌄</span>
+        <span>Paramètres avancés</span>
+      </div>
+
+      <hr class="divider">
+
+      <h2 class="schedule-title">Paramètres de planification</h2>
+
+      <div class="schedule-grid">
+
+        <div>
+          <label>Jours d'envoi</label>
+          <div class="days">
+            <label class="day"><input type="checkbox" checked><span><span class="day-name">Lundi</span><span class="day-hours">8h - 20h</span></span></label>
+            <label class="day"><input type="checkbox" checked><span><span class="day-name">Mardi</span><span class="day-hours">8h - 20h</span></span></label>
+            <label class="day"><input type="checkbox" checked><span><span class="day-name">Mercredi</span><span class="day-hours">8h - 20h</span></span></label>
+            <label class="day"><input type="checkbox" checked><span><span class="day-name">Jeudi</span><span class="day-hours">8h - 20h</span></span></label>
+            <label class="day"><input type="checkbox" checked><span><span class="day-name">Vendredi</span><span class="day-hours">8h - 20h</span></span></label>
+          </div>
+        </div>
+
+        <div>
+          <label>Heure d'envoi</label>
+          <div class="time-fields">
+            <div>
+              <label for="hour">Heure</label>
+              <select id="hour">
+                <option>10h</option>
+                <option>11h</option>
+                <option>12h</option>
+                <option>13h</option>
+                <option>14h</option>
+                <option>15h</option>
+                <option>16h</option>
+                <option>17h</option>
+                <option>18h</option>
+                <option>19h</option>
+                <option>20h</option>
+              </select>
+            </div>
+            <div>
+              <label for="minute">Minute</label>
+              <select id="minute">
+                <option>30</option>
+                <option>00</option>
+                <option>15</option>
+                <option>45</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label style="visibility:hidden">Info</label>
+          <div class="schedule-note">
+            Note: Les SMS seront envoyés uniquement pendant les heures autorisées:
+            <ul>
+              <li>Du lundi au samedi: de 8h à 20h</li>
+              <li>Le dimanche: de 10h à 20h</li>
+            </ul>
+            Si l'heure programmée est en dehors de ces plages, le système ajustera automatiquement l'envoi à l'heure autorisée la plus proche.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <aside class="card preview-card">
+      <div class="preview-title">Aperçu du message</div>
+      <div class="preview-subtitle">Prévisualisation du message qui sera envoyé</div>
+
+      <div class="preview-label">Contenu du message:</div>
+
+      <div class="message-preview">
+        طلبك في مرحلة التوصيل يرجى انتظار عميل التوصيل
+        <span class="number">54116584</span>
+        <span class="shop">Top Deals</span>
+      </div>
+
+      <div class="preview-help">
+        Les variables dans le message (comme {customer_name}) seront remplacées par les données réelles lors de l'envoi.
+      </div>
+    </aside>
+
+  </main>
+
+  <button class="support">
+    <span class="support-dot"></span>
+    Support
+  </button>
+
+</div>
+</body>
+</html>
