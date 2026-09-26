@@ -20,6 +20,63 @@ const (
 	TokenDriverPhone   TokenKey = "driver_phone"
 )
 
+// Event sources a template can be written for. SourceAny is the neutral
+// default: the template may be attached to an automation of either source.
+const (
+	SourceConverty = "converty"
+	SourceDelivery = "delivery"
+	SourceAny      = "any"
+)
+
+// SourceOption is one entry in the editor's "this message is for" picker.
+type SourceOption struct {
+	Value string
+	Label string
+	Hint  string
+}
+
+// SourceOptions are the source choices offered when creating a template.
+func SourceOptions() []SourceOption {
+	return []SourceOption{
+		{Value: SourceConverty, Label: "Converty orders", Hint: "Fires on order status changes from Converty"},
+		{Value: SourceDelivery, Label: "Mes Colis delivery", Hint: "Fires on parcel status changes from Mes Colis"},
+		{Value: SourceAny, Label: "Both", Hint: "Usable by either kind of automation"},
+	}
+}
+
+// SourceLabel renders a stored source for display.
+func SourceLabel(source string) string {
+	switch source {
+	case SourceConverty:
+		return "Converty"
+	case SourceDelivery:
+		return "Mes Colis"
+	case SourceAny, "":
+		return "Both"
+	}
+	return source
+}
+
+// NormalizeSource maps anything unrecognized to the neutral default, so a bad
+// form value can never leave a template unattached.
+func NormalizeSource(source string) string {
+	switch source {
+	case SourceConverty, SourceDelivery, SourceAny:
+		return source
+	}
+	return SourceAny
+}
+
+// TokenAllowed reports whether a variable can appear in a template written for
+// a given source. Driver details only exist on the delivery side, so a
+// Converty template that used them would send an empty slot to the customer.
+func TokenAllowed(source string, k TokenKey) bool {
+	if source == SourceDelivery || source == SourceAny {
+		return true
+	}
+	return k != TokenDriverName && k != TokenDriverPhone
+}
+
 // VariableChip is the palette entry rendered in the template editor. Keep the
 // order here: it is the order chips are offered to the author (not the order
 // they land in the body — that is decided by dropping).
@@ -33,6 +90,16 @@ func VariableChips() []VariableChip {
 		{Value: string(TokenDriverName), Label: "Driver name", Example: "Ali Mansour"},
 		{Value: string(TokenDriverPhone), Label: "Driver phone", Example: "+216 98 111 222"},
 	}
+}
+
+// Sources lists the event sources a chip may be used in, as a comma-separated
+// list. The editor renders it on the chip and hides the ones the chosen source
+// cannot fill.
+func (c VariableChip) Sources() string {
+	if !TokenAllowed(SourceConverty, TokenKey(c.Value)) {
+		return "delivery,any"
+	}
+	return "converty,delivery,any"
 }
 
 // VariableChip is one draggable variable the author can drop into the body.

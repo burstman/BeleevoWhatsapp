@@ -46,6 +46,16 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 
 				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3"
 					x-data="templateEditor" @submit="onSubmit">
+					<div>
+						<label for="tplSource" class="block text-xs font-medium text-slate-600">This message is for</label>
+						<select id="tplSource" name="source" x-model="source" required
+							class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+							for _, opt := range whatsapp.SourceOptions() {
+								<option value={ opt.Value }>{ opt.Label } — { opt.Hint }</option>
+							}
+						</select>
+					</div>
+
 					<div class="grid gap-3 sm:grid-cols-2">
 						<div>
 							<label for="tplName" class="block text-xs font-medium text-slate-600">Name</label>
@@ -72,7 +82,8 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 
 						<div class="mt-2 flex flex-wrap gap-2" aria-label="Variables">
 							for _, chip := range whatsapp.VariableChips() {
-								<span draggable="true" data-value={ chip.Value } data-label={ chip.Label } data-example={ chip.Example }
+								<span draggable="true" data-value={ chip.Value } data-label={ chip.Label } data-example={ chip.Example } data-for={ chip.Sources() }
+									x-show="chipVisible($el)"
 									@dragstart="onDragStart($event)"
 									@dragend="dragging = ''"
 									:class="dragging === $el.dataset.value ? 'opacity-40' : ''"
@@ -128,6 +139,11 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								lastVars: "",
 								charLimit: 1024,
 								charCount: 0,
+								source: "converty",
+
+								chipVisible: function (el) {
+									return el.dataset.for.split(",").indexOf(this.source) !== -1;
+								},
 
 								init: function () {
 									var self = this;
@@ -301,6 +317,7 @@ serializeBody: function (root) {
 								<th class="px-6 py-3 font-medium">Name</th>
 								<th class="px-6 py-3 font-medium">Language</th>
 								<th class="px-6 py-3 font-medium">Category</th>
+								<th class="px-6 py-3 font-medium">For</th>
 								<th class="px-6 py-3 font-medium">Shop</th>
 								<th class="px-6 py-3 font-medium">Status</th>
 								<th class="px-6 py-3 text-right font-medium">Actions</th>
@@ -312,6 +329,7 @@ serializeBody: function (root) {
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Name }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
+									<td class="px-6 py-3 text-slate-600">{ whatsapp.SourceLabel(t.Source) }</td>
 									<td class="px-6 py-3 text-slate-600">
 										if shopNames[t.ShopID] != "" {
 											{ shopNames[t.ShopID] }

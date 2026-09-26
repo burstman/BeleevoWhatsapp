@@ -201,8 +201,8 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							Select a template to preview.
 						</div>
 						<div class="mt-3 text-xs text-slate-500">
-							The template variables ({"{{1}}"} customer, {"{{2}}"} order, {"{{3}}"} status) are
-							filled automatically when the message is sent.
+							The variables you drop into the message when writing a template are filled
+							automatically from the order or parcel that triggered the send.
 						</div>
 					</div>
 				</aside>
@@ -250,7 +250,9 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					}
 
 					function loadTemplates(shopID) {
-						fetch("/automations/shops/" + encodeURIComponent(shopID) + "/templates", {
+						var src = document.getElementById("eventSource");
+						var query = src && src.value ? "?source=" + encodeURIComponent(src.value) : "";
+						fetch("/automations/shops/" + encodeURIComponent(shopID) + "/templates" + query, {
 							headers: { "Accept": "application/json" }
 						}).then(function (resp) {
 							return resp.ok ? resp.json() : Promise.reject(resp.status);
@@ -313,7 +315,12 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							statusDel.name = "event_status_delivery";
 						}
 					}
-					source.addEventListener("change", syncSource);
+					source.addEventListener("change", function () {
+						syncSource();
+						// The template catalog is source-specific: a message
+						// written for Mes Colis cannot serve a Converty trigger.
+						if (typeof loadTemplates === "function") { loadTemplates(currentShop.value); }
+					});
 					syncSource();
 				}
 			})();

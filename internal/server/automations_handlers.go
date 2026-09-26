@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -56,6 +57,9 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "The send rule is invalid — check the time, timezone, days or delay."
 	case "notemplate":
 		flash.Error = "Create and get an approved template first."
+	case "wrongsource":
+		flash.Error = "That template was written for " + k.Request.URL.Query().Get("for") +
+			", so it cannot drive this trigger. Pick one written for the same source."
 	case "tested":
 		flash.Info = "Test message sent. Check the number in WhatsApp."
 	case "testfailed":
@@ -122,6 +126,9 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 		flash.Error = "An automation for this trigger already exists."
 	case "notemplate":
 		flash.Error = "Create and get an approved template first."
+	case "wrongsource":
+		flash.Error = "That template was written for " + k.Request.URL.Query().Get("for") +
+			", so it cannot drive this trigger. Pick one written for the same source."
 	case "notfound":
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
 	case "error", "internal":
@@ -235,6 +242,12 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=notemplate")
 	}
 
+	if r, sErr := a.templateSource(ctx, templateID); sErr != nil || !templateFitsSource(whatsapp.MerchantTemplate{Source: r}, source) {
+		a.Log.Warn("automation create rejected (source mismatch)",
+			"shop_id", shopID, "template_id", templateID, "source", source, "template_source", r, "error", sErr)
+		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=wrongsource&for="+url.QueryEscape(whatsapp.SourceLabel(r)))
+	}
+
 	schedule, sErr2 := scheduleFromForm(k)
 	if sErr2 != nil {
 		a.Log.Warn("automation create rejected", "shop_id", shopID, "error", sErr2)
@@ -289,6 +302,13 @@ func (a *App) handleAutomationUpdate(k *kit.Kit) error {
 	if tErr != nil || !owns {
 		a.Log.Warn("automation update rejected (template)", "shop_id", shopID, "template_id", templateID, "error", tErr)
 		return k.Redirect(http.StatusSeeOther, "/automations/"+id.String()+"/edit?flash=notemplate")
+	}
+
+	if r, sErr := a.templateSource(ctx, templateID); sErr != nil || !templateFitsSource(whatsapp.MerchantTemplate{Source: r}, source) {
+		a.Log.Warn("automation update rejected (source mismatch)",
+			"shop_id", shopID, "template_id", templateID, "source", source, "template_source", r, "error", sErr)
+		return k.Redirect(http.StatusSeeOther,
+			"/automations/"+id.String()+"/edit?flash=wrongsource&for="+url.QueryEscape(whatsapp.SourceLabel(r)))
 	}
 
 	schedule, sErr := scheduleFromForm(k)
@@ -440,7 +460,9 @@ func (a *App) handleAutomationDelete(k *kit.Kit) error {
 // handleShopTemplates returns the approved templates the operator can attach
 // to an automation of one shop. Templates belong to the client and are shared
 // across shops, so the full catalog is returned with each template's shop
-// name, letting the form rebuild the dropdown when the shop changes.
+// name, letting the form rebuild the dropdown when the shop changes. When the
+// request names an event source, the list is narrowed to templates written for
+// it (plus the neutral "both" ones) so a mismatched pairing is not offered.
 func (a *App) handleShopTemplates(k *kit.Kit) error {
 	if _, err := a.shopsFor(k); err != nil {
 		return err
@@ -450,6 +472,7 @@ func (a *App) handleShopTemplates(k *kit.Kit) error {
 		http.Error(k.Response, "invalid shop", http.StatusBadRequest)
 		return nil
 	}
+	wantedSource := strings.TrimSpace(k.Request.URL.Query().Get("source"))
 
 	ctx := k.Request.Context()
 	integrated, err := a.Shops.ListIntegrated(ctx)
@@ -464,6 +487,7 @@ func (a *App) handleShopTemplates(k *kit.Kit) error {
 		Language string `json:"language"`
 		Body     string `json:"body"`
 		Shop     string `json:"shop"`
+		Source   string `json:"source"`
 	}
 	items := []item{}
 	templates, err := a.WhatsApp.TemplatesAll(ctx)
@@ -471,16 +495,41 @@ func (a *App) handleShopTemplates(k *kit.Kit) error {
 		return err
 	}
 	for _, t := range templates {
-		if t.ApprovalStatus == "approved" && !t.MarketingFlagged {
-			items = append(items, item{
-				ID: t.ID.String(), Name: t.Name, Language: t.Language,
-				Body: whatsapp.TemplateBody(t), Shop: shopNames[t.ShopID],
-			})
+		if t.ApprovalStatus != "approved" || t.MarketingFlagged {
+			continue
 		}
+		if wantedSource != "" && !templateFitsSource(t, wantedSource) {
+			continue
+		}
+		items = append(items, item{
+			ID: t.ID.String(), Name: t.Name, Language: t.Language,
+			Body: whatsapp.TemplateBody(t), Shop: shopNames[t.ShopID],
+			Source: whatsapp.SourceLabel(t.Source),
+		})
 	}
 
 	k.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return k.JSON(http.StatusOK, map[string]any{"shop_id": id, "templates": items})
+}
+
+// templateFitsSource reports whether a template may be attached to an
+// automation of the given event source. Templates created before sources
+// existed carry "any" and stay attachable everywhere.
+func templateFitsSource(t whatsapp.MerchantTemplate, source string) bool {
+	switch source {
+	case "converty", "delivery":
+		return t.Source == source || t.Source == whatsapp.SourceAny
+	}
+	return true
+}
+
+// templateSource reads a template's event source for the save-time guard.
+func (a *App) templateSource(ctx context.Context, templateID uuid.UUID) (string, error) {
+	t, err := a.WhatsApp.TemplateByID(ctx, templateID)
+	if err != nil {
+		return "", err
+	}
+	return t.Source, nil
 }
 
 // catalogFromTemplates splits a shop's templates into the approved sendable

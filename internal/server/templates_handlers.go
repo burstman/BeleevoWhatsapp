@@ -109,6 +109,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	name := strings.TrimSpace(k.Request.FormValue("name"))
 	language := strings.TrimSpace(k.Request.FormValue("language"))
 	body := strings.TrimSpace(k.Request.FormValue("body"))
+	source := whatsapp.NormalizeSource(strings.TrimSpace(k.Request.FormValue("source")))
 	if name == "" || language == "" || body == "" {
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=missing")
 	}
@@ -146,6 +147,14 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 		}
 	}
 
+	// A Converty event carries no deliveryman, so a driver variable there would
+	// reach the customer as an empty slot. Refuse it at creation instead.
+	for _, t := range tokens {
+		if !whatsapp.TokenAllowed(source, t) {
+			return k.Redirect(http.StatusSeeOther, "/templates?flash=badsource")
+		}
+	}
+
 	components, err := json.Marshal([]map[string]any{
 		{
 			"type": "BODY",
@@ -165,6 +174,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 		Category:   "UTILITY",
 		Components: components,
 		Variables:  variables,
+		Source:     source,
 	})
 	if err != nil {
 		var rej *whatsapp.SendRejection
