@@ -214,6 +214,7 @@ func (s *Service) templateStateGlobal(ctx context.Context, templateID uuid.UUID)
 			return TemplateState{}, uuid.Nil, jErr
 		}
 	}
+	t.NumVariables = countTemplateVariablesRaw(components)
 	return t, ownerShop, nil
 }
 
