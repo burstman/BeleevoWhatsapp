@@ -4,9 +4,11 @@ import (
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
+
+	"github.com/google/uuid"
 )
 
-templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, flash TemplateFlash) {
+templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, shopNames map[uuid.UUID]string, flash TemplateFlash) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
@@ -99,6 +101,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								<th class="px-6 py-3 font-medium">Name</th>
 								<th class="px-6 py-3 font-medium">Language</th>
 								<th class="px-6 py-3 font-medium">Category</th>
+								<th class="px-6 py-3 font-medium">Shop</th>
 								<th class="px-6 py-3 font-medium">Status</th>
 							</tr>
 						</thead>
@@ -108,6 +111,13 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Name }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
+									<td class="px-6 py-3 text-slate-600">
+										if shopNames[t.ShopID] != "" {
+											{ shopNames[t.ShopID] }
+										} else {
+											<span class="text-slate-400">{ t.ShopID.String()[:8] }</span>
+										}
+									</td>
 									<td class="px-6 py-3">
 										if t.ApprovalStatus == "deleted" {
 											@ApprovalBadge("deleted")

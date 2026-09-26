@@ -76,10 +76,14 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		a.Log.Info("expired marketing templates deleted", "count", n)
 	}
 
-	templates, err := a.WhatsApp.Templates(k.Request.Context(), active.ID)
+	// Templates belong to the client and are shared across shops, so the page
+	// lists the full catalog (an approved template under another store still
+	// shows here), not just the active shop's.
+	templates, err := a.WhatsApp.TemplatesAll(k.Request.Context())
 	if err != nil {
 		return err
 	}
+	shopNames := shopNameMap(all)
 
 	flash := vdashboard.TemplateFlash{}
 	if purged > 0 {
@@ -112,7 +116,7 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Templates", "templates", active, all)
-	return k.Render(vdashboard.TemplatesPage(page, templates, flash))
+	return k.Render(vdashboard.TemplatesPage(page, templates, shopNames, flash))
 }
 
 // handleMessages renders the merchant's message history with delivery status

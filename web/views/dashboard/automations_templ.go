@@ -363,7 +363,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			return templ_7745c5c3_Err
 		}
 		if a.TemplateID != uuid.Nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div x-show=\"testOpen\" x-cloak @keydown.escape.window=\"testOpen = false\" class=\"fixed inset-0 z-50 overflow-y-auto bg-slate-900/60\" @click.self=\"testOpen = false\" x-transition.opacity><div class=\"flex min-h-full items-center justify-center p-4\"><div class=\"w-full max-w-md rounded-xl bg-white p-6 shadow-xl\"><div class=\"flex items-start justify-between gap-4\"><div><h4 class=\"text-base font-semibold text-slate-900\">Test message</h4><p class=\"mt-1 text-sm text-slate-500\">Template: <span class=\"font-medium text-slate-700\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div x-show=\"testOpen\" x-cloak @keydown.escape.window=\"testOpen = false\" class=\"fixed inset-0 z-50 overflow-y-auto bg-slate-900/60\" @click.self=\"testOpen = false\" x-transition.opacity><div class=\"flex min-h-full items-start justify-center p-4\"><div class=\"w-full max-w-md rounded-xl bg-white p-6 shadow-xl\"><div class=\"flex items-start justify-between gap-4\"><div><h4 class=\"text-base font-semibold text-slate-900\">Test message</h4><p class=\"mt-1 text-sm text-slate-500\">Template: <span class=\"font-medium text-slate-700\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
