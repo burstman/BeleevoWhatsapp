@@ -18,9 +18,9 @@ import (
 )
 
 // reconcileInterval is how often the delivery poller sweeps every connected
-// shop for parcel status changes. Poll (rather than a live socket) is the
-// chosen ingestion because Render's free tier cannot hold persistent per-shop
-// websockets reliably.
+// shop for parcel status changes. The REST sweep is a safety net on top of the
+// live Mes Colis socket (near-instant delivery-webhook automations); keep the
+// poll so no update is ever missed while a socket is down.
 const reconcileInterval = 2 * time.Minute
 
 // Server runs the background job processor (asynq) inside the web process so
@@ -68,12 +68,16 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 		return nil, fmt.Errorf("worker failed to start: %w", err)
 	}
 
-	reconcileCtx, stopReconcile := context.WithCancel(context.Background())
-	go reconcileLoop(reconcileCtx, logger, automations)
+	deliveryCtx, stopDelivery := context.WithCancel(context.Background())
+	go reconcileLoop(deliveryCtx, logger, automations)
+	go del.RunSocketSupervisor(deliveryCtx, func(ctx context.Context, ch delivery.StatusChange) error {
+		return automations.OnDeliveryChange(ctx, ch)
+	})
 
 	logger.Info("background worker started",
-		"redis", redisOpt.Addr, "concurrency", 10, "reconcile_interval", reconcileInterval)
-	return &Server{log: logger, srv: srv, pool: pool, stop: stopReconcile}, nil
+		"redis", redisOpt.Addr, "concurrency", 10,
+		"reconcile_interval", reconcileInterval, "mescolis_socket", delivery.MescolisSocketURL)
+	return &Server{log: logger, srv: srv, pool: pool, stop: stopDelivery}, nil
 }
 
 // reconcileLoop ticks the delivery poller until the context is cancelled.

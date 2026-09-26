@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,6 +35,11 @@ type Service struct {
 	log    *slog.Logger
 	cipher *encrypt.Cipher
 	http   *http.Client
+
+	// socketConns tracks the live per-shop Mes Colis socket connections,
+	// guarded by socketMu (see socket.go).
+	socketMu    sync.Mutex
+	socketConns map[string]*socketConn
 }
 
 func NewService(cfg config.Config, pool *pgxpool.Pool, log *slog.Logger) *Service {
@@ -235,52 +241,17 @@ func (s *Service) reconcileShop(ctx context.Context, integ Integration, onChange
 	}
 
 	for _, remote := range resp.Orders {
-		prev := ""
+		var prev, orderID string
 		for _, t := range active {
 			if t.Barcode != remote.Barcode {
 				continue
 			}
 			prev = t.LastStatus
+			orderID = t.OrderID
 			break
 		}
-		if prev == remote.Status {
-			if err := s.TouchTracked(ctx, integ.ShopID, remote.Barcode); err != nil {
-				s.log.Warn("delivery reconcile: touch failed", "barcode", remote.Barcode, "error", err)
-			}
-			continue
-		}
-
-		label := remote.StatusLabel
-		if label == "" {
-			label = LabelFor(remote.Status)
-		}
-		if err := s.UpdateTrackedStatus(ctx, integ.ShopID, remote.Barcode, remote.Status, label); err != nil {
-			s.log.Warn("delivery reconcile: status persist failed", "barcode", remote.Barcode, "error", err)
-			continue
-		}
-
-		s.log.Info("delivery status changed",
-			"shop_id", integ.ShopID, "barcode", remote.Barcode,
-			"from", prev, "to", remote.Status)
-		if onChanged != nil {
-			var orderID string
-			for _, t := range active {
-				if t.Barcode == remote.Barcode {
-					orderID = t.OrderID
-					break
-				}
-			}
-			if err := onChanged(ctx, StatusChange{
-				ShopID:   integ.ShopID,
-				Barcode:  remote.Barcode,
-				OrderID:  orderID,
-				Status:   remote.Status,
-				Label:    label,
-				Previous: prev,
-			}); err != nil {
-				s.log.Warn("delivery reconcile: automation callback failed",
-					"shop_id", integ.ShopID, "barcode", remote.Barcode, "error", err)
-			}
+		if err := s.recordTransition(ctx, integ.ShopID, remote.Barcode, orderID, prev, remote.Status, remote.StatusLabel, onChanged); err != nil {
+			s.log.Warn("delivery reconcile: transition failed", "barcode", remote.Barcode, "error", err)
 		}
 	}
 
