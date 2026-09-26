@@ -11,7 +11,10 @@ import (
 
 func TestBuildVariablesFillsVocabularyInOrder(t *testing.T) {
 	tpl := whatsapp.MerchantTemplate{NumVariables: 3}
-	vars := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
+	vars, missing := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
+	if len(missing) != 0 {
+		t.Fatalf("legacy template must not report missing variables, got %v", missing)
+	}
 
 	want := map[string]string{
 		"1": "Ahmed",
@@ -27,7 +30,7 @@ func TestBuildVariablesFillsVocabularyInOrder(t *testing.T) {
 
 func TestBuildVariablesPadsToTemplateCount(t *testing.T) {
 	tpl := whatsapp.MerchantTemplate{NumVariables: 5}
-	vars := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
+	vars, _ := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
 
 	if len(vars) != 5 {
 		t.Fatalf("len(vars) = %d, want 5 (must equal template count)", len(vars))
@@ -43,7 +46,7 @@ func TestBuildVariablesPadsToTemplateCount(t *testing.T) {
 }
 
 func TestBuildVariablesNoTemplateVars(t *testing.T) {
-	vars := buildVariables(whatsapp.MerchantTemplate{NumVariables: 0}, SendInput{})
+	vars, _ := buildVariables(whatsapp.MerchantTemplate{NumVariables: 0}, SendInput{})
 	if len(vars) != 0 {
 		t.Fatalf("expected empty vars, got %v", vars)
 	}
@@ -212,4 +215,36 @@ func mustUUID(t *testing.T) uuid.UUID {
 		t.Fatal(err)
 	}
 	return id
+}
+
+func TestBuildVariablesReportsMissingSemanticValues(t *testing.T) {
+	tpl := whatsapp.MerchantTemplate{
+		NumVariables: 2,
+		Variables:    []whatsapp.TokenKey{whatsapp.TokenCustomerName, whatsapp.TokenDriverPhone},
+	}
+	in := SendInput{CustomerName: "Ahmed", StatusLabel: "Out for delivery"}
+
+	vars, missing := buildVariables(tpl, in)
+	if len(missing) != 1 || missing[0] != whatsapp.TokenDriverPhone {
+		t.Fatalf("missing = %v, want [driver_phone]", missing)
+	}
+	if len(vars) != tpl.NumVariables {
+		t.Fatalf("len(vars) = %d, want %d (send gate needs the full count)", len(vars), tpl.NumVariables)
+	}
+}
+
+func TestBuildVariablesLegacyTemplateKeepsEmDash(t *testing.T) {
+	// A template written before the chip editor has no token map: its intent
+	// cannot be reconstructed, so a blank slot must not block the send.
+	tpl := whatsapp.MerchantTemplate{NumVariables: 2}
+	vars, missing := buildVariables(tpl, SendInput{OrderID: "ORD-42"})
+	if len(missing) != 0 {
+		t.Fatalf("legacy template reported missing variables: %v", missing)
+	}
+	if vars["1"] != "—" {
+		t.Fatalf("vars[1] = %q, want em dash", vars["1"])
+	}
+	if vars["2"] != "ORD-42" {
+		t.Fatalf("vars[2] = %q, want the order id", vars["2"])
+	}
 }

@@ -300,13 +300,23 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		p.log.Warn("automation: consent grant failed", "shop_id", in.ShopID, "error", err)
 	}
 
+	vars, missing := buildVariables(t, in)
+	if len(missing) > 0 {
+		// Sending now would deliver a message with blanks where the merchant
+		// deliberately placed variables. Drop it and say why instead.
+		p.log.Warn("automation send skipped: variable has no value for this event",
+			"shop_id", in.ShopID, "template_id", in.TemplateID,
+			"trigger", in.StatusLabel, "missing", missing)
+		return nil
+	}
+
 	job := whatsapp.SendWhatsAppTemplateJob{
 		ShopID:          in.ShopID,
 		CustomerID:      in.CustomerID,
 		TemplateID:      in.TemplateID,
 		ConvertyOrderID: in.OrderID,
 		Purpose:         purpose,
-		Variables:       buildVariables(t, in),
+		Variables:       vars,
 		IdempotencyKey:  in.IdempotencyKey,
 	}
 
@@ -338,9 +348,14 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 // buildVariables fills every template placeholder. Semantic templates map each
 // position through the stored token key ({{customer_name}}, {{order_id}}, …);
 // legacy positional templates fall back to the classic mapping {{1}}=customer,
-// {{2}}=order, {{3}}=status. Empty slots get a neutral em dash so the send
-// gate's variable-count check still passes.
-func buildVariables(t whatsapp.MerchantTemplate, in SendInput) map[string]string {
+// {{2}}=order, {{3}}=status.
+//
+// It also reports the author-placed variables that resolved to nothing. A
+// semantic template is written with those chips on purpose, so a blank slot
+// means the event did not carry the data and the message must not go out with a
+// placeholder in it. Legacy positional templates predate the chip editor and
+// keep the neutral em dash, since their intent cannot be reconstructed.
+func buildVariables(t whatsapp.MerchantTemplate, in SendInput) (map[string]string, []whatsapp.TokenKey) {
 	vals := whatsapp.TemplateVariableValues{
 		CustomerName:  in.CustomerName,
 		CustomerPhone: in.CustomerPhone,
@@ -351,7 +366,9 @@ func buildVariables(t whatsapp.MerchantTemplate, in SendInput) map[string]string
 		DriverPhone:   in.DriverPhone,
 	}
 
+	semantic := len(t.Variables) > 0
 	vars := make(map[string]string, t.NumVariables)
+	var missing []whatsapp.TokenKey
 	for i := 1; i <= t.NumVariables; i++ {
 		key := whatsapp.DefaultTokenForPosition(i)
 		if i-1 < len(t.Variables) {
@@ -359,11 +376,14 @@ func buildVariables(t whatsapp.MerchantTemplate, in SendInput) map[string]string
 		}
 		v := whatsapp.TokenValue(key, vals)
 		if v == "" {
+			if semantic {
+				missing = append(missing, key)
+			}
 			v = "—"
 		}
 		vars[strconv.Itoa(i)] = v
 	}
-	return vars
+	return vars, missing
 }
 
 func toSendRequest(job whatsapp.SendWhatsAppTemplateJob) whatsapp.SendRequest {
