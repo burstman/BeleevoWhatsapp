@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"whatsappconverty/internal/config"
@@ -127,14 +129,40 @@ func (c *MescolisClient) GetOrder(ctx context.Context, barcode string) (*Mescoli
 	}, nil
 }
 
-// Probe verifies the token reaches the API by calling the single-order
-// endpoint with a sentinel barcode: any HTTP/parse success means the token is
-// accepted, even when the parcel itself does not exist ("0" or not_found).
+// Probe verifies the token authenticates with the API by calling the
+// single-order endpoint with a sentinel barcode. A missing-order response
+// ("No order in data base") still proves the token is accepted, so only
+// authentication rejections fail the check.
 func (c *MescolisClient) Probe(ctx context.Context) error {
-	if _, err := c.GetOrder(ctx, "__platform_probe__"); err != nil {
-		return err
+	_, err := c.GetOrder(ctx, "__platform_probe__")
+	if err == nil {
+		return nil
 	}
-	return nil
+	var apiErr mescolisAPIError
+	if errors.As(err, &apiErr) && !authRejected(apiErr) {
+		return nil
+	}
+	return err
+}
+
+// authRejected reports whether a Mes Colis error body is an authentication
+// failure rather than a business error such as an unknown barcode.
+func authRejected(e mescolisAPIError) bool {
+	m := strings.ToLower(strings.TrimSpace(e.Message))
+	for _, marker := range []string{
+		"invalid token",
+		"unauthorized",
+		"not authenticated",
+		"authentication failed",
+		"access denied",
+		"forbidden",
+		"expired token",
+	} {
+		if strings.Contains(m, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *MescolisClient) do(ctx context.Context, path string, payload any, out any) error {

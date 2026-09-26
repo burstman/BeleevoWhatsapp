@@ -111,6 +111,32 @@ func TestProbeAcceptsUnknownParcel(t *testing.T) {
 	}
 }
 
+func TestProbeAcceptsUnknownParcelAsAPIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"No order in data base","status":404}`))
+	}))
+	defer srv.Close()
+
+	client := newTestClient("t", srv.URL)
+	if err := client.Probe(context.Background()); err != nil {
+		t.Fatalf("Probe should accept a missing-order error as a valid token: %v", err)
+	}
+}
+
+func TestProbeRejectsInvalidToken(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"message":"Invalid Token!","status":501,"error":"INVALID_TOKEN"}`))
+	}))
+	defer srv.Close()
+
+	client := newTestClient("t", srv.URL)
+	if err := client.Probe(context.Background()); err == nil {
+		t.Fatal("Probe should reject an invalid token")
+	}
+}
+
 func TestNewMescolisClientUsesConfigBaseURL(t *testing.T) {
 	cfg := config.Config{MescolisBaseURL: "https://m.example.test/api"}
 	client := NewMescolisClient("k", false, "", cfg, nil)
