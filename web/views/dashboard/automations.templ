@@ -179,10 +179,10 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 
 	if a.TemplateID != uuid.Nil {
 		<div x-show="testOpen" x-cloak @keydown.escape.window="testOpen = false"
-			class="fixed inset-0 z-50 flex items-center justify-center p-4"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+			@click.self="testOpen = false"
 			x-transition.opacity>
-			<div class="absolute inset-0 bg-slate-900/60" @click.self="testOpen = false"></div>
-			<div class="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+			<div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
 				<div class="flex items-start justify-between gap-4">
 					<div>
 						<h4 class="text-base font-semibold text-slate-900">Test message</h4>
@@ -201,7 +201,7 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 				<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/test") }
 					class="mt-4">
 					<label class="block text-xs font-medium text-slate-600">WhatsApp number</label>
-					<input name="phone" type="tel" required inputmode="tel" autofocus
+					<input name="phone" type="tel" required inputmode="tel"
 						placeholder="e.g. +21624118849"
 						class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
 					<p class="mt-1 text-xs text-slate-400">
