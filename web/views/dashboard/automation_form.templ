@@ -97,7 +97,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									<option value="delivery" selected={ source == "delivery" }>Delivery event (provider)</option>
 								</select>
 							</div>
-							<div class={ triggerClass(source, "converty") } x-ref="convertyTrigger">
+							<div class={ triggerClass(source, "converty") } :class="source === 'delivery' ? 'hidden' : ''" x-ref="convertyTrigger">
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatus" name="event_status" required
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -107,7 +107,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									}
 								</select>
 							</div>
-							<div class={ triggerClass(source, "delivery") } x-ref="deliveryTrigger">
+							<div class={ triggerClass(source, "delivery") } :class="source === 'delivery' ? '' : 'hidden'" x-ref="deliveryTrigger">
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
@@ -148,14 +148,14 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<h3 class="text-sm font-semibold text-slate-700">Schedule settings</h3>
 
-						<div class={ scheduleClass(automation, "fixed") } x-ref="fixedSchedule">
+						<div class={ scheduleClass(automation, "fixed") } :class="mode === 'fixed' ? '' : 'hidden'" x-ref="fixedSchedule">
 							<div class="grid gap-4 sm:grid-cols-2">
 								<div>
 									<label class="block text-sm font-medium text-slate-700">Send days</label>
 									<div class="mt-2 grid grid-cols-4 gap-2">
 										for d := 1; d <= 7; d++ {
 											<label class="flex cursor-pointer items-center gap-1.5 text-sm text-slate-700">
-												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) }
+												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) } @change="tick++"
 													class="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500" />
 												{ dayNames[d-1] }
 											</label>
@@ -164,13 +164,13 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								</div>
 								<div>
 									<label for="sendTime" class="block text-sm font-medium text-slate-700">Send time</label>
-									<input id="sendTime" name="send_time" x-ref="sendTime" type="time" value={ sendTimeValue(automation) }
+									<input id="sendTime" name="send_time" x-ref="sendTime" @input="tick++" type="time" value={ sendTimeValue(automation) }
 										class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 								</div>
 							</div>
 							<div class="mt-4">
 								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Timezone (IANA)</label>
-								<input id="sendTimezone" name="send_timezone" x-ref="sendTimezone" type="text" value={ sendTimezoneValue(automation) }
+								<input id="sendTimezone" name="send_timezone" x-ref="sendTimezone" @input="tick++" type="text" value={ sendTimezoneValue(automation) }
 									placeholder="e.g. Africa/Tunis, UTC"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
@@ -181,10 +181,10 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</p>
 						</div>
 
-						<div class={ scheduleClass(automation, "delayed") } x-ref="delayedSchedule">
+						<div class={ scheduleClass(automation, "delayed") } :class="mode === 'delayed' ? '' : 'hidden'" x-ref="delayedSchedule">
 							<div class="sm:w-64">
 								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
-								<input id="sendDelay" name="send_delay_minutes" x-ref="sendDelay" type="number" min="1" max="20160" value={ delayValue(automation) }
+								<input id="sendDelay" name="send_delay_minutes" x-ref="sendDelay" @input="tick++" type="number" min="1" max="20160" value={ delayValue(automation) }
 									placeholder="e.g. 30"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
@@ -233,6 +233,9 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						catalog: {},
 						source: "converty",
 						mode: "instant",
+						// The schedule fields are plain inputs, so the getters below
+						// would not re-run on their own: every edit bumps this.
+						tick: 0,
 
 						init: function () {
 							var self = this;
@@ -323,6 +326,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						// send needs a positive delay. The server enforces the same, but
 						// learning it only after a silent bounce is confusing.
 						get scheduleProblem() {
+							var _ = this.tick;
 							if (this.mode === "fixed") {
 								if (!this.$refs.sendTime || !this.$refs.sendTime.value) {
 									return "a scheduled send needs a send time.";
