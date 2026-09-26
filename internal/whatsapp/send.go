@@ -425,6 +425,11 @@ var phonePattern = regexp.MustCompile(`^\+?[0-9]{8,15}$`)
 // SendTemplateTest delivers a template to the given number for testing. The
 // message is recorded in the ledger with no customer attached. Any refusal
 // surfaces as *SendRejection.
+//
+// A test is explicitly initiated by the operator on an already-connected
+// sender, so the merchant onboarding flags (service enabled / terms accepted)
+// are intentionally not required here; the status, template and credential
+// gates below still catch genuinely broken setups.
 func (s *Service) SendTemplateTest(ctx context.Context, req TestTemplateRequest) (*SendResult, error) {
 	to := strings.Join(strings.Fields(req.To), "")
 	if !phonePattern.MatchString(to) {
@@ -445,12 +450,6 @@ func (s *Service) SendTemplateTest(ctx context.Context, req TestTemplateRequest)
 	}
 	if merchant.Status != "active" {
 		return nil, NewSendRejection(ErrCodeMerchantNotAuthorized, "merchant account is not active")
-	}
-	if !merchant.WhatsappEnabled {
-		return nil, NewSendRejection(ErrCodeServiceDisabled, "whatsapp service is not enabled for this shop")
-	}
-	if merchant.TermsAcceptedAt == nil {
-		return nil, NewSendRejection(ErrCodeTermsNotAccepted, "whatsapp service terms not accepted by the merchant")
 	}
 	if template.ApprovalStatus != "approved" {
 		return nil, NewSendRejection(ErrCodeTemplateNotApproved, "template is not approved ("+template.ApprovalStatus+")")
