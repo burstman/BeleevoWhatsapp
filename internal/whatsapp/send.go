@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -404,6 +405,111 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 	s.log.Info("whatsapp message sent",
 		"shop_id", req.ShopID, "customer_id", req.CustomerID,
 		"template", template.Name, "meta_message_id", metaID)
+
+	return &SendResult{MessageID: msgID, MetaMessageID: metaID, Status: "sent"}, nil
+}
+
+// TestTemplateRequest is an operator-initiated test send of one template to
+// an arbitrary WhatsApp number. It deliberately skips the customer/consent
+// gate (there is no customer context) but still enforces the merchant and
+// template gates so a broken setup fails loudly here, not on a real event.
+type TestTemplateRequest struct {
+	ShopID     uuid.UUID
+	TemplateID uuid.UUID
+	To         string
+	Variables  map[string]string
+}
+
+var phonePattern = regexp.MustCompile(`^\+?[0-9]{8,15}$`)
+
+// SendTemplateTest delivers a template to the given number for testing. The
+// message is recorded in the ledger with no customer attached. Any refusal
+// surfaces as *SendRejection.
+func (s *Service) SendTemplateTest(ctx context.Context, req TestTemplateRequest) (*SendResult, error) {
+	to := strings.Join(strings.Fields(req.To), "")
+	if !phonePattern.MatchString(to) {
+		return nil, NewSendRejection(ErrCodeTemplateVariableInvalid, "invalid phone number — use international format with country code, e.g. +21624118849")
+	}
+
+	template, ownerShop, err := s.templateStateGlobal(ctx, req.TemplateID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NewSendRejection(ErrCodeTemplateNotFound, "template not found for this merchant")
+		}
+		return nil, err
+	}
+
+	merchant, err := s.merchantState(ctx, ownerShop)
+	if err != nil {
+		return nil, err
+	}
+	if merchant.Status != "active" {
+		return nil, NewSendRejection(ErrCodeMerchantNotAuthorized, "merchant account is not active")
+	}
+	if !merchant.WhatsappEnabled {
+		return nil, NewSendRejection(ErrCodeServiceDisabled, "whatsapp service is not enabled for this shop")
+	}
+	if merchant.TermsAcceptedAt == nil {
+		return nil, NewSendRejection(ErrCodeTermsNotAccepted, "whatsapp service terms not accepted by the merchant")
+	}
+	if template.ApprovalStatus != "approved" {
+		return nil, NewSendRejection(ErrCodeTemplateNotApproved, "template is not approved ("+template.ApprovalStatus+")")
+	}
+	if template.MarketingFlagged {
+		return nil, NewSendRejection(ErrCodeTemplateMarketingBlocked, "meta treats this template as marketing content and it can never be sent")
+	}
+	if err := validateVariables(template, req.Variables); err != nil {
+		return nil, err
+	}
+
+	if s.rate != nil {
+		if err := s.rate.Allow(ctx, req.ShopID); err != nil {
+			return nil, err
+		}
+	}
+
+	components, err := buildComponents(template.RawComponents, req.Variables)
+	if err != nil {
+		return nil, err
+	}
+
+	varsJSON, err := json.Marshal(req.Variables)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgID uuid.UUID
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO messages (
+			shop_id, customer_id, template_id, recipient_phone,
+			template_variables, status
+		) VALUES ($1, NULL, $2, $3, $4::jsonb, 'queued')
+		RETURNING id`,
+		req.ShopID, req.TemplateID, to, varsJSON,
+	).Scan(&msgID)
+	if err != nil {
+		return nil, err
+	}
+
+	creds, err := s.Credentials(ctx, ownerShop)
+	if err != nil {
+		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, NotConnectedReason)
+		return nil, NewSendRejection(ErrCodeMetaAPIError, NotConnectedReason)
+	}
+
+	metaID, sendErr := s.SendTemplate(ctx, creds.AccessToken, creds.PhoneNumberID,
+		to, template.Name, template.Language, components,
+		MessagingAccountParam(creds.MessagingAccountID))
+	if sendErr != nil {
+		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error())
+		return nil, wrapMetaError(sendErr)
+	}
+
+	if err := s.markMessageSent(ctx, msgID, metaID); err != nil {
+		s.log.Error("whatsapp: could not mark test message sent", "error", err)
+	}
+	s.log.Info("whatsapp test message sent",
+		"template", template.Name, "to", to, "meta_message_id", metaID)
 
 	return &SendResult{MessageID: msgID, MetaMessageID: metaID, Status: "sent"}, nil
 }

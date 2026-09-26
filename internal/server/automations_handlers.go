@@ -58,6 +58,12 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "The send rule is invalid — check the time, timezone, days or delay."
 	case "notemplate":
 		flash.Error = "Create and get an approved template first."
+	case "tested":
+		flash.Info = "Test message sent. Check the number in WhatsApp."
+	case "testfailed":
+		flash.Error = "Test message failed — the sender must be healthy: use a valid E.164 number that is in the WhatsApp test phone list or has an open 24h conversation."
+	case "testnophone":
+		flash.Error = "Enter a phone number to test the message."
 	case "toggled":
 		flash.Info = "Automation updated."
 	case "deleted":
@@ -342,6 +348,89 @@ func (a *App) handleAutomationToggle(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=error")
 	}
 	return k.Redirect(http.StatusSeeOther, "/automations?flash=toggled")
+}
+
+// handleAutomationTest sends the automation's template to a number the user
+// fills in, so the message can be previewed live before it fires on real
+// events. Sample variables stand in for the real order data.
+func (a *App) handleAutomationTest(k *kit.Kit) error {
+	_, err := a.requireShop(k)
+	if err != nil {
+		return err
+	}
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+
+	ctx := k.Request.Context()
+	automation, err := a.Automations.AutomationByID(ctx, id)
+	if err != nil {
+		a.Log.Error("automation test lookup failed", "id", id, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=error")
+	}
+	if automation == nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+	if automation.TemplateID == uuid.Nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notemplate")
+	}
+
+	to := strings.TrimSpace(k.Request.FormValue("phone"))
+	if to == "" {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=testnophone")
+	}
+
+	templates, err := a.WhatsApp.TemplatesAll(ctx)
+	if err != nil {
+		return err
+	}
+	var numVariables int
+	found := false
+	for _, t := range templates {
+		if t.ID == automation.TemplateID {
+			numVariables = t.NumVariables
+			found = true
+			break
+		}
+	}
+	if !found {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notemplate")
+	}
+
+	if _, err := a.WhatsApp.SendTemplateTest(ctx, whatsapp.TestTemplateRequest{
+		ShopID:     automation.ShopID,
+		TemplateID: automation.TemplateID,
+		To:         to,
+		Variables:  testVariables(numVariables),
+	}); err != nil {
+		var rej *whatsapp.SendRejection
+		if errors.As(err, &rej) {
+			a.Log.Warn("automation test send rejected",
+				"automation_id", id, "code", rej.Code, "reason", rej.Reason)
+			return k.Redirect(http.StatusSeeOther, "/automations?flash=testfailed")
+		}
+		a.Log.Error("automation test send failed", "automation_id", id, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=error")
+	}
+
+	a.Log.Info("automation test message sent", "automation_id", id, "to", to)
+	return k.Redirect(http.StatusSeeOther, "/automations?flash=tested")
+}
+
+// testVariables fills every template slot positionally with sample values so
+// the send gate's variable-count check passes; unused slots get an em dash.
+func testVariables(n int) map[string]string {
+	vocab := []string{"Hamed", "CVY-TEST", "Sample status"}
+	vars := make(map[string]string, n)
+	for i := 0; i < n; i++ {
+		v := "—"
+		if i < len(vocab) && vocab[i] != "" {
+			v = vocab[i]
+		}
+		vars[strconv.Itoa(i+1)] = v
+	}
+	return vars
 }
 
 // handleAutomationDelete removes an automation.
