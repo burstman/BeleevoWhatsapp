@@ -44,8 +44,9 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 					<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">UTILITY</span>
 				</div>
 
-				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3">
-					<div class="grid gap-3 sm:grid-cols-3">
+				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3"
+					x-data="templateEditor" @submit="onSubmit">
+					<div class="grid gap-3 sm:grid-cols-2">
 						<div>
 							<label for="tplName" class="block text-xs font-medium text-slate-600">Name</label>
 							<input id="tplName" name="name" required pattern="[a-z0-9_]{1,60}"
@@ -60,30 +61,217 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								<option value="fr">French (fr)</option>
 							</select>
 						</div>
-						<div>
-							<label for="tplExamples" class="block text-xs font-medium text-slate-600">Example values</label>
-							<p id="tplExamples" class="mt-1 text-xs text-slate-500">
-								Fill after writing the body — one per variable.
-							</p>
-						</div>
 					</div>
 
 					<div>
-						<label for="tplBody" class="block text-xs font-medium text-slate-600">Body text</label>
-						<textarea id="tplBody" name="body" required rows="3" placeholder="Your order {{1}} has shipped and will arrive by {{2}}. Contact us on +216 24 118 849."
-							class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
-					</div>
+						<label class="block text-xs font-medium text-slate-600">Message</label>
+						<p class="mt-1 text-xs text-slate-500">
+							Write the message and drag a variable in where the customer's info should appear. No need
+							to type &#123;&#123;1&#125;&#125; — the chips handle it.
+						</p>
 
-					<div id="tplVars" class="grid gap-2 sm:grid-cols-2"></div>
+						<div class="mt-2 flex flex-wrap gap-2" aria-label="Variables">
+							for _, chip := range whatsapp.VariableChips() {
+								<span draggable="true" data-value={ chip.Value } data-label={ chip.Label } data-example={ chip.Example }
+									@dragstart="onDragStart($event)"
+									@dragend="dragging = ''"
+									:class="dragging === $el.dataset.value ? 'opacity-40' : ''"
+									class="cursor-grab select-none rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100">
+									{ chip.Label }
+								</span>
+							}
+						</div>
+
+						<div x-ref="body" contenteditable="true" role="textbox" aria-multiline="true"
+							data-placeholder="Your message text — drag chips from above into place."
+							@dragenter.prevent="dragOver = true"
+							@dragover.prevent="dragOver = true"
+							@dragleave="dragOver = false"
+							@drop.prevent="onDrop($event)"
+							@input="sync"
+							@keyup="sync"
+							@paste="onPaste($event)"
+							:class="'mt-2 min-h-28 overflow-y-auto rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none ' + (dragOver ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-300 focus:border-indigo-500')"></div>
+						<input type="hidden" name="body" x-ref="bodyField" />
+
+						<div x-ref="vars" class="mt-3 grid gap-2 sm:grid-cols-2"></div>
+						<p class="mt-2 text-xs text-slate-500" x-text="statusText"></p>
+					</div>
 
 					<div class="flex items-center gap-3">
 						<button type="submit"
 							class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
 							Submit for review
 						</button>
-						<span id="tplStatus" class="text-xs text-slate-500"></span>
 					</div>
 				</form>
+
+				<style>
+					[contenteditable]:empty::before { content: attr(data-placeholder); color: #94a3b8; pointer-events: none; }
+				</style>
+
+				<script>
+					document.addEventListener("alpine:init", function () {
+						Alpine.data("templateEditor", function () {
+							return {
+								dragOver: false,
+								dragging: "",
+								statusText: "",
+								lastVars: "",
+
+								init: function () {
+									var self = this;
+									this.$nextTick(function () { self.sync(); });
+								},
+
+								onDragStart: function (evt) {
+									var target = evt.currentTarget;
+									evt.dataTransfer.effectAllowed = "copy";
+									evt.dataTransfer.setData("text/plain", target.getAttribute("data-label"));
+									evt.dataTransfer.setData("text/variable", target.getAttribute("data-value"));
+									this.dragging = target.getAttribute("data-value");
+								},
+
+								onDrop: function (evt) {
+									this.dragOver = false;
+									var value = evt.dataTransfer.getData("text/variable");
+									var label = evt.dataTransfer.getData("text/plain");
+									if (!value || !label) { return; }
+									var sel = window.getSelection();
+									if (!sel || !sel.rangeCount) { return; }
+									var range = sel.getRangeAt(0);
+									range.deleteContents();
+									var pill = this.makePill(value, label);
+									range.insertNode(pill);
+									this.placeCaretAfter(pill);
+									this.sync();
+								},
+
+								makePill: function (value, label) {
+									var span = document.createElement("span");
+									span.setAttribute("data-token", value);
+									span.setAttribute("contenteditable", "false");
+									span.className = "mx-0.5 whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 font-medium text-indigo-800";
+									span.textContent = label;
+									return span;
+								},
+
+								placeCaretAfter: function (node) {
+									var range = document.createRange();
+									range.setStartAfter(node);
+									range.collapse(true);
+									var sel = window.getSelection();
+									sel.removeAllRanges();
+									sel.addRange(range);
+								},
+
+								onPaste: function (evt) {
+									evt.preventDefault();
+									var text = (evt.clipboardData || window.clipboardData).getData("text/plain");
+									if (!text) { return; }
+									var sel = window.getSelection();
+									if (!sel || !sel.rangeCount) { return; }
+									var range = sel.getRangeAt(0);
+									range.deleteContents();
+									var textNode = document.createTextNode(text);
+									range.insertNode(textNode);
+									range.setStartAfter(textNode);
+									range.collapse(true);
+									sel.removeAllRanges();
+									sel.addRange(range);
+									this.sync();
+								},
+
+serializeBody: function (root) {
+									var out = "";
+									var LB = String.fromCharCode(123, 123);
+									var RB = String.fromCharCode(125, 125);
+									var walkChildren = function (node) {
+										for (var i = 0; i < node.childNodes.length; i++) {
+											walk(node.childNodes[i]);
+										}
+									};
+									var walk = function (node) {
+										if (node.nodeType === Node.TEXT_NODE) { out += node.nodeValue; return; }
+										if (node.nodeType !== Node.ELEMENT_NODE) { return; }
+										if (node.hasAttribute("data-token")) {
+											out += LB + node.getAttribute("data-token") + RB;
+											return;
+										}
+										if (node.tagName === "BR") { out += "\n"; return; }
+										if (node.tagName === "DIV" || node.tagName === "P") {
+											walkChildren(node);
+											out += "\n";
+											return;
+										}
+										walkChildren(node);
+									};
+									walk(root);
+									return out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+|\n+$/g, "");
+								},
+
+								sync: function () {
+									this.$refs.bodyField.value = this.serializeBody(this.$refs.body);
+									this.renderVars();
+								},
+
+								renderVars: function () {
+									var seen = [];
+									var re = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g;
+									var m;
+									var body = this.serializeBody(this.$refs.body);
+									while ((m = re.exec(body)) !== null) {
+										if (seen.indexOf(m[1]) === -1) { seen.push(m[1]); }
+									}
+									this.statusText = seen.length
+										? seen.length + " variable(s) — add an example value for each"
+										: "";
+
+									var key = seen.join(",");
+									if (key === this.lastVars) { return; }
+									this.lastVars = key;
+
+									var saved = {};
+									var oldInputs = this.$refs.vars.querySelectorAll("input");
+									for (var i = 0; i < oldInputs.length; i++) {
+										saved[oldInputs[i].name] = oldInputs[i].value;
+									}
+									this.$refs.vars.innerHTML = "";
+
+									for (var j = 0; j < seen.length; j++) {
+										var token = seen[j];
+										var chip = document.querySelector('[data-value="' + token + '"]');
+										var label = chip ? chip.getAttribute("data-label") : token;
+										var example = chip ? chip.getAttribute("data-example") : "";
+
+										var wrap = document.createElement("div");
+										var lab = document.createElement("label");
+										lab.className = "block text-xs font-medium text-slate-600";
+										lab.setAttribute("for", "example_" + token);
+										lab.textContent = "Example for " + label;
+
+										var inp = document.createElement("input");
+										inp.id = "example_" + token;
+										inp.name = "example_" + token;
+										inp.type = "text";
+										inp.required = true;
+										inp.value = saved["example_" + token] || "";
+										inp.placeholder = "e.g. " + example;
+										inp.className = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
+
+										wrap.appendChild(lab);
+										wrap.appendChild(inp);
+										this.$refs.vars.appendChild(wrap);
+									}
+								},
+
+								onSubmit: function () {
+									this.sync();
+								}
+							};
+						});
+					});
+				</script>
 			</div>
 
 			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -155,47 +343,9 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 						</tbody>
 					</table>
 				}
-			</div>
-		</div>
-
-		<script>
-			(function () {
-				var body = document.getElementById("tplBody");
-				var varsBox = document.getElementById("tplVars");
-				var status = document.getElementById("tplStatus");
-				var LB = String.fromCharCode(123, 123);
-				var RB = String.fromCharCode(125, 125);
-
-				function renderVars() {
-					var seen = [];
-					var re = new RegExp(LB + "([0-9]+)" + RB, "g");
-					var m;
-					while ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }
-					seen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })
-						.sort(function (a, b) { return a - b; });
-					if (seen.length === 0) {
-						varsBox.innerHTML = "";
-						status.textContent = "";
-						return;
-					}
-					var out = "";
-					for (var i = 0; i < seen.length; i++) {
-						out += '<div><label class="block text-xs font-medium text-slate-600" for="example_' + seen[i] + '">Value for ' + LB + seen[i] + RB + '</label>' +
-							'<input id="example_' + seen[i] + '" name="example_' + seen[i] + '" required placeholder="Sample value for ' + LB + seen[i] + RB + '" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>';
-					}
-					varsBox.innerHTML = out;
-					status.textContent = seen.length + " variable(s) detected";
-				}
-
-				var debounce;
-				body.addEventListener("input", function () {
-					clearTimeout(debounce);
-					debounce = setTimeout(renderVars, 150);
-				});
-				renderVars();
-			})();
-		</script>
-	}
+</div>
+	</div>
+}
 }
 
 type TemplateFlash struct {

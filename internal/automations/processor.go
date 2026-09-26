@@ -100,6 +100,7 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		CustomerPhone:  e.CustomerPhone,
 		OrderID:        e.OrderID,
 		StatusLabel:    e.OrderStatus,
+		TrackingCode:   e.Barcode,
 		IdempotencyKey: "conv:" + e.ShopID.String() + ":" + e.OrderStatus + ":" + e.OrderID,
 		fire:           ruleFromSchedule(automation.Schedule()),
 	})
@@ -151,6 +152,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		CustomerPhone:  tracked.CustomerPhone,
 		OrderID:        orderID,
 		StatusLabel:    change.Label,
+		TrackingCode:   change.Barcode,
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
 		fire:           ruleFromSchedule(sch),
 	})
@@ -177,6 +179,7 @@ type SendInput struct {
 	CustomerPhone  string
 	OrderID        string
 	StatusLabel    string
+	TrackingCode   string
 	IdempotencyKey string
 	fire           fireRule
 }
@@ -299,7 +302,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		TemplateID:      in.TemplateID,
 		ConvertyOrderID: in.OrderID,
 		Purpose:         purpose,
-		Variables:       buildVariables(t, in.CustomerName, in.OrderID, in.StatusLabel),
+		Variables:       buildVariables(t, in),
 		IdempotencyKey:  in.IdempotencyKey,
 	}
 
@@ -328,19 +331,31 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 	return nil
 }
 
-// buildVariables fills every template placeholder positionally. The lexical
-// order is documented in the Automations UI: {{1}}=customer, {{2}}=order,
-// {{3}}=status. Unused positions get a neutral em dash so the send gate's
-// variable-count check still passes.
-func buildVariables(t whatsapp.MerchantTemplate, customerName, orderID, statusLabel string) map[string]string {
-	vocab := []string{customerName, orderID, statusLabel}
+// buildVariables fills every template placeholder. Semantic templates map each
+// position through the stored token key ({{customer_name}}, {{order_id}}, …);
+// legacy positional templates fall back to the classic mapping {{1}}=customer,
+// {{2}}=order, {{3}}=status. Empty slots get a neutral em dash so the send
+// gate's variable-count check still passes.
+func buildVariables(t whatsapp.MerchantTemplate, in SendInput) map[string]string {
+	vals := whatsapp.TemplateVariableValues{
+		CustomerName:  in.CustomerName,
+		CustomerPhone: in.CustomerPhone,
+		OrderID:       in.OrderID,
+		StatusLabel:   in.StatusLabel,
+		TrackingCode:  in.TrackingCode,
+	}
+
 	vars := make(map[string]string, t.NumVariables)
-	for i := 0; i < t.NumVariables; i++ {
-		v := "—"
-		if i < len(vocab) && vocab[i] != "" {
-			v = vocab[i]
+	for i := 1; i <= t.NumVariables; i++ {
+		key := whatsapp.DefaultTokenForPosition(i)
+		if i-1 < len(t.Variables) {
+			key = t.Variables[i-1]
 		}
-		vars[strconv.Itoa(i+1)] = v
+		v := whatsapp.TokenValue(key, vals)
+		if v == "" {
+			v = "—"
+		}
+		vars[strconv.Itoa(i)] = v
 	}
 	return vars
 }

@@ -61,24 +61,40 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=missing")
 	}
 
-	numbers := whatsapp.PlaceholderNumbers(body)
+	positional, tokens := whatsapp.TokenizeTemplateBody(body)
+
+	numbers := whatsapp.PlaceholderNumbers(positional)
 	if len(numbers) == 0 {
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=novariables")
 	}
 
+	// Examples arrive keyed by placeholder. Semantic bodies ({{token}} chips)
+	// are keyed by token; legacy {{N}} bodies keep the numeric keys.
+	var variables []whatsapp.TokenKey
 	examples := make([]string, 0, len(numbers))
-	for _, n := range numbers {
-		v := strings.TrimSpace(k.Request.FormValue("example_" + strconv.Itoa(n)))
-		if v == "" {
-			return k.Redirect(http.StatusSeeOther, "/templates?flash=example")
+	if len(tokens) > 0 {
+		variables = tokens
+		for _, t := range tokens {
+			v := strings.TrimSpace(k.Request.FormValue("example_" + string(t)))
+			if v == "" {
+				return k.Redirect(http.StatusSeeOther, "/templates?flash=example")
+			}
+			examples = append(examples, v)
 		}
-		examples = append(examples, v)
+	} else {
+		for _, n := range numbers {
+			v := strings.TrimSpace(k.Request.FormValue("example_" + strconv.Itoa(n)))
+			if v == "" {
+				return k.Redirect(http.StatusSeeOther, "/templates?flash=example")
+			}
+			examples = append(examples, v)
+		}
 	}
 
 	components, err := json.Marshal([]map[string]any{
 		{
 			"type": "BODY",
-			"text": body,
+			"text": positional,
 			"example": map[string]any{
 				"body_text": [][]string{examples},
 			},
@@ -93,6 +109,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 		Language:   language,
 		Category:   "UTILITY",
 		Components: components,
+		Variables:  variables,
 	})
 	if err != nil {
 		var rej *whatsapp.SendRejection

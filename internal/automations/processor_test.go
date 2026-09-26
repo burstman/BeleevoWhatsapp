@@ -11,7 +11,7 @@ import (
 
 func TestBuildVariablesFillsVocabularyInOrder(t *testing.T) {
 	tpl := whatsapp.MerchantTemplate{NumVariables: 3}
-	vars := buildVariables(tpl, "Ahmed", "ORD-42", "Delivered")
+	vars := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
 
 	want := map[string]string{
 		"1": "Ahmed",
@@ -27,7 +27,7 @@ func TestBuildVariablesFillsVocabularyInOrder(t *testing.T) {
 
 func TestBuildVariablesPadsToTemplateCount(t *testing.T) {
 	tpl := whatsapp.MerchantTemplate{NumVariables: 5}
-	vars := buildVariables(tpl, "Ahmed", "ORD-42", "Delivered")
+	vars := buildVariables(tpl, SendInput{CustomerName: "Ahmed", OrderID: "ORD-42", StatusLabel: "Delivered"})
 
 	if len(vars) != 5 {
 		t.Fatalf("len(vars) = %d, want 5 (must equal template count)", len(vars))
@@ -43,7 +43,7 @@ func TestBuildVariablesPadsToTemplateCount(t *testing.T) {
 }
 
 func TestBuildVariablesNoTemplateVars(t *testing.T) {
-	vars := buildVariables(whatsapp.MerchantTemplate{NumVariables: 0}, "A", "B", "C")
+	vars := buildVariables(whatsapp.MerchantTemplate{NumVariables: 0}, SendInput{})
 	if len(vars) != 0 {
 		t.Fatalf("expected empty vars, got %v", vars)
 	}

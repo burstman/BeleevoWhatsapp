@@ -91,94 +91,156 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between\"><div><h3 class=\"text-sm font-semibold text-slate-700\">Create a template</h3><p class=\"mt-1 text-xs text-slate-500\">Submitted to Meta for review. Category is fixed to <span class=\"font-medium\">Utility</span> — this platform only sends transactional updates, not marketing.</p></div><span class=\"rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600\">UTILITY</span></div><form id=\"createTemplateForm\" method=\"post\" action=\"/templates/create\" class=\"mt-4 space-y-3\"><div class=\"grid gap-3 sm:grid-cols-3\"><div><label for=\"tplName\" class=\"block text-xs font-medium text-slate-600\">Name</label> <input id=\"tplName\" name=\"name\" required pattern=\"[a-z0-9_]{1,60}\" placeholder=\"order_shipped\" title=\"lowercase letters, digits, underscores\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div><label for=\"tplLang\" class=\"block text-xs font-medium text-slate-600\">Language</label> <select id=\"tplLang\" name=\"language\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"><option value=\"ar\">Arabic (ar)</option> <option value=\"en\">English (en)</option> <option value=\"fr\">French (fr)</option></select></div><div><label for=\"tplExamples\" class=\"block text-xs font-medium text-slate-600\">Example values</label><p id=\"tplExamples\" class=\"mt-1 text-xs text-slate-500\">Fill after writing the body — one per variable.</p></div></div><div><label for=\"tplBody\" class=\"block text-xs font-medium text-slate-600\">Body text</label> <textarea id=\"tplBody\" name=\"body\" required rows=\"3\" placeholder=\"Your order {{1}} has shipped and will arrive by {{2}}. Contact us on +216 24 118 849.\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></textarea></div><div id=\"tplVars\" class=\"grid gap-2 sm:grid-cols-2\"></div><div class=\"flex items-center gap-3\"><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Submit for review</button> <span id=\"tplStatus\" class=\"text-xs text-slate-500\"></span></div></form></div><div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Your templates</h3></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"rounded-xl border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between\"><div><h3 class=\"text-sm font-semibold text-slate-700\">Create a template</h3><p class=\"mt-1 text-xs text-slate-500\">Submitted to Meta for review. Category is fixed to <span class=\"font-medium\">Utility</span> — this platform only sends transactional updates, not marketing.</p></div><span class=\"rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600\">UTILITY</span></div><form id=\"createTemplateForm\" method=\"post\" action=\"/templates/create\" class=\"mt-4 space-y-3\" x-data=\"templateEditor\" @submit=\"onSubmit\"><div class=\"grid gap-3 sm:grid-cols-2\"><div><label for=\"tplName\" class=\"block text-xs font-medium text-slate-600\">Name</label> <input id=\"tplName\" name=\"name\" required pattern=\"[a-z0-9_]{1,60}\" placeholder=\"order_shipped\" title=\"lowercase letters, digits, underscores\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"></div><div><label for=\"tplLang\" class=\"block text-xs font-medium text-slate-600\">Language</label> <select id=\"tplLang\" name=\"language\" required class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\"><option value=\"ar\">Arabic (ar)</option> <option value=\"en\">English (en)</option> <option value=\"fr\">French (fr)</option></select></div></div><div><label class=\"block text-xs font-medium text-slate-600\">Message</label><p class=\"mt-1 text-xs text-slate-500\">Write the message and drag a variable in where the customer's info should appear. No need to type &#123;&#123;1&#125;&#125; — the chips handle it.</p><div class=\"mt-2 flex flex-wrap gap-2\" aria-label=\"Variables\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, chip := range whatsapp.VariableChips() {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span draggable=\"true\" data-value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(chip.Value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 75, Col: 54}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-label=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(chip.Label)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 75, Col: 80}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" data-example=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(chip.Example)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 75, Col: 110}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" @dragstart=\"onDragStart($event)\" @dragend=\"dragging = ''\" :class=\"dragging === $el.dataset.value ? 'opacity-40' : ''\" class=\"cursor-grab select-none rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var8 string
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(chip.Label)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 80, Col: 21}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div x-ref=\"body\" contenteditable=\"true\" role=\"textbox\" aria-multiline=\"true\" data-placeholder=\"Your message text — drag chips from above into place.\" @dragenter.prevent=\"dragOver = true\" @dragover.prevent=\"dragOver = true\" @dragleave=\"dragOver = false\" @drop.prevent=\"onDrop($event)\" @input=\"sync\" @keyup=\"sync\" @paste=\"onPaste($event)\" :class=\"'mt-2 min-h-28 overflow-y-auto rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none ' + (dragOver ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-300 focus:border-indigo-500')\"></div><input type=\"hidden\" name=\"body\" x-ref=\"bodyField\"><div x-ref=\"vars\" class=\"mt-3 grid gap-2 sm:grid-cols-2\"></div><p class=\"mt-2 text-xs text-slate-500\" x-text=\"statusText\"></p></div><div class=\"flex items-center gap-3\"><button type=\"submit\" class=\"inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Submit for review</button></div></form><style>\n\t\t\t\t\t[contenteditable]:empty::before { content: attr(data-placeholder); color: #94a3b8; pointer-events: none; }\n\t\t\t\t</style><script>\n\t\t\t\t\tdocument.addEventListener(\"alpine:init\", function () {\n\t\t\t\t\t\tAlpine.data(\"templateEditor\", function () {\n\t\t\t\t\t\t\treturn {\n\t\t\t\t\t\t\t\tdragOver: false,\n\t\t\t\t\t\t\t\tdragging: \"\",\n\t\t\t\t\t\t\t\tstatusText: \"\",\n\t\t\t\t\t\t\t\tlastVars: \"\",\n\n\t\t\t\t\t\t\t\tinit: function () {\n\t\t\t\t\t\t\t\t\tvar self = this;\n\t\t\t\t\t\t\t\t\tthis.$nextTick(function () { self.sync(); });\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tonDragStart: function (evt) {\n\t\t\t\t\t\t\t\t\tvar target = evt.currentTarget;\n\t\t\t\t\t\t\t\t\tevt.dataTransfer.effectAllowed = \"copy\";\n\t\t\t\t\t\t\t\t\tevt.dataTransfer.setData(\"text/plain\", target.getAttribute(\"data-label\"));\n\t\t\t\t\t\t\t\t\tevt.dataTransfer.setData(\"text/variable\", target.getAttribute(\"data-value\"));\n\t\t\t\t\t\t\t\t\tthis.dragging = target.getAttribute(\"data-value\");\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tonDrop: function (evt) {\n\t\t\t\t\t\t\t\t\tthis.dragOver = false;\n\t\t\t\t\t\t\t\t\tvar value = evt.dataTransfer.getData(\"text/variable\");\n\t\t\t\t\t\t\t\t\tvar label = evt.dataTransfer.getData(\"text/plain\");\n\t\t\t\t\t\t\t\t\tif (!value || !label) { return; }\n\t\t\t\t\t\t\t\t\tvar sel = window.getSelection();\n\t\t\t\t\t\t\t\t\tif (!sel || !sel.rangeCount) { return; }\n\t\t\t\t\t\t\t\t\tvar range = sel.getRangeAt(0);\n\t\t\t\t\t\t\t\t\trange.deleteContents();\n\t\t\t\t\t\t\t\t\tvar pill = this.makePill(value, label);\n\t\t\t\t\t\t\t\t\trange.insertNode(pill);\n\t\t\t\t\t\t\t\t\tthis.placeCaretAfter(pill);\n\t\t\t\t\t\t\t\t\tthis.sync();\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tmakePill: function (value, label) {\n\t\t\t\t\t\t\t\t\tvar span = document.createElement(\"span\");\n\t\t\t\t\t\t\t\t\tspan.setAttribute(\"data-token\", value);\n\t\t\t\t\t\t\t\t\tspan.setAttribute(\"contenteditable\", \"false\");\n\t\t\t\t\t\t\t\t\tspan.className = \"mx-0.5 whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 font-medium text-indigo-800\";\n\t\t\t\t\t\t\t\t\tspan.textContent = label;\n\t\t\t\t\t\t\t\t\treturn span;\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tplaceCaretAfter: function (node) {\n\t\t\t\t\t\t\t\t\tvar range = document.createRange();\n\t\t\t\t\t\t\t\t\trange.setStartAfter(node);\n\t\t\t\t\t\t\t\t\trange.collapse(true);\n\t\t\t\t\t\t\t\t\tvar sel = window.getSelection();\n\t\t\t\t\t\t\t\t\tsel.removeAllRanges();\n\t\t\t\t\t\t\t\t\tsel.addRange(range);\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tonPaste: function (evt) {\n\t\t\t\t\t\t\t\t\tevt.preventDefault();\n\t\t\t\t\t\t\t\t\tvar text = (evt.clipboardData || window.clipboardData).getData(\"text/plain\");\n\t\t\t\t\t\t\t\t\tif (!text) { return; }\n\t\t\t\t\t\t\t\t\tvar sel = window.getSelection();\n\t\t\t\t\t\t\t\t\tif (!sel || !sel.rangeCount) { return; }\n\t\t\t\t\t\t\t\t\tvar range = sel.getRangeAt(0);\n\t\t\t\t\t\t\t\t\trange.deleteContents();\n\t\t\t\t\t\t\t\t\tvar textNode = document.createTextNode(text);\n\t\t\t\t\t\t\t\t\trange.insertNode(textNode);\n\t\t\t\t\t\t\t\t\trange.setStartAfter(textNode);\n\t\t\t\t\t\t\t\t\trange.collapse(true);\n\t\t\t\t\t\t\t\t\tsel.removeAllRanges();\n\t\t\t\t\t\t\t\t\tsel.addRange(range);\n\t\t\t\t\t\t\t\t\tthis.sync();\n\t\t\t\t\t\t\t\t},\n\nserializeBody: function (root) {\n\t\t\t\t\t\t\t\t\tvar out = \"\";\n\t\t\t\t\t\t\t\t\tvar LB = String.fromCharCode(123, 123);\n\t\t\t\t\t\t\t\t\tvar RB = String.fromCharCode(125, 125);\n\t\t\t\t\t\t\t\t\tvar walkChildren = function (node) {\n\t\t\t\t\t\t\t\t\t\tfor (var i = 0; i < node.childNodes.length; i++) {\n\t\t\t\t\t\t\t\t\t\t\twalk(node.childNodes[i]);\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t};\n\t\t\t\t\t\t\t\t\tvar walk = function (node) {\n\t\t\t\t\t\t\t\t\t\tif (node.nodeType === Node.TEXT_NODE) { out += node.nodeValue; return; }\n\t\t\t\t\t\t\t\t\t\tif (node.nodeType !== Node.ELEMENT_NODE) { return; }\n\t\t\t\t\t\t\t\t\t\tif (node.hasAttribute(\"data-token\")) {\n\t\t\t\t\t\t\t\t\t\t\tout += LB + node.getAttribute(\"data-token\") + RB;\n\t\t\t\t\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\tif (node.tagName === \"BR\") { out += \"\\n\"; return; }\n\t\t\t\t\t\t\t\t\t\tif (node.tagName === \"DIV\" || node.tagName === \"P\") {\n\t\t\t\t\t\t\t\t\t\t\twalkChildren(node);\n\t\t\t\t\t\t\t\t\t\t\tout += \"\\n\";\n\t\t\t\t\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\twalkChildren(node);\n\t\t\t\t\t\t\t\t\t};\n\t\t\t\t\t\t\t\t\twalk(root);\n\t\t\t\t\t\t\t\t\treturn out.replace(/[ \\t]+\\n/g, \"\\n\").replace(/\\n{3,}/g, \"\\n\\n\").replace(/^\\n+|\\n+$/g, \"\");\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tsync: function () {\n\t\t\t\t\t\t\t\t\tthis.$refs.bodyField.value = this.serializeBody(this.$refs.body);\n\t\t\t\t\t\t\t\t\tthis.renderVars();\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\trenderVars: function () {\n\t\t\t\t\t\t\t\t\tvar seen = [];\n\t\t\t\t\t\t\t\t\tvar re = /\\{\\{([a-zA-Z][a-zA-Z0-9_]*)\\}\\}/g;\n\t\t\t\t\t\t\t\t\tvar m;\n\t\t\t\t\t\t\t\t\tvar body = this.serializeBody(this.$refs.body);\n\t\t\t\t\t\t\t\t\twhile ((m = re.exec(body)) !== null) {\n\t\t\t\t\t\t\t\t\t\tif (seen.indexOf(m[1]) === -1) { seen.push(m[1]); }\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\tthis.statusText = seen.length\n\t\t\t\t\t\t\t\t\t\t? seen.length + \" variable(s) — add an example value for each\"\n\t\t\t\t\t\t\t\t\t\t: \"\";\n\n\t\t\t\t\t\t\t\t\tvar key = seen.join(\",\");\n\t\t\t\t\t\t\t\t\tif (key === this.lastVars) { return; }\n\t\t\t\t\t\t\t\t\tthis.lastVars = key;\n\n\t\t\t\t\t\t\t\t\tvar saved = {};\n\t\t\t\t\t\t\t\t\tvar oldInputs = this.$refs.vars.querySelectorAll(\"input\");\n\t\t\t\t\t\t\t\t\tfor (var i = 0; i < oldInputs.length; i++) {\n\t\t\t\t\t\t\t\t\t\tsaved[oldInputs[i].name] = oldInputs[i].value;\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\tthis.$refs.vars.innerHTML = \"\";\n\n\t\t\t\t\t\t\t\t\tfor (var j = 0; j < seen.length; j++) {\n\t\t\t\t\t\t\t\t\t\tvar token = seen[j];\n\t\t\t\t\t\t\t\t\t\tvar chip = document.querySelector('[data-value=\"' + token + '\"]');\n\t\t\t\t\t\t\t\t\t\tvar label = chip ? chip.getAttribute(\"data-label\") : token;\n\t\t\t\t\t\t\t\t\t\tvar example = chip ? chip.getAttribute(\"data-example\") : \"\";\n\n\t\t\t\t\t\t\t\t\t\tvar wrap = document.createElement(\"div\");\n\t\t\t\t\t\t\t\t\t\tvar lab = document.createElement(\"label\");\n\t\t\t\t\t\t\t\t\t\tlab.className = \"block text-xs font-medium text-slate-600\";\n\t\t\t\t\t\t\t\t\t\tlab.setAttribute(\"for\", \"example_\" + token);\n\t\t\t\t\t\t\t\t\t\tlab.textContent = \"Example for \" + label;\n\n\t\t\t\t\t\t\t\t\t\tvar inp = document.createElement(\"input\");\n\t\t\t\t\t\t\t\t\t\tinp.id = \"example_\" + token;\n\t\t\t\t\t\t\t\t\t\tinp.name = \"example_\" + token;\n\t\t\t\t\t\t\t\t\t\tinp.type = \"text\";\n\t\t\t\t\t\t\t\t\t\tinp.required = true;\n\t\t\t\t\t\t\t\t\t\tinp.value = saved[\"example_\" + token] || \"\";\n\t\t\t\t\t\t\t\t\t\tinp.placeholder = \"e.g. \" + example;\n\t\t\t\t\t\t\t\t\t\tinp.className = \"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\";\n\n\t\t\t\t\t\t\t\t\t\twrap.appendChild(lab);\n\t\t\t\t\t\t\t\t\t\twrap.appendChild(inp);\n\t\t\t\t\t\t\t\t\t\tthis.$refs.vars.appendChild(wrap);\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t},\n\n\t\t\t\t\t\t\t\tonSubmit: function () {\n\t\t\t\t\t\t\t\t\tthis.sync();\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t};\n\t\t\t\t\t\t});\n\t\t\t\t\t});\n\t\t\t\t</script></div><div class=\"overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-100 px-6 py-4\"><h3 class=\"text-sm font-semibold text-slate-700\">Your templates</h3></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(templates) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No templates yet. Create one above and its review status will appear here.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"px-6 py-10 text-center text-sm text-slate-500\">No templates yet. Create one above and its review status will appear here.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<table class=\"w-full text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-400\"><tr><th class=\"px-6 py-3 font-medium\">Name</th><th class=\"px-6 py-3 font-medium\">Language</th><th class=\"px-6 py-3 font-medium\">Category</th><th class=\"px-6 py-3 font-medium\">Shop</th><th class=\"px-6 py-3 font-medium\">Status</th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<table class=\"w-full text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-400\"><tr><th class=\"px-6 py-3 font-medium\">Name</th><th class=\"px-6 py-3 font-medium\">Language</th><th class=\"px-6 py-3 font-medium\">Category</th><th class=\"px-6 py-3 font-medium\">Shop</th><th class=\"px-6 py-3 font-medium\">Status</th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, t := range templates {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<tr><td class=\"px-6 py-3 font-medium text-slate-900\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<tr><td class=\"px-6 py-3 font-medium text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var5 string
-					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
+					var templ_7745c5c3_Var9 string
+					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 111, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 299, Col: 66}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var6 string
-					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 112, Col: 58}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</td><td class=\"px-6 py-3 text-slate-600\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					var templ_7745c5c3_Var10 string
+					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.Language)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 300, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var7 string
-					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.Category)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 113, Col: 58}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</td><td class=\"px-6 py-3 text-slate-600\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</td><td class=\"px-6 py-3 text-slate-600\">")
+					var templ_7745c5c3_Var11 string
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(t.Category)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 301, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</td><td class=\"px-6 py-3 text-slate-600\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if shopNames[t.ShopID] != "" {
-						var templ_7745c5c3_Var8 string
-						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(shopNames[t.ShopID])
+						var templ_7745c5c3_Var12 string
+						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(shopNames[t.ShopID])
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 116, Col: 32}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 304, Col: 32}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<span class=\"text-slate-400\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span class=\"text-slate-400\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var9 string
-						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.ShopID.String()[:8])
+						var templ_7745c5c3_Var13 string
+						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(t.ShopID.String()[:8])
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 118, Col: 63}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 306, Col: 63}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</td><td class=\"px-6 py-3\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</td><td class=\"px-6 py-3\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -187,72 +249,72 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " <p class=\"mt-1 text-xs text-slate-500\">Automatically deleted — Meta treated it as marketing content.</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " <p class=\"mt-1 text-xs text-slate-500\">Automatically deleted — Meta treated it as marketing content.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if t.MetaWarnings != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"mt-1 text-xs text-slate-400 italic\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"mt-1 text-xs text-slate-400 italic\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var10 string
-							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
+							var templ_7745c5c3_Var14 string
+							templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 128, Col: 74}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 316, Col: 74}
 							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</p>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
 					} else if t.MarketingFlagged {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span class=\"inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Blocked — marketing</span><p class=\"mt-1 text-xs text-rose-600\">Meta treats this as marketing content; it will never be sent. Delete it and rewrite as a transactional update.</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<span class=\"inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Blocked — marketing</span><p class=\"mt-1 text-xs text-rose-600\">Meta treats this as marketing content; it will never be sent. Delete it and rewrite as a transactional update.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if t.MetaWarnings != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-1 text-xs text-slate-400 italic\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"mt-1 text-xs text-slate-400 italic\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var11 string
-							templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
+							var templ_7745c5c3_Var15 string
+							templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(t.MetaWarnings)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 139, Col: 74}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 327, Col: 74}
 							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</p>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if t.RejectionReason != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"mt-1 text-xs text-rose-700\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<p class=\"mt-1 text-xs text-rose-700\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var12 string
-							templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
+							var templ_7745c5c3_Var16 string
+							templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 142, Col: 69}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 330, Col: 69}
 							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</p>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -262,25 +324,25 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						if t.RejectionReason != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"mt-1 text-xs text-rose-700\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"mt-1 text-xs text-rose-700\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							var templ_7745c5c3_Var13 string
-							templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
+							var templ_7745c5c3_Var17 string
+							templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(t.RejectionReason)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 147, Col: 69}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 335, Col: 69}
 							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</p>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
@@ -291,17 +353,17 @@ func TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, 
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</td></tr>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</td></tr>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</tbody></table>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</tbody></table>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div></div><script>\n\t\t\t(function () {\n\t\t\t\tvar body = document.getElementById(\"tplBody\");\n\t\t\t\tvar varsBox = document.getElementById(\"tplVars\");\n\t\t\t\tvar status = document.getElementById(\"tplStatus\");\n\t\t\t\tvar LB = String.fromCharCode(123, 123);\n\t\t\t\tvar RB = String.fromCharCode(125, 125);\n\n\t\t\t\tfunction renderVars() {\n\t\t\t\t\tvar seen = [];\n\t\t\t\t\tvar re = new RegExp(LB + \"([0-9]+)\" + RB, \"g\");\n\t\t\t\t\tvar m;\n\t\t\t\t\twhile ((m = re.exec(body.value)) !== null) { seen.push(parseInt(m[1], 10)); }\n\t\t\t\t\tseen = seen.filter(function (n, i) { return seen.indexOf(n) === i; })\n\t\t\t\t\t\t.sort(function (a, b) { return a - b; });\n\t\t\t\t\tif (seen.length === 0) {\n\t\t\t\t\t\tvarsBox.innerHTML = \"\";\n\t\t\t\t\t\tstatus.textContent = \"\";\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tvar out = \"\";\n\t\t\t\t\tfor (var i = 0; i < seen.length; i++) {\n\t\t\t\t\t\tout += '<div><label class=\"block text-xs font-medium text-slate-600\" for=\"example_' + seen[i] + '\">Value for ' + LB + seen[i] + RB + '</label>' +\n\t\t\t\t\t\t\t'<input id=\"example_' + seen[i] + '\" name=\"example_' + seen[i] + '\" required placeholder=\"Sample value for ' + LB + seen[i] + RB + '\" class=\"mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm\" /></div>';\n\t\t\t\t\t}\n\t\t\t\t\tvarsBox.innerHTML = out;\n\t\t\t\t\tstatus.textContent = seen.length + \" variable(s) detected\";\n\t\t\t\t}\n\n\t\t\t\tvar debounce;\n\t\t\t\tbody.addEventListener(\"input\", function () {\n\t\t\t\t\tclearTimeout(debounce);\n\t\t\t\t\tdebounce = setTimeout(renderVars, 150);\n\t\t\t\t});\n\t\t\t\trenderVars();\n\t\t\t})();\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -336,46 +398,46 @@ func ApprovalBadge(status string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var18 == nil {
+			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if status == "approved" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<span class=\"rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700\">Approved</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700\">Approved</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if status == "rejected" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Rejected</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700\">Rejected</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if status == "pending" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<span class=\"rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700\">Pending review</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700\">Pending review</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if status == "deleted" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600\">Deleted</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600\">Deleted</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<span class=\"rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(status)
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 216, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/templates.templ`, Line: 366, Col: 97}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

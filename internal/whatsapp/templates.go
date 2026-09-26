@@ -25,8 +25,9 @@ type MerchantTemplate struct {
 	MarketingFlagged bool   // Meta warned this template is/will be treated as marketing
 	MetaWarnings     string // Meta's own warning text, verbatim, for client display
 	MetaTemplateID   string
-	Components       []byte // raw Meta components JSONB (also drives variable counting on send)
-	NumVariables     int    // placeholder count derived from Components
+	Components       []byte     // raw Meta components JSONB (also drives variable counting on send)
+	NumVariables     int        // placeholder count derived from Components
+	Variables        []TokenKey // semantic map in placeholder order (nil == legacy positional)
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -58,6 +59,7 @@ type TemplateDraft struct {
 	Language   string
 	Category   string
 	Components json.RawMessage
+	Variables  []TokenKey // semantic variable map (nil == legacy positional)
 }
 
 // CreateTemplate submits a template to Meta through the platform's central
@@ -111,13 +113,14 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 	t.MetaWarnings = warnings
 	t.MetaTemplateID = resp.ID
 	t.Components = draft.Components
+	t.Variables = draft.Variables
 
 	rowErr := s.pool.QueryRow(ctx, `
 		INSERT INTO templates (
 			shop_id, meta_template_name, meta_template_id, language, category,
 			status, approval_status, rejection_reason, marketing_flagged, meta_warnings,
-			marketing_flagged_at, components
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
+			marketing_flagged_at, components, variables_map
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb)
 		ON CONFLICT (shop_id, meta_template_name, language) DO UPDATE SET
 			meta_template_id   = EXCLUDED.meta_template_id,
 			category           = EXCLUDED.category,
@@ -129,11 +132,12 @@ func (s *Service) CreateTemplate(ctx context.Context, shopID uuid.UUID, draft Te
 			marketing_flagged_at = COALESCE(templates.marketing_flagged_at, EXCLUDED.marketing_flagged_at),
 			purge_scheduled_at = CASE WHEN NOT EXCLUDED.marketing_flagged THEN NULL ELSE templates.purge_scheduled_at END,
 			components         = EXCLUDED.components,
+			variables_map      = EXCLUDED.variables_map,
 			updated_at         = now()
 		RETURNING id, created_at, updated_at`,
 		shopID, draft.Name, resp.ID, draft.Language, draft.Category,
 		t.Status, approval, rejection, t.MarketingFlagged, t.MetaWarnings,
-		flaggedAtExpr(t.MarketingFlagged), draft.Components,
+		flaggedAtExpr(t.MarketingFlagged), draft.Components, draft.Variables,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 	if rowErr != nil {
 		return MerchantTemplate{}, fmt.Errorf("store template: %w", rowErr)
@@ -268,7 +272,7 @@ func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTe
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, meta_template_name, language, category, status,
 		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
-		       meta_template_id, components, created_at, updated_at
+		       meta_template_id, components, variables_map, created_at, updated_at
 		FROM templates
 		WHERE shop_id = $1
 		ORDER BY created_at DESC`,
@@ -284,7 +288,7 @@ func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTe
 		var t MerchantTemplate
 		if err := rows.Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
 			&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
-			&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			&t.MetaTemplateID, &t.Components, &t.Variables, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		t.NumVariables = countVariablesFromJSON(t.Components)
@@ -301,7 +305,7 @@ func (s *Service) TemplatesAll(ctx context.Context) ([]MerchantTemplate, error) 
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, meta_template_name, language, category, status,
 		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
-		       meta_template_id, components, created_at, updated_at
+		       meta_template_id, components, variables_map, created_at, updated_at
 		FROM templates
 		ORDER BY created_at DESC`)
 	if err != nil {
@@ -314,7 +318,7 @@ func (s *Service) TemplatesAll(ctx context.Context) ([]MerchantTemplate, error) 
 		var t MerchantTemplate
 		if err := rows.Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
 			&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
-			&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			&t.MetaTemplateID, &t.Components, &t.Variables, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		t.NumVariables = countVariablesFromJSON(t.Components)
@@ -329,13 +333,13 @@ func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (M
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, shop_id, meta_template_name, language, category, status,
 		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
-		       meta_template_id, components, created_at, updated_at
+		       meta_template_id, components, variables_map, created_at, updated_at
 		FROM templates
 		WHERE id = $1 AND shop_id = $2`,
 		templateID, shopID,
 	).Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
 		&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
-		&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt)
+		&t.MetaTemplateID, &t.Components, &t.Variables, &t.CreatedAt, &t.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return MerchantTemplate{}, nil
 	}
