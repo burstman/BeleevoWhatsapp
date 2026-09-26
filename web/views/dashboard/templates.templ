@@ -110,6 +110,8 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 							<span :class="charCount > charLimit ? 'font-semibold text-rose-600' : 'text-slate-500'"
 								x-text="charCount + ' / ' + charLimit"></span>
 						</div>
+						<p x-show="bodyProblem" x-text="bodyProblem"
+							class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
 
 						<div x-ref="vars" class="mt-3 grid gap-2 sm:grid-cols-2"></div>
 						<p class="mt-2 text-xs text-slate-500" x-text="statusText"></p>
@@ -117,8 +119,8 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 
 					<div class="flex items-center gap-3">
 						<button type="submit"
-							:disabled="charCount > charLimit"
-							:class="charCount > charLimit ? 'cursor-not-allowed bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'"
+							:disabled="blocked"
+							:class="blocked ? 'cursor-not-allowed bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'"
 							class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition">
 							Submit for review
 						</button>
@@ -136,10 +138,44 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								dragOver: false,
 								dragging: "",
 								statusText: "",
+								bodyProblem: "",
 								lastVars: "",
 								charLimit: 1024,
 								charCount: 0,
 								source: "converty",
+
+								get blocked() {
+									return this.charCount > this.charLimit || this.bodyProblem !== "";
+								},
+
+								// Mirrors whatsapp.ValidateTemplateBody: Meta refuses a body
+								// whose variables open or close the message (subcode 2388299)
+								// or that carry too little static text (subcode 2388293).
+								checkBody: function (text) {
+									var re = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g, m, found = [];
+									while ((m = re.exec(text)) !== null) { found.push(m); }
+									if (!found.length) { return ""; }
+
+									var first = found[0];
+									if (text.indexOf(first[0]) === text.search(/\S/)) {
+										return "Start the message with a few words before the " + first[1] + " variable.";
+									}
+
+									var last = found[found.length - 1];
+									var tail = text.slice(last.index + last[0].length).replace(/[\s.!?]+$/, "");
+									if (tail.trim() === "") {
+										return "End the message with a few words after the " + last[1] + " variable, e.g. \". Merci!\"";
+									}
+
+									var words = text.replace(/\{\{[^}]*\}\}/g, " ").split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+									var need = 3 * found.length;
+									if (words.length < need) {
+										return "Meta wants at least " + need + " words of message for " + found.length +
+											" variable(s) \u2014 this has " + words.length + ". Write the sentence out, e.g. \"Your driver is " +
+											first[1] + " and you can call " + last[1] + " if needed\".";
+									}
+									return "";
+								},
 
 								chipVisible: function (el) {
 									return el.dataset.for.split(",").indexOf(this.source) !== -1;
@@ -240,6 +276,7 @@ serializeBody: function (root) {
 									var text = this.serializeBody(this.$refs.body);
 									this.$refs.bodyField.value = text;
 									this.charCount = text.length;
+									this.bodyProblem = this.checkBody(text);
 									this.renderVars();
 								},
 

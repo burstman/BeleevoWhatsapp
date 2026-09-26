@@ -107,6 +107,8 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = "Provide an example value for every {{N}} placeholder."
 	case "toolong":
 		flash.Error = "The message exceeds Meta's " + strconv.Itoa(whatsapp.MaxTemplateBodyChars) + "-character limit."
+	case "invalidbody":
+		flash.Error = k.Request.URL.Query().Get("msg")
 	case "deleted":
 		flash.Info = "Template deleted. It can no longer be sent."
 	case "notfound":

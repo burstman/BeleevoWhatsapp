@@ -1,9 +1,12 @@
 package whatsapp
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode"
 )
 
 // TokenKey identifies an auto-filled message variable, shown in the template
@@ -177,6 +180,94 @@ func DefaultTokenForPosition(position int) TokenKey {
 }
 
 var tokenPattern = regexp.MustCompile(`\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}`)
+var positionalPattern = regexp.MustCompile(`\{\{([0-9]+)\}\}`)
+
+// MinStaticWordsPerVariable is Meta's review rule: a body must carry static
+// words around the variables or it is refused as a blank container that could
+// carry any content. Verified against the API: one variable needs at least
+// three static words, and clustered variables ("Name: {{1}}, Phone: {{2}}")
+// are rejected outright with subcode 2388293.
+const MinStaticWordsPerVariable = 3
+
+// ExplainTemplateRejection turns Meta's terse template-creation failures into
+// something the operator can act on. Verified subcodes: 2388293 (too little
+// static text around the variables) and 2388299 (a variable opens or closes
+// the body). Returns "" for anything not recognized.
+func ExplainTemplateRejection(err error) string {
+	var api APIError
+	sub := 0
+	if errors.As(err, &api) {
+		sub = api.SubCode
+	} else {
+		var ptr *APIError
+		if !errors.As(err, &ptr) {
+			return ""
+		}
+		sub = ptr.SubCode
+	}
+	switch sub {
+	case 2388293:
+		return "Meta wants more words around the variables — at least " +
+			strconv.Itoa(MinStaticWordsPerVariable) + " words of message per variable."
+	case 2388299:
+		return "A variable cannot be the first or last thing in the message. Open and close with words, e.g. \"... Merci!\""
+	}
+	return ""
+}
+
+// ValidateTemplateBody checks a positional template body against the two rules
+// Meta enforces on creation, so the operator gets an actionable message instead
+// of a bare "Invalid parameter": a variable may not open or close the body
+// (subcode 2388299) and the static text must be at least
+// MinStaticWordsPerVariable words per variable (subcode 2388293).
+func ValidateTemplateBody(positional string) error {
+	last := positionalPattern.FindAllStringIndex(strings.TrimSpace(positional), -1)
+	if len(last) == 0 {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(positional)
+	if m := positionalPattern.FindStringIndex(trimmed); m != nil && m[0] == 0 {
+		return fmt.Errorf("start the message with a few words before the %s variable", placeholderLabel(trimmed, m[0]))
+	}
+	if tail := trimmed[last[len(last)-1][1]:]; !isStaticTail(tail) {
+		return fmt.Errorf("end the message with a few words after the %s variable (e.g. \". Merci!\")",
+			placeholderLabel(trimmed, last[len(last)-1][0]))
+	}
+
+	static := countStaticWords(positionalPattern.ReplaceAllString(positional, " "))
+	need := MinStaticWordsPerVariable * len(last)
+	if static < need {
+		return fmt.Errorf("Meta wants at least %d words of text around the variables — this message has %d. Write the sentence out (e.g. \"Your driver is {{driver_name}}, call {{driver_phone}} if needed\")",
+			need, static)
+	}
+	return nil
+}
+
+// isStaticTail reports whether the text following the last variable counts as
+// static content. Neither whitespace nor sentence-ending punctuation does:
+// Meta refuses "Tel: {{1}}", "Tel: {{1}}." and "Tel: {{1}}!" with subcode
+// 2388299, while "{{1}}," and "{{1}}. Merci!" are both accepted.
+func isStaticTail(tail string) bool {
+	rest := strings.TrimRightFunc(strings.TrimSpace(tail), func(r rune) bool {
+		return r == '.' || r == '!' || r == '?'
+	})
+	return strings.TrimSpace(rest) != ""
+}
+
+func placeholderLabel(text string, at int) string {
+	m := positionalPattern.FindString(text[at:])
+	if m == "" {
+		return "first"
+	}
+	return strings.Trim(m, "{}")
+}
+
+func countStaticWords(text string) int {
+	return len(strings.FieldsFunc(text, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}))
+}
 
 // TokenizeTemplateBody converts a semantic body (with {{customer_name}} chips)
 // into Meta's positional {{1..N}} body and returns the ordered token keys that

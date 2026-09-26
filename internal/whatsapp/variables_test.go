@@ -67,3 +67,73 @@ func TestTokenValueResolvesDriverFields(t *testing.T) {
 		t.Fatalf("missing driver should resolve empty, got %q", got)
 	}
 }
+
+func TestValidateTemplateBody(t *testing.T) {
+	ok := []string{
+		"Bonjour Mr {{1}}: votre commande arrive. Merci!",
+		"Votre livreur est {{1}} et appelez le {{2}}. Merci!",
+		"Bonjour\n{{1}}\nVotre commande arrive",
+		"Votre commande. Livreur: {{1}},",
+		"Votre commande. Livreur: {{1}}: Merci",
+		"Bonjour Monsieur {{1}} merci",
+	}
+	for _, body := range ok {
+		if err := ValidateTemplateBody(body); err != nil {
+			t.Errorf("body %q should be accepted: %v", body, err)
+		}
+	}
+
+	bad := []string{
+		"Votre commande. Livreur: {{1}}",
+		"Votre commande. Livreur: {{1}}.",
+		"Votre commande. Livreur: {{1}}!",
+		"Votre commande. Livreur: {{1}}?",
+		"Votre commande. Livreur: {{1}}..",
+		"Votre commande. Livreur: {{1}} ",
+		"Votre commande. Livreur: {{1}}.\n",
+		"{{1}}, votre commande arrive",
+		"Bonjour {{1}} merci",
+		"Livreur: {{1}} Tel: {{2}}",
+		"Bonjour {{1}}, livreur {{2}}, tel {{3}}",
+	}
+	for _, body := range bad {
+		if err := ValidateTemplateBody(body); err == nil {
+			t.Errorf("body %q should be rejected", body)
+		}
+	}
+
+	if err := ValidateTemplateBody("Bienvenue dans notre boutique"); err != nil {
+		t.Errorf("a static body without variables is valid: %v", err)
+	}
+}
+
+func TestExplainTemplateRejection(t *testing.T) {
+	for _, sc := range []struct {
+		sub  int
+		want string
+	}{
+		{2388293, "more words around the variables"},
+		{2388299, "cannot be the first or last thing"},
+	} {
+		got := ExplainTemplateRejection(&APIError{Code: 100, SubCode: sc.sub})
+		if got == "" || !contains(got, sc.want) {
+			t.Errorf("subcode %d: got %q, want it to mention %q", sc.sub, got, sc.want)
+		}
+	}
+	if got := ExplainTemplateRejection(&APIError{Code: 100, SubCode: 1}); got != "" {
+		t.Errorf("unknown subcode should have no hint, got %q", got)
+	}
+}
+
+func contains(hay, needle string) bool {
+	return len(needle) == 0 || len(hay) >= len(needle) && (hay == needle || indexOf(hay, needle) >= 0)
+}
+
+func indexOf(hay, needle string) int {
+	for i := 0; i+len(needle) <= len(hay); i++ {
+		if hay[i:i+len(needle)] == needle {
+			return i
+		}
+	}
+	return -1
+}

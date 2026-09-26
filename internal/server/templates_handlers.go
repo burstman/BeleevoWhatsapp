@@ -118,6 +118,9 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	if utf8.RuneCountInString(positional) > whatsapp.MaxTemplateBodyChars {
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=toolong")
 	}
+	if err := whatsapp.ValidateTemplateBody(positional); err != nil {
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=invalidbody&msg="+url.QueryEscape(err.Error()))
+	}
 
 	numbers := whatsapp.PlaceholderNumbers(positional)
 	if len(numbers) == 0 {
@@ -183,7 +186,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 			// row is stored rejected with the reason; surface that reason now.
 			a.Log.Warn("template rejected by meta at submit",
 				"shop_id", shopID, "name", name, "language", language, "reason", rej.Reason)
-			return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(rej.Reason))
+			return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(explainRejection(err, rej.Reason)))
 		}
 		a.Log.Error("template create internal failure", "error", err.Error())
 		return k.Redirect(http.StatusSeeOther, "/templates?flash=internal")
@@ -192,7 +195,7 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	if tmpl.ApprovalStatus == "rejected" {
 		a.Log.Warn("template rejected by meta",
 			"shop_id", shopID, "name", tmpl.Name, "language", tmpl.Language, "reason", tmpl.RejectionReason)
-		return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(tmpl.RejectionReason))
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=rejected&reason="+url.QueryEscape(explainRejection(err, tmpl.RejectionReason)))
 	}
 	if tmpl.MarketingFlagged {
 		a.Log.Warn("template flagged as marketing by meta",
@@ -202,4 +205,14 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	a.Log.Info("template submitted for review",
 		"shop_id", shopID, "name", tmpl.Name, "language", tmpl.Language)
 	return k.Redirect(http.StatusSeeOther, "/templates?flash=created")
+}
+
+// explainRejection appends Meta's subcode translation to a stored reason so the
+// operator sees what to change instead of "Invalid parameter (subcode 2388299)".
+func explainRejection(err error, reason string) string {
+	hint := whatsapp.ExplainTemplateRejection(err)
+	if hint == "" || reason == "" {
+		return reason
+	}
+	return reason + " — " + hint
 }

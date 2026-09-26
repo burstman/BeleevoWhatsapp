@@ -176,19 +176,39 @@ type APIError struct {
 	SubCode    int
 	Message    string
 	Type       string
+	Details    string
+	FBTraceID  string
 }
 
 func (e APIError) Error() string {
-	return fmt.Sprintf("meta api error (status %d): %s", e.StatusCode, e.Message)
+	// Meta's message is often just "Invalid parameter"; the subcode and
+	// error_data are what actually say which parameter is wrong, so keep them
+	// in the text the operator and the logs see.
+	msg := fmt.Sprintf("meta api error (status %d): %s", e.StatusCode, e.Message)
+	if e.Code != 0 || e.SubCode != 0 {
+		msg += fmt.Sprintf(" (code %d", e.Code)
+		if e.SubCode != 0 {
+			msg += fmt.Sprintf(", subcode %d", e.SubCode)
+		}
+		msg += ")"
+	}
+	if e.Details != "" {
+		msg += " — " + e.Details
+	}
+	return msg
 }
 
 // graphError holds the Meta Graph error envelope {error:{message,...}}.
 type graphError struct {
 	Error struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    int    `json:"code"`
-		SubCode int    `json:"error_subcode"`
+		Message   string `json:"message"`
+		Type      string `json:"type"`
+		Code      int    `json:"code"`
+		SubCode   int    `json:"error_subcode"`
+		ErrorData struct {
+			Details string `json:"details"`
+		} `json:"error_data"`
+		FBTraceID string `json:"fbtrace_id"`
 	} `json:"error"`
 }
 
@@ -247,7 +267,15 @@ func (s *Service) doJSON(req *http.Request, out any) error {
 			}
 			g.Error.Message = snippet
 		}
-		return APIError{StatusCode: resp.StatusCode, Code: g.Error.Code, SubCode: g.Error.SubCode, Message: g.Error.Message, Type: g.Error.Type}
+		return APIError{
+			StatusCode: resp.StatusCode,
+			Code:       g.Error.Code,
+			SubCode:    g.Error.SubCode,
+			Message:    g.Error.Message,
+			Type:       g.Error.Type,
+			Details:    g.Error.ErrorData.Details,
+			FBTraceID:  g.Error.FBTraceID,
+		}
 	}
 
 	if err := json.Unmarshal(body, out); err != nil {
