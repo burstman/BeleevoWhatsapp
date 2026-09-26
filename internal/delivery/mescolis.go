@@ -129,20 +129,20 @@ func (c *MescolisClient) GetOrder(ctx context.Context, barcode string) (*Mescoli
 	}, nil
 }
 
-// Probe verifies the token authenticates with the API by calling the
-// single-order endpoint with a sentinel barcode. A missing-order response
-// ("No order in data base") still proves the token is accepted, so only
-// authentication rejections fail the check.
+// Probe verifies the token authenticates with the API via the batch status
+// endpoint: a valid token returns HTTP 200 even for unknown barcodes, where
+// the parcel lands in not_found; an invalid token is rejected with an error
+// body. Missed-order business errors (single-order variant) are also accepted
+// as proof the token authenticated.
 func (c *MescolisClient) Probe(ctx context.Context) error {
-	_, err := c.GetOrder(ctx, "__platform_probe__")
-	if err == nil {
-		return nil
+	if _, err := c.GetOrders(ctx, []string{"__platform_probe__"}); err != nil {
+		var apiErr mescolisAPIError
+		if errors.As(err, &apiErr) && !authRejected(apiErr) {
+			return nil
+		}
+		return err
 	}
-	var apiErr mescolisAPIError
-	if errors.As(err, &apiErr) && !authRejected(apiErr) {
-		return nil
-	}
-	return err
+	return nil
 }
 
 // authRejected reports whether a Mes Colis error body is an authentication

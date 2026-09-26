@@ -101,7 +101,7 @@ func TestGetOrdersAPIErrorDecoded(t *testing.T) {
 func TestProbeAcceptsUnknownParcel(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"barcode":"__platform_probe__","status":"0"}`))
+		_, _ = w.Write([]byte(`{"status":1,"orders":[],"not_found":["__platform_probe__"]}`))
 	}))
 	defer srv.Close()
 

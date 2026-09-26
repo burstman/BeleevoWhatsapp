@@ -100,7 +100,11 @@ func (a *App) handleDeliveryConnect(k *kit.Kit) error {
 	// Verify the token reaches Mes Colis before persisting anything.
 	client := delivery.NewMescolisClient(token, allowSubAccount, accountCode, a.Cfg, nil)
 	if err := client.Probe(ctx); err != nil {
-		a.Log.Warn("delivery connect rejected: token check failed", "shop_id", shopID, "error", err)
+		a.Log.Warn("delivery connect rejected: token check failed",
+			"shop_id", shopID,
+			"token_len", len(token),
+			"token_shape", maskedToken(token),
+			"error", err)
 		msg := strings.TrimSpace(err.Error())
 		if msg == "" {
 			msg = "token rejected"
@@ -134,6 +138,16 @@ func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
 	}
 	a.Log.Info("delivery provider disconnected", "shop_id", shopID, "provider", delivery.ProviderMescolis)
 	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=disconnected")
+}
+
+func maskedToken(t string) string {
+	if t == "" {
+		return "<empty>"
+	}
+	if len(t) <= 8 {
+		return "<short>"
+	}
+	return t[:4] + "..." + t[len(t)-4:]
 }
 
 // handleDeliveryTrackRemove stops watching a parcel, resolving the shop that
