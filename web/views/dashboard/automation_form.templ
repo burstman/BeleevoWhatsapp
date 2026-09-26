@@ -91,13 +91,13 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</div>
 							<div>
 								<label for="eventSource" class="block text-sm font-medium text-slate-700">Event source</label>
-								<select id="eventSource" name="event_source" x-model="source" @change="syncSource(); loadTemplates()"
+								<select id="eventSource" name="event_source" @change="loadTemplates()"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="converty" selected={ source == "converty" }>Order event (Converty)</option>
 									<option value="delivery" selected={ source == "delivery" }>Delivery event (provider)</option>
 								</select>
 							</div>
-							<div class={ triggerClass(source, "converty") } :class="source === 'delivery' ? 'hidden' : ''" x-ref="convertyTrigger">
+							<div class={ triggerClass(source, "converty") } x-ref="convertyTrigger">
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatus" name="event_status" required
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -107,7 +107,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									}
 								</select>
 							</div>
-							<div class={ triggerClass(source, "delivery") } :class="source === 'delivery' ? '' : 'hidden'" x-ref="deliveryTrigger">
+							<div class={ triggerClass(source, "delivery") } x-ref="deliveryTrigger">
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
@@ -148,7 +148,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<h3 class="text-sm font-semibold text-slate-700">Schedule settings</h3>
 
-						<div class={ scheduleClass(automation, "fixed") } :class="mode === 'fixed' ? '' : 'hidden'" x-ref="fixedSchedule">
+						<div class={ scheduleClass(automation, "fixed") } x-ref="fixedSchedule">
 							<div class="grid gap-4 sm:grid-cols-2">
 								<div>
 									<label class="block text-sm font-medium text-slate-700">Send days</label>
@@ -181,7 +181,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</p>
 						</div>
 
-						<div class={ scheduleClass(automation, "delayed") } :class="mode === 'delayed' ? '' : 'hidden'" x-ref="delayedSchedule">
+						<div class={ scheduleClass(automation, "delayed") } x-ref="delayedSchedule">
 							<div class="sm:w-64">
 								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
 								<input id="sendDelay" name="send_delay_minutes" x-ref="sendDelay" @input="tick++" type="number" min="1" max="20160" value={ delayValue(automation) }
@@ -226,6 +226,48 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 		</div>
 
 <script>
+			// Panel visibility is plain DOM work that must not depend on Alpine
+			// having booted: without it the send-mode and source panels would stay
+			// on their server-rendered state and the schedule fields would be
+			// unreachable.
+			(function () {
+				var form = document.querySelector("form[x-data=automationForm]");
+				if (!form) { return; }
+				var conv = document.getElementById("convertyTrigger");
+				var del = document.getElementById("deliveryTrigger");
+				var status = document.getElementById("eventStatus");
+				var statusDel = document.getElementById("eventStatusDelivery");
+				var fixed = document.getElementById("fixedSchedule");
+				var delayed = document.getElementById("delayedSchedule");
+				var source = document.getElementById("eventSource");
+
+				function syncSource() {
+					if (!source || !conv || !del || !status || !statusDel) { return; }
+					var delivery = source.value === "delivery";
+					conv.classList.toggle("hidden", delivery);
+					del.classList.toggle("hidden", !delivery);
+					// A hidden required select would block the submit with no error.
+					status.required = !delivery;
+					statusDel.name = delivery ? "event_status" : "event_status_delivery";
+				}
+
+				function syncMode() {
+					if (!fixed || !delayed) { return; }
+					var mode = form.querySelector("input[name=send_mode]:checked");
+					mode = mode ? mode.value : "instant";
+					fixed.classList.toggle("hidden", mode !== "fixed");
+					delayed.classList.toggle("hidden", mode !== "delayed");
+				}
+
+				form.addEventListener("change", function (evt) {
+					var target = evt.target;
+					if (target && target.name === "send_mode") { syncMode(); }
+					if (target && target.id === "eventSource") { syncSource(); }
+				});
+				syncSource();
+				syncMode();
+			})();
+
 			document.addEventListener("alpine:init", function () {
 				Alpine.data("automationForm", function () {
 					return {
@@ -246,25 +288,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							this.source = this.$el.querySelector("#eventSource").value;
 							var checked = this.$el.querySelector("input[name=send_mode]:checked");
 							this.mode = checked ? checked.value : "instant";
-							this.$nextTick(function () {
-								self.syncSource();
-								self.loadTemplates();
-							});
-						},
-
-						// Keeps the trigger dropdown and its required flag in step with the
-						// source, so a hidden select can never block the submit.
-						syncSource: function () {
-							var conv = this.$refs.convertyTrigger;
-							var del = this.$refs.deliveryTrigger;
-							var status = this.$el.querySelector("#eventStatus");
-							var statusDel = this.$el.querySelector("#eventStatusDelivery");
-							if (!conv || !del || !status || !statusDel) { return; }
-							var delivery = this.source === "delivery";
-							conv.classList.toggle("hidden", delivery);
-							del.classList.toggle("hidden", !delivery);
-							status.required = !delivery;
-							statusDel.name = delivery ? "event_status" : "event_status_delivery";
+							this.$nextTick(function () { self.loadTemplates(); });
 						},
 
 						renderPreview: function () {
