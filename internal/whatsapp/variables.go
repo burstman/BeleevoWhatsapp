@@ -16,6 +16,8 @@ const (
 	TokenOrderID       TokenKey = "order_id"
 	TokenOrderStatus   TokenKey = "order_status"
 	TokenTrackingCode  TokenKey = "tracking_code"
+	TokenDriverName    TokenKey = "driver_name"
+	TokenDriverPhone   TokenKey = "driver_phone"
 )
 
 // VariableChip is the palette entry rendered in the template editor. Keep the
@@ -28,6 +30,8 @@ func VariableChips() []VariableChip {
 		{Value: string(TokenOrderID), Label: "Order id", Example: "ORD-12345"},
 		{Value: string(TokenOrderStatus), Label: "Order status", Example: "out for delivery"},
 		{Value: string(TokenTrackingCode), Label: "Tracking code", Example: "1234567890113"},
+		{Value: string(TokenDriverName), Label: "Driver name", Example: "Ali Mansour"},
+		{Value: string(TokenDriverPhone), Label: "Driver phone", Example: "+216 98 111 222"},
 	}
 }
 
@@ -54,6 +58,8 @@ type TemplateVariableValues struct {
 	OrderID       string
 	StatusLabel   string
 	TrackingCode  string
+	DriverName    string
+	DriverPhone   string
 }
 
 // TokenValue resolves one variable to its send-time value. Unknown tokens
@@ -70,6 +76,10 @@ func TokenValue(k TokenKey, v TemplateVariableValues) string {
 		return v.StatusLabel
 	case TokenTrackingCode:
 		return v.TrackingCode
+	case TokenDriverName:
+		return v.DriverName
+	case TokenDriverPhone:
+		return v.DriverPhone
 	}
 	return ""
 }

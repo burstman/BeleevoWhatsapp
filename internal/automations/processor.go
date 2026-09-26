@@ -180,6 +180,8 @@ type SendInput struct {
 	OrderID        string
 	StatusLabel    string
 	TrackingCode   string
+	DriverName     string
+	DriverPhone    string
 	IdempotencyKey string
 	fire           fireRule
 }
@@ -343,6 +345,8 @@ func buildVariables(t whatsapp.MerchantTemplate, in SendInput) map[string]string
 		OrderID:       in.OrderID,
 		StatusLabel:   in.StatusLabel,
 		TrackingCode:  in.TrackingCode,
+		DriverName:    in.DriverName,
+		DriverPhone:   in.DriverPhone,
 	}
 
 	vars := make(map[string]string, t.NumVariables)

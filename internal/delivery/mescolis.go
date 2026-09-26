@@ -54,10 +54,12 @@ func NewMescolisClient(apiKey string, allowSubAccount bool, accountCode string, 
 
 // MescolisOrderStatus is a single entry returned by POST /orders/GetOrders.
 type MescolisOrderStatus struct {
-	Barcode     string `json:"barcode"`
-	Status      string `json:"status"`
-	StatusLabel string `json:"status_label"`
-	CreatedAt   string `json:"created_at"`
+	Barcode                string `json:"barcode"`
+	Status                 string `json:"status"`
+	StatusLabel            string `json:"status_label"`
+	CreatedAt              string `json:"created_at"`
+	DeliverymanName        string `json:"deliveryman_name,omitempty"`
+	DeliverymanPhoneNumber string `json:"deliveryman_phone_number,omitempty"`
 }
 
 // GetOrdersResponse is the response of POST /orders/GetOrders.
@@ -123,9 +125,11 @@ func (c *MescolisClient) GetOrder(ctx context.Context, barcode string) (*Mescoli
 		return nil, err
 	}
 	return &MescolisOrderStatus{
-		Barcode:     out.Barcode,
-		Status:      out.Status,
-		StatusLabel: out.StatusLabel,
+		Barcode:                out.Barcode,
+		Status:                 out.Status,
+		StatusLabel:            out.StatusLabel,
+		DeliverymanName:        out.DeliverymanName,
+		DeliverymanPhoneNumber: out.DeliverymanPhoneNumber,
 	}, nil
 }
 
