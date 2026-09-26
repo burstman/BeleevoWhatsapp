@@ -97,7 +97,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									<option value="delivery" selected={ source == "delivery" }>Delivery event (provider)</option>
 								</select>
 							</div>
-							<div class={ triggerClass(source, "converty") } x-ref="convertyTrigger">
+							<div id="convertyTrigger" class={ triggerClass(source, "converty") } x-ref="convertyTrigger">
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatus" name="event_status" required
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -107,7 +107,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									}
 								</select>
 							</div>
-							<div class={ triggerClass(source, "delivery") } x-ref="deliveryTrigger">
+							<div id="deliveryTrigger" class={ triggerClass(source, "delivery") } x-ref="deliveryTrigger">
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
@@ -148,7 +148,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<h3 class="text-sm font-semibold text-slate-700">Schedule settings</h3>
 
-						<div class={ scheduleClass(automation, "fixed") } x-ref="fixedSchedule">
+						<div id="fixedSchedule" class={ scheduleClass(automation, "fixed") } x-ref="fixedSchedule">
 							<div class="grid gap-4 sm:grid-cols-2">
 								<div>
 									<label class="block text-sm font-medium text-slate-700">Send days</label>
@@ -181,7 +181,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</p>
 						</div>
 
-						<div class={ scheduleClass(automation, "delayed") } x-ref="delayedSchedule">
+						<div id="delayedSchedule" class={ scheduleClass(automation, "delayed") } x-ref="delayedSchedule">
 							<div class="sm:w-64">
 								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
 								<input id="sendDelay" name="send_delay_minutes" x-ref="sendDelay" @input="tick++" type="number" min="1" max="20160" value={ delayValue(automation) }
