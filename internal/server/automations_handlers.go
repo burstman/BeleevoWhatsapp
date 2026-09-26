@@ -55,6 +55,9 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "A name, trigger and template are required."
 	case "badschedule":
 		flash.Error = "The send rule is invalid — check the time, timezone, days or delay."
+		if why := k.Request.URL.Query().Get("why"); why != "" {
+			flash.Error = "The send rule is invalid: " + why + "."
+		}
 	case "notemplate":
 		flash.Error = "Create and get an approved template first."
 	case "wrongsource":
@@ -122,6 +125,9 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 		flash.Error = "A name, trigger and template are required."
 	case "badschedule":
 		flash.Error = "The send rule is invalid — check the time, timezone, days or delay."
+		if why := k.Request.URL.Query().Get("why"); why != "" {
+			flash.Error = "The send rule is invalid: " + why + "."
+		}
 	case "duplicate":
 		flash.Error = "An automation for this trigger already exists."
 	case "notemplate":
@@ -136,11 +142,67 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Automation", "automations", all)
-	return k.Render(vdashboard.AutomationFormPage(page, automation, approved, templateShops,
-		automations.DeliveryStatuses(), automation != nil, flash))
+	source, sourceCounts := defaultEventSource(automation, approved)
+	return k.Render(vdashboard.AutomationFormPage(page, automation, fitSource(approved, source), templateShops,
+		automations.DeliveryStatuses(), automation != nil, flash, source, sourceCounts))
+}
+
+// defaultEventSource picks the event source the form opens on: the automation's
+// own, or — when creating — one that actually has an approved template. A form
+// left on a source with no template shows an empty required dropdown, and the
+// browser then blocks the submit with no visible error: the Create button simply
+// does nothing.
+func defaultEventSource(a *automations.Automation, approved []whatsapp.MerchantTemplate) (string, map[string]int) {
+	counts := map[string]int{
+		automations.SourceConverty: 0,
+		automations.SourceDelivery: 0,
+	}
+	for _, t := range approved {
+		for _, s := range []string{automations.SourceConverty, automations.SourceDelivery} {
+			if templateFitsSource(t, s) {
+				counts[s]++
+			}
+		}
+	}
+	if a != nil && a.EventSource != "" {
+		return a.EventSource, counts
+	}
+	if counts[automations.SourceConverty] == 0 && counts[automations.SourceDelivery] > 0 {
+		return automations.SourceDelivery, counts
+	}
+	return automations.SourceConverty, counts
+}
+
+// fitSource narrows a template list to the ones usable for one event source.
+func fitSource(templates []whatsapp.MerchantTemplate, source string) []whatsapp.MerchantTemplate {
+	out := make([]whatsapp.MerchantTemplate, 0, len(templates))
+	for _, t := range templates {
+		if templateFitsSource(t, source) {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // scheduleFromForm validates the send-rule fields into a Schedule.
+// scheduleWhy turns a ParseSchedule error into a sentence the form can show,
+// so a bounced submit says which field is wrong.
+func scheduleWhy(err error) string {
+	switch err.Error() {
+	case "invalid send time":
+		return "a scheduled send needs a send time"
+	case "select at least one send day":
+		return "a scheduled send needs at least one send day"
+	case "invalid timezone":
+		return "the timezone must be an IANA name such as Africa/Tunis"
+	case "delay must be a positive number of minutes":
+		return "a delayed send needs a delay of at least one minute"
+	case "invalid delay", "invalid send day", "unknown automation type":
+		return "the send rule fields are not valid"
+	}
+	return "check the time, timezone, days or delay"
+}
+
 func scheduleFromForm(k *kit.Kit) (*automations.Schedule, error) {
 	if err := k.Request.ParseForm(); err != nil {
 		return nil, err
@@ -251,7 +313,7 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 	schedule, sErr2 := scheduleFromForm(k)
 	if sErr2 != nil {
 		a.Log.Warn("automation create rejected", "shop_id", shopID, "error", sErr2)
-		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=badschedule")
+		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=badschedule&why="+url.QueryEscape(scheduleWhy(sErr2)))
 	}
 
 	if err := a.Automations.Create(ctx, shopID, source, status, templateID, schedule, name, description); err != nil {
@@ -314,7 +376,8 @@ func (a *App) handleAutomationUpdate(k *kit.Kit) error {
 	schedule, sErr := scheduleFromForm(k)
 	if sErr != nil {
 		a.Log.Warn("automation update rejected", "shop_id", shopID, "error", sErr)
-		return k.Redirect(http.StatusSeeOther, "/automations/"+id.String()+"/edit?flash=badschedule")
+		return k.Redirect(http.StatusSeeOther,
+			"/automations/"+id.String()+"/edit?flash=badschedule&why="+url.QueryEscape(scheduleWhy(sErr)))
 	}
 
 	if err := a.Automations.Update(ctx, shopID, id, source, status, templateID, schedule, name, description); err != nil {
