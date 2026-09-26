@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/anthdm/superkit/kit"
@@ -25,14 +26,26 @@ func (a *App) shopsFor(k *kit.Kit) ([]shops.Shop, error) {
 	return all, nil
 }
 
-// primaryShop returns the canonical owner for shared settings (WhatsApp
-// connection, delivery token, template sync): the oldest integrated shop. The
-// callers have already ensured at least one integrated shop exists.
-func primaryShop(all []shops.Shop) shops.Shop {
-	if len(all) == 0 {
-		return shops.Shop{}
+// sharedOwnerShop returns the shop that owns the operator's shared resources:
+// whichever shop holds the WhatsApp connection (the number and its approved
+// templates co-locate there, and sends resolve through that shop's creds).
+// Falls back to the oldest shop when nothing is connected yet. It scans every
+// shop, not only the integrated ones, because some shops may hold shared
+// resources without a Converty integration in the same row set.
+func (a *App) sharedOwnerShop(ctx context.Context) (shops.Shop, error) {
+	all, err := a.Shops.List(ctx)
+	if err != nil {
+		return shops.Shop{}, err
 	}
-	return all[0]
+	if len(all) == 0 {
+		return shops.Shop{}, shops.ErrNotFound
+	}
+	for _, s := range all {
+		if _, err := a.WhatsApp.Integration(ctx, s.ID); err == nil {
+			return s, nil
+		}
+	}
+	return all[0], nil
 }
 
 // dashboardPage builds the page scaffolding every dashboard page shares.

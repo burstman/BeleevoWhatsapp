@@ -37,7 +37,7 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 // it lives. The number is shared across shops, so the row under any shop is the
 // same connection. ErrNoRows is returned when nothing is connected yet.
 func (a *App) whatsappIntegrationAnyShop(ctx context.Context) (whatsapp.Integration, error) {
-	all, err := a.Shops.ListIntegrated(ctx)
+	all, err := a.Shops.List(ctx)
 	if err != nil {
 		return whatsapp.Integration{}, err
 	}
@@ -59,14 +59,18 @@ func (a *App) whatsappIntegrationAnyShop(ctx context.Context) (whatsapp.Integrat
 
 // handleWhatsappConnect stores the shared Meta WhatsApp credentials after a
 // live sanity check of the token and ids against the Graph API. The connection
-// is kept under the primary shop, which is also where the client's templates
-// are synced, so sends resolve both from that shop.
+// is kept under the shop that owns the shared resources (whichever shop
+// already holds the WhatsApp row, else the oldest), which is also where the
+// client's templates are synced, so sends resolve both from that shop.
 func (a *App) handleWhatsappConnect(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	ctx := k.Request.Context()
 	token := k.Request.FormValue("token")
@@ -112,11 +116,14 @@ func (a *App) handleWhatsappConnect(k *kit.Kit) error {
 
 // handleWhatsappDisconnect removes the shared WhatsApp credentials.
 func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	if err := a.WhatsApp.DeleteIntegration(k.Request.Context(), shopID); err != nil {
 		a.Log.Error("whatsapp disconnect failed", "error", err)
@@ -136,18 +143,25 @@ func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Enable WhatsApp", "settings", all)
-	return k.Render(vsettings.Onboarding(page, primaryShop(all)))
+	owner, err := a.sharedOwnerShop(k.Request.Context())
+	if err != nil {
+		return err
+	}
+	return k.Render(vsettings.Onboarding(page, owner))
 }
 
 // handleWhatsappOnboardPost records the operator's opt-in: terms accepted,
 // service enabled, contact phone saved. No Meta credentials are handled here —
 // sending happens through the platform's centrally owned number.
 func (a *App) handleWhatsappOnboardPost(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	if k.Request.FormValue("accept_terms") != "1" {
 		return k.Redirect(http.StatusSeeOther, "/whatsapp/onboard?error=terms")

@@ -16,11 +16,14 @@ import (
 // handleTemplateRefresh re-syncs the merchant's template approval statuses
 // from Meta's review engine and returns to the templates page.
 func (a *App) handleTemplateRefresh(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	if purged, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
 		a.Log.Warn("marketing purge check failed", "error", err.Error())
@@ -42,11 +45,14 @@ func (a *App) handleTemplateRefresh(k *kit.Kit) error {
 // accepted here; marketing templates are outside this platform's scope. The
 // stored status (pending/rejected/approved) is always Meta's verdict.
 func (a *App) handleTemplateCreate(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	name := strings.TrimSpace(k.Request.FormValue("name"))
 	language := strings.TrimSpace(k.Request.FormValue("language"))

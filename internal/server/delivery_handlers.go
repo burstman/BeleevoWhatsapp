@@ -22,7 +22,11 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 	}
 
 	ctx := k.Request.Context()
-	shopID := primaryShop(all).ID
+	owner, err := a.sharedOwnerShop(ctx)
+	if err != nil {
+		return err
+	}
+	shopID := owner.ID
 	integ, err := a.Delivery.Integration(ctx, shopID, delivery.ProviderMescolis)
 	if err != nil && err != delivery.ErrNotConfigured {
 		return err
@@ -33,7 +37,11 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 	}
 
 	tracked := []delivery.TrackedOrder{}
-	for _, s := range all {
+	allShops, err := a.Shops.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, s := range allShops {
 		rows, tErr := a.Delivery.Tracked(ctx, s.ID)
 		if tErr != nil {
 			return tErr
@@ -64,13 +72,17 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 
 // handleDeliveryConnect stores the shared Mes Colis access token after a live
 // sanity check that the token reaches the API. The connection lives on the
-// primary shop.
+// shop that owns the shared resources (whichever shop already holds the
+// WhatsApp row, else the oldest).
 func (a *App) handleDeliveryConnect(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	ctx := k.Request.Context()
 	token := strings.TrimSpace(k.Request.FormValue("access_token"))
@@ -98,11 +110,14 @@ func (a *App) handleDeliveryConnect(k *kit.Kit) error {
 
 // handleDeliveryDisconnect removes the shared delivery provider connection.
 func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	if err := a.Delivery.DeleteIntegration(k.Request.Context(), shopID, delivery.ProviderMescolis); err != nil {
 		a.Log.Error("delivery disconnect failed", "shop_id", shopID, "error", err)
@@ -115,11 +130,12 @@ func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
 // handleDeliveryTrackRemove stops watching a parcel, resolving the shop that
 // tracks it.
 func (a *App) handleDeliveryTrackRemove(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	barcode := chi.URLParam(k.Request, "barcode")
+
+	all, err := a.Shops.List(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	barcode := chi.URLParam(k.Request, "barcode")
 
 	var target uuid.UUID
 	found := false

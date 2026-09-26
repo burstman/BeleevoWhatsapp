@@ -15,11 +15,14 @@ import (
 
 // POST /api/whatsapp/customers — register a customer for the merchant.
 func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	var in struct {
 		Name  string `json:"name"`
@@ -42,11 +45,14 @@ func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
 
 // GET /api/whatsapp/customers — list the merchant's customers.
 func (a *App) handleAPICustomers(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 	customers, err := a.WhatsApp.Customers(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
@@ -57,11 +63,14 @@ func (a *App) handleAPICustomers(k *kit.Kit) error {
 
 // POST /api/whatsapp/consent — record a customer opt-in for the merchant.
 func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	var in struct {
 		CustomerID string `json:"customer_id"`
@@ -89,11 +98,14 @@ func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/revoke — revoke a customer's opt-in.
 func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	var in struct {
 		CustomerID string `json:"customer_id"`
@@ -118,11 +130,14 @@ func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/templates — submit a new template for Meta review.
 func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	var in struct {
 		Name       string          `json:"name"`
@@ -159,11 +174,14 @@ func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
 
 // GET /api/whatsapp/templates — list the merchant's templates.
 func (a *App) handleAPITemplates(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 	templates, err := a.WhatsApp.Templates(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
@@ -174,11 +192,14 @@ func (a *App) handleAPITemplates(k *kit.Kit) error {
 
 // POST /api/whatsapp/messages — send a message through the shared WABA.
 func (a *App) handleAPISendMessage(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 
 	var in struct {
 		CustomerID      string            `json:"customer_id"`
@@ -222,11 +243,14 @@ func (a *App) handleAPISendMessage(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages — list the merchant's messages.
 func (a *App) handleAPIMessages(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 	messages, err := a.WhatsApp.Messages(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
@@ -237,11 +261,14 @@ func (a *App) handleAPIMessages(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages/{id} — one message.
 func (a *App) handleAPIMessage(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err
 	}
-	shopID := primaryShop(all).ID
+	shopID := owner.ID
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return a.writeAPIError(k, http.StatusBadRequest, errors.New("invalid message id"))
