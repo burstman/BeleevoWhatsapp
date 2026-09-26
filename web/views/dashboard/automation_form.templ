@@ -36,7 +36,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 			}
 
 			<form method="post" action={ templ.SafeURL(formAction(automation)) } class="mt-6 grid gap-6 lg:grid-cols-3"
-				x-data="automationForm"
+				data-automation-form
 				data-converty-count={ strconv.Itoa(sourceCounts["converty"]) }
 				data-delivery-count={ strconv.Itoa(sourceCounts["delivery"]) }>
 				<div class="space-y-6 lg:col-span-2">
@@ -60,17 +60,17 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							<label class="block text-sm font-medium text-slate-700">Send type</label>
 							<div class="mt-2 flex flex-col gap-2">
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-									<input type="radio" name="send_mode" value="instant" x-model="mode" checked={ selectedMode(automation) == "instant" }
+									<input type="radio" name="send_mode" value="instant" checked={ selectedMode(automation) == "instant" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
 									Instant — send as soon as the event arrives
 								</label>
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-									<input type="radio" name="send_mode" value="fixed" x-model="mode" checked={ selectedMode(automation) == "fixed" }
+									<input type="radio" name="send_mode" value="fixed" checked={ selectedMode(automation) == "fixed" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
 									Scheduled — send at a fixed time on the chosen days
 								</label>
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-									<input type="radio" name="send_mode" value="delayed" x-model="mode" checked={ selectedMode(automation) == "delayed" }
+									<input type="radio" name="send_mode" value="delayed" checked={ selectedMode(automation) == "delayed" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
 									Delayed — send a few minutes after the event
 								</label>
@@ -82,7 +82,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						<div class="grid gap-4 sm:grid-cols-3">
 							<div>
 								<label class="block text-sm font-medium text-slate-700">Shop</label>
-								<select id="shopSelect" name="shop_id" @change="loadTemplates()"
+								<select id="shopSelect" name="shop_id"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									for _, s := range page.Shops {
 										<option value={ s.ID.String() } selected={ shopSelected(automation, s, page) }>{ s.Name }</option>
@@ -91,13 +91,13 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</div>
 							<div>
 								<label for="eventSource" class="block text-sm font-medium text-slate-700">Event source</label>
-								<select id="eventSource" name="event_source" @change="loadTemplates()"
+								<select id="eventSource" name="event_source"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="converty" selected={ source == "converty" }>Order event (Converty)</option>
 									<option value="delivery" selected={ source == "delivery" }>Delivery event (provider)</option>
 								</select>
 							</div>
-							<div id="convertyTrigger" class={ triggerClass(source, "converty") } x-ref="convertyTrigger">
+							<div id="convertyTrigger" class={ triggerClass(source, "converty") }>
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatus" name="event_status" required
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -107,7 +107,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									}
 								</select>
 							</div>
-							<div id="deliveryTrigger" class={ triggerClass(source, "delivery") } x-ref="deliveryTrigger">
+							<div id="deliveryTrigger" class={ triggerClass(source, "delivery") }>
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
@@ -135,7 +135,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								This shop has no approved template. Create and get one approved in the Templates menu.
 							</div>
 						} else {
-							<select id="templateSelect" name="template_id" required x-ref="templateSelect" @change="renderPreview()"
+							<select id="templateSelect" name="template_id" required
 								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 								<option value="" disabled selected={ automation == nil && automationTemplateID(automation) == uuid.Nil }>Choose a template…</option>
 								for _, t := range templates {
@@ -148,14 +148,14 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<h3 class="text-sm font-semibold text-slate-700">Schedule settings</h3>
 
-						<div id="fixedSchedule" class={ scheduleClass(automation, "fixed") } x-ref="fixedSchedule">
+						<div id="fixedSchedule" class={ scheduleClass(automation, "fixed") }>
 							<div class="grid gap-4 sm:grid-cols-2">
 								<div>
 									<label class="block text-sm font-medium text-slate-700">Send days</label>
 									<div class="mt-2 grid grid-cols-4 gap-2">
 										for d := 1; d <= 7; d++ {
 											<label class="flex cursor-pointer items-center gap-1.5 text-sm text-slate-700">
-												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) } @change="tick++"
+												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) }
 													class="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500" />
 												{ dayNames[d-1] }
 											</label>
@@ -164,13 +164,13 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								</div>
 								<div>
 									<label for="sendTime" class="block text-sm font-medium text-slate-700">Send time</label>
-									<input id="sendTime" name="send_time" x-ref="sendTime" @input="tick++" type="time" value={ sendTimeValue(automation) }
+									<input id="sendTime" name="send_time" type="time" value={ sendTimeValue(automation) }
 										class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 								</div>
 							</div>
 							<div class="mt-4">
 								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Timezone (IANA)</label>
-								<input id="sendTimezone" name="send_timezone" x-ref="sendTimezone" @input="tick++" type="text" value={ sendTimezoneValue(automation) }
+								<input id="sendTimezone" name="send_timezone" type="text" value={ sendTimezoneValue(automation) }
 									placeholder="e.g. Africa/Tunis, UTC"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
@@ -181,10 +181,10 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</p>
 						</div>
 
-						<div id="delayedSchedule" class={ scheduleClass(automation, "delayed") } x-ref="delayedSchedule">
+						<div id="delayedSchedule" class={ scheduleClass(automation, "delayed") }>
 							<div class="sm:w-64">
 								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
-								<input id="sendDelay" name="send_delay_minutes" x-ref="sendDelay" @input="tick++" type="number" min="1" max="20160" value={ delayValue(automation) }
+								<input id="sendDelay" name="send_delay_minutes" type="number" min="1" max="20160" value={ delayValue(automation) }
 									placeholder="e.g. 30"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
@@ -193,10 +193,8 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					</div>
 
 					<div class="flex flex-wrap items-center gap-3 pb-6">
-						<button type="submit"
-							:disabled="blocked"
-							:class="blocked ? 'cursor-not-allowed bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'"
-							class="rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition">
+						<button type="submit" id="automationSubmit"
+							class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
 							if isEdit {
 								Save
 							} else {
@@ -204,8 +202,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							}
 						</button>
 						<a href="/automations" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700">Cancel</a>
-						<p x-show="problems" x-text="problems"
-							class="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
+						<p id="automationProblem" class="hidden w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
 					</div>
 				</div>
 
@@ -213,7 +210,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="sticky top-6 rounded-xl border border-slate-200 bg-[#edf6ff] p-5">
 						<div class="text-sm font-semibold text-slate-800">Message preview</div>
 						<div class="mt-1 text-xs text-slate-500">What the customer will receive</div>
-						<div id="previewBody" x-ref="previewBody" class="mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+						<div id="previewBody" class="mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
 							Select a template to preview.
 						</div>
 						<div class="mt-3 text-xs text-slate-500">
@@ -226,169 +223,166 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 		</div>
 
 <script>
-			// Panel visibility is plain DOM work that must not depend on Alpine
-			// having booted: without it the send-mode and source panels would stay
-			// on their server-rendered state and the schedule fields would be
-			// unreachable.
-			(function () {
-				var form = document.querySelector("form[x-data=automationForm]");
-				if (!form) { return; }
-				var conv = document.getElementById("convertyTrigger");
-				var del = document.getElementById("deliveryTrigger");
-				var status = document.getElementById("eventStatus");
-				var statusDel = document.getElementById("eventStatusDelivery");
-				var fixed = document.getElementById("fixedSchedule");
-				var delayed = document.getElementById("delayedSchedule");
-				var source = document.getElementById("eventSource");
+// The form's behaviour is plain DOM on purpose: panels, validation and the
+// template catalog must not depend on a framework layer booting, or a dead
+// submit looks like a dead button.
+(function () {
+	var form = document.querySelector("form[data-automation-form]");
+	if (!form) { return; }
 
-				function syncSource() {
-					if (!source || !conv || !del || !status || !statusDel) { return; }
-					var delivery = source.value === "delivery";
-					conv.classList.toggle("hidden", delivery);
-					del.classList.toggle("hidden", !delivery);
-					// A hidden required select would block the submit with no error.
-					status.required = !delivery;
-					statusDel.name = delivery ? "event_status" : "event_status_delivery";
-				}
+	var source = document.getElementById("eventSource");
+	var shop = document.getElementById("shopSelect");
+	var conv = document.getElementById("convertyTrigger");
+	var del = document.getElementById("deliveryTrigger");
+	var status = document.getElementById("eventStatus");
+	var statusDel = document.getElementById("eventStatusDelivery");
+	var fixed = document.getElementById("fixedSchedule");
+	var delayed = document.getElementById("delayedSchedule");
+	var sendTime = document.getElementById("sendTime");
+	var sendTimezone = document.getElementById("sendTimezone");
+	var sendDelay = document.getElementById("sendDelay");
+	var select = document.getElementById("templateSelect");
+	var preview = document.getElementById("previewBody");
+	var button = document.getElementById("automationSubmit");
+	var problem = document.getElementById("automationProblem");
+	var catalog = {};
 
-				function syncMode() {
-					if (!fixed || !delayed) { return; }
-					var mode = form.querySelector("input[name=send_mode]:checked");
-					mode = mode ? mode.value : "instant";
-					fixed.classList.toggle("hidden", mode !== "fixed");
-					delayed.classList.toggle("hidden", mode !== "delayed");
-				}
+	function mode() {
+		var checked = form.querySelector("input[name=send_mode]:checked");
+		return checked ? checked.value : "instant";
+	}
 
-				form.addEventListener("change", function (evt) {
-					var target = evt.target;
-					if (target && target.name === "send_mode") { syncMode(); }
-					if (target && target.id === "eventSource") { syncSource(); }
-				});
-				syncSource();
-				syncMode();
-			})();
+	function dayCount() {
+		return form.querySelectorAll("input[name=send_days]:checked").length;
+	}
 
-			document.addEventListener("alpine:init", function () {
-				Alpine.data("automationForm", function () {
-					return {
-						counts: { converty: 0, delivery: 0 },
-						catalog: {},
-						source: "converty",
-						mode: "instant",
-						// The schedule fields are plain inputs, so the getters below
-						// would not re-run on their own: every edit bumps this.
-						tick: 0,
+	function syncSource() {
+		var delivery = source && source.value === "delivery";
+		if (conv && del) {
+			conv.classList.toggle("hidden", delivery);
+			del.classList.toggle("hidden", !delivery);
+		}
+		// A hidden required select blocks the submit with no visible error.
+		if (status && statusDel) {
+			status.required = !delivery;
+			statusDel.name = delivery ? "event_status" : "event_status_delivery";
+		}
+	}
 
-						init: function () {
-							var self = this;
-							this.counts = {
-								converty: parseInt(this.$el.dataset.convertyCount || "0", 10),
-								delivery: parseInt(this.$el.dataset.deliveryCount || "0", 10)
-							};
-							this.source = this.$el.querySelector("#eventSource").value;
-							var checked = this.$el.querySelector("input[name=send_mode]:checked");
-							this.mode = checked ? checked.value : "instant";
-							this.$nextTick(function () { self.loadTemplates(); });
-						},
+	function syncMode() {
+		var value = mode();
+		if (fixed) { fixed.classList.toggle("hidden", value !== "fixed"); }
+		if (delayed) { delayed.classList.toggle("hidden", value !== "delayed"); }
+	}
 
-						renderPreview: function () {
-							var t = this.catalog[this.$refs.templateSelect.value];
-							this.$refs.previewBody.textContent = t && t.body ? t.body : "Select a template to preview.";
-						},
+	function templateProblem() {
+		var counts = {
+			converty: parseInt(form.dataset.convertyCount || "0", 10),
+			delivery: parseInt(form.dataset.deliveryCount || "0", 10)
+		};
+		var current = source ? source.value : "converty";
+		if (counts[current] > 0) { return ""; }
+		var other = current === "delivery" ? "Converty" : "delivery";
+		return counts[other] > 0
+			? "No approved " + other + " template for this shop \u2014 switch the event source, or create one in Templates."
+			: "No approved template yet \u2014 create and get one approved in Templates first.";
+	}
 
-						rebuild: function (keepSelection) {
-							var select = this.$refs.templateSelect;
-							var previous = select.value;
-							select.innerHTML = "";
-							var placeholder = document.createElement("option");
-							placeholder.value = "";
-							placeholder.disabled = true;
-							placeholder.selected = true;
-							placeholder.textContent = "Choose a template…";
-							select.appendChild(placeholder);
-							for (var id in this.catalog) {
-								if (!this.catalog.hasOwnProperty(id)) { continue; }
-								var t = this.catalog[id];
-								var opt = document.createElement("option");
-								opt.value = id;
-								opt.textContent = t.name + " (" + t.language + ")" + (t.shop ? " \u00b7 " + t.shop : "");
-								select.appendChild(opt);
-							}
-							if (keepSelection && previous && this.catalog[previous]) { select.value = previous; }
-							this.renderPreview();
-						},
+	function scheduleProblem() {
+		if (mode() === "fixed") {
+			if (!sendTime || !sendTime.value) { return "A scheduled send needs a send time."; }
+			if (dayCount() === 0) { return "A scheduled send needs at least one send day."; }
+			if (sendTimezone && !sendTimezone.value.trim()) { return "The timezone cannot be empty \u2014 use UTC."; }
+		}
+		if (mode() === "delayed") {
+			var delay = sendDelay ? parseInt(sendDelay.value, 10) : 0;
+			if (!delay || delay < 1) { return "A delayed send needs a delay of at least one minute."; }
+		}
+		return "";
+	}
 
-						// The catalog is source-specific: a message written for Mes Colis
-						// cannot serve a Converty trigger, so the list is refetched
-						// whenever the shop or the source changes.
-						loadTemplates: function () {
-							var self = this;
-							var select = this.$refs.templateSelect;
-							if (!select) { return; }
-							var shop = this.$el.querySelector("#shopSelect");
-							var shopID = shop ? shop.value : "";
-							fetch("/automations/shops/" + encodeURIComponent(shopID) + "/templates?source=" + encodeURIComponent(this.source), {
-								headers: { "Accept": "application/json" }
-							}).then(function (resp) {
-								return resp.ok ? resp.json() : Promise.reject(resp.status);
-							}).then(function (data) {
-								self.catalog = {};
-								(data.templates || []).forEach(function (t) {
-									self.catalog[t.id] = { name: t.name, language: t.language, body: t.body, shop: t.shop || "" };
-								});
-								self.rebuild(true);
-							}).catch(function (err) {
-								console.warn("template catalog load failed", err);
-							});
-						},
+	function validate() {
+		var message = [templateProblem(), scheduleProblem()].filter(Boolean).join(" ");
+		if (problem) {
+			problem.textContent = message;
+			problem.classList.toggle("hidden", message === "");
+		}
+		if (button) {
+			button.disabled = message !== "";
+			button.classList.toggle("bg-slate-300", message !== "");
+			button.classList.toggle("bg-indigo-600", message === "");
+			button.classList.toggle("hover:bg-indigo-700", message === "");
+			button.classList.toggle("cursor-not-allowed", message !== "");
+		}
+	}
 
-						get sendDays() {
-							return this.$el.querySelectorAll("input[name=send_days]:checked").length;
-						},
+	function renderPreview() {
+		if (!preview || !select) { return; }
+		var t = catalog[select.value];
+		preview.textContent = t && t.body ? t.body : "Select a template to preview.";
+	}
 
-						// A scheduled send needs its time and at least one day; a delayed
-						// send needs a positive delay. The server enforces the same, but
-						// learning it only after a silent bounce is confusing.
-						get scheduleProblem() {
-							var _ = this.tick;
-							if (this.mode === "fixed") {
-								if (!this.$refs.sendTime || !this.$refs.sendTime.value) {
-									return "a scheduled send needs a send time.";
-								}
-								if (this.sendDays === 0) {
-									return "a scheduled send needs at least one send day.";
-								}
-								if (this.$refs.sendTimezone && !this.$refs.sendTimezone.value.trim()) {
-									return "the timezone cannot be empty \u2014 use UTC.";
-								}
-							}
-							if (this.mode === "delayed") {
-								var delay = this.$refs.sendDelay ? parseInt(this.$refs.sendDelay.value, 10) : 0;
-								if (!delay || delay < 1) {
-									return "a delayed send needs a delay of at least one minute.";
-								}
-							}
-							return "";
-						},
+	function rebuild(keepSelection) {
+		if (!select) { return; }
+		var previous = select.value;
+		select.innerHTML = "";
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.disabled = true;
+		placeholder.selected = true;
+		placeholder.textContent = "Choose a template\u2026";
+		select.appendChild(placeholder);
+		for (var id in catalog) {
+			if (!catalog.hasOwnProperty(id)) { continue; }
+			var t = catalog[id];
+			var opt = document.createElement("option");
+			opt.value = id;
+			opt.textContent = t.name + " (" + t.language + ")" + (t.shop ? " \u00b7 " + t.shop : "");
+			select.appendChild(opt);
+		}
+		if (keepSelection && previous && catalog[previous]) { select.value = previous; }
+		renderPreview();
+		validate();
+	}
 
-						get templateProblem() {
-							if (this.counts[this.source] > 0) { return ""; }
-							var other = this.source === "delivery" ? "Converty" : "delivery";
-							return this.counts[other] > 0
-								? "no approved " + other + " template for this shop \u2014 switch the event source, or create one in Templates."
-								: "no approved template yet \u2014 create and get one approved in Templates first.";
-						},
-
-						get problems() {
-							return [this.templateProblem, this.scheduleProblem].filter(Boolean).join(" ");
-						},
-
-						get blocked() {
-							return this.problems !== "";
-						}
-					};
-				});
+	// The catalog is source-specific: a message written for Mes Colis cannot
+	// serve a Converty trigger, so the list is refetched when shop or source
+	// changes.
+	function loadTemplates() {
+		if (!select || !shop) { return; }
+		var shopID = shop.value;
+		var kind = source ? source.value : "converty";
+		fetch("/automations/shops/" + encodeURIComponent(shopID) + "/templates?source=" + encodeURIComponent(kind), {
+			headers: { "Accept": "application/json" }
+		}).then(function (resp) {
+			return resp.ok ? resp.json() : Promise.reject(resp.status);
+		}).then(function (data) {
+			catalog = {};
+			(data.templates || []).forEach(function (t) {
+				catalog[t.id] = { name: t.name, language: t.language, body: t.body, shop: t.shop || "" };
 			});
+			rebuild(true);
+		}).catch(function (err) {
+			console.warn("template catalog load failed", err);
+		});
+	}
+
+	form.addEventListener("change", function (evt) {
+		var target = evt.target;
+		if (!target) { return; }
+		if (target.name === "send_mode") { syncMode(); }
+		if (target.id === "eventSource") { syncSource(); loadTemplates(); }
+		if (target.id === "shopSelect") { loadTemplates(); }
+		if (target.id === "templateSelect") { renderPreview(); }
+		validate();
+	});
+	form.addEventListener("input", function () { validate(); });
+
+	syncSource();
+	syncMode();
+	loadTemplates();
+	validate();
+})();
 		</script>
 	}
 }
