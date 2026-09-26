@@ -294,6 +294,26 @@ func (p *Processor) Automation(ctx context.Context, shopID, id uuid.UUID) (*Auto
 	return &a, err
 }
 
+// AutomationByID returns one automation by id regardless of shop (used by
+// update/toggle/delete after the shop dropdown let an automation be created
+// for any integrated shop), or nil when it does not exist.
+func (p *Processor) AutomationByID(ctx context.Context, id uuid.UUID) (*Automation, error) {
+	var a Automation
+	err := p.pool.QueryRow(ctx, `
+		SELECT id, shop_id, name, description, event_source, order_status, template_id, enabled,
+		       send_time, send_timezone, send_days, delay_minutes, created_at, updated_at
+		FROM automations
+		WHERE id = $1`,
+		id,
+	).Scan(&a.ID, &a.ShopID, &a.Name, &a.Description, &a.EventSource, &a.OrderStatus,
+		&a.TemplateID, &a.Enabled, &a.SendTime, &a.SendTimezone, &a.SendDays, &a.DelayMinutes,
+		&a.CreatedAt, &a.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return &a, err
+}
+
 // match returns the enabled automation for a trigger, or an empty automation
 // when none (or one whose template was deleted) is configured.
 func (p *Processor) match(ctx context.Context, shopID uuid.UUID, source, status string) (Automation, error) {

@@ -6,29 +6,29 @@ import (
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
 
-templ AutomationFormPage(page components.Page, automation *automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, deliveryStatuses []string, isEdit bool, flash AutomationFlash) {
+templ AutomationFormPage(page components.Page, automation *automations.Automation, templates []whatsapp.MerchantTemplate, deliveryStatuses []string, isEdit bool, flash AutomationFlash) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-6xl">
 			<div class="flex items-center justify-between">
 				<div>
 					<h2 class="text-2xl font-bold text-slate-900">
 						if isEdit {
-							Modifier l'automation
+							Edit automation
 						} else {
-							Nouvelle automation
+							New automation
 						}
 					</h2>
 					<p class="mt-1 text-sm text-slate-500">
-						Le template est choisi parmi vos templates approuvés — son contenu se modifie
-						depuis le menu Templates.
+						The template is one of your approved templates — its content is edited in the Templates menu.
 					</p>
 				</div>
-				<a href="/automations" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Retour</a>
+				<a href="/automations" class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Back</a>
 			</div>
 
 			if flash.Error != "" {
@@ -40,36 +40,36 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<div class="grid gap-4 sm:grid-cols-2">
 							<div>
-								<label for="name" class="block text-sm font-medium text-slate-700">Nom de l'automation</label>
+								<label for="name" class="block text-sm font-medium text-slate-700">Automation name</label>
 								<input id="name" name="name" type="text" required value={ automationName(automation) }
-									placeholder="Ex: Notification de livraison"
+									placeholder="e.g. Delivery notification"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
 							<div>
-								<label for="description" class="block text-sm font-medium text-slate-700">Description (optionnel)</label>
+								<label for="description" class="block text-sm font-medium text-slate-700">Description (optional)</label>
 								<input id="description" name="description" type="text" value={ automationDescription(automation) }
-									placeholder="Ce que cette automation fait"
+									placeholder="What this automation does"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-slate-700">Type d'envoi</label>
+							<label class="block text-sm font-medium text-slate-700">Send type</label>
 							<div class="mt-2 flex flex-col gap-2">
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
 									<input type="radio" name="send_mode" value="instant" checked={ selectedMode(automation) == "instant" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
-									Instantanée — envoyer dès que l'événement arrive
+									Instant — send as soon as the event arrives
 								</label>
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
 									<input type="radio" name="send_mode" value="fixed" checked={ selectedMode(automation) == "fixed" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
-									Programmée — envoyer à une heure fixe les jours choisis
+									Scheduled — send at a fixed time on the chosen days
 								</label>
 								<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
 									<input type="radio" name="send_mode" value="delayed" checked={ selectedMode(automation) == "delayed" }
 										class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" />
-									Retardée — envoyer quelques minutes après l'événement
+									Delayed — send a few minutes after the event
 								</label>
 							</div>
 						</div>
@@ -78,7 +78,16 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 						<div class="grid gap-4 sm:grid-cols-3">
 							<div>
-								<label for="eventSource" class="block text-sm font-medium text-slate-700">Source d'événement</label>
+								<label class="block text-sm font-medium text-slate-700">Shop</label>
+								<select id="shopSelect" name="shop_id"
+									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+									for _, s := range page.Shops {
+										<option value={ s.ID.String() } selected={ shopSelected(automation, s, page) }>{ s.Name }</option>
+									}
+								</select>
+							</div>
+							<div>
+								<label for="eventSource" class="block text-sm font-medium text-slate-700">Event source</label>
 								<select id="eventSource" name="event_source"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="converty" selected={ automationEventSource(automation) == "converty" }>Order event (Converty)</option>
@@ -86,42 +95,37 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								</select>
 							</div>
 							<div id="convertyTrigger">
-								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
+								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatus" name="event_status" required
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-									<option value="" disabled selected={ automationStatus(automation) == "" }>Choisir un statut…</option>
+									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
 									for _, s := range automations.ConvertyStatuses() {
 										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
 									}
 								</select>
 							</div>
 							<div id="deliveryTrigger" class="hidden">
-								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Déclencher sur</label>
+								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
 								<select id="eventStatusDelivery" name="event_status_delivery" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-									<option value="" disabled selected={ automationStatus(automation) == "" }>Choisir un statut…</option>
+									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
 									for _, s := range deliveryStatuses {
 										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
 									}
 								</select>
 							</div>
-							<div>
-								<label class="block text-sm font-medium text-slate-700">Intégration</label>
-								<input type="text" readonly value={ page.ShopName }
-									class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500" />
-							</div>
 						</div>
 					</div>
 
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-						<label for="templateSelect" class="block text-sm font-medium text-slate-700">Message (template approuvé)</label>
+						<label for="templateSelect" class="block text-sm font-medium text-slate-700">Message (approved template)</label>
 						if len(templates) == 0 {
 							<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-								Aucun template approuvé pour cette boutique. Créez et faites approuver un template dans le menu Templates.
+								This shop has no approved template. Create and get one approved in the Templates menu.
 							</div>
 						} else {
 							<select id="templateSelect" name="template_id" required
 								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-								<option value="" disabled selected={ automation == nil && automationTemplateID(automation) == uuid.Nil }>Choisir un template…</option>
+								<option value="" disabled selected={ automation == nil && automationTemplateID(automation) == uuid.Nil }>Choose a template…</option>
 								for _, t := range templates {
 									<option value={ t.ID.String() } selected={ automationTemplateID(automation) == t.ID }>{ t.Name } ({ t.Language })</option>
 								}
@@ -130,12 +134,12 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					</div>
 
 					<div class="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-						<h3 class="text-sm font-semibold text-slate-700">Paramètres de planification</h3>
+						<h3 class="text-sm font-semibold text-slate-700">Schedule settings</h3>
 
 						<div id="fixedSchedule" class="hidden">
 							<div class="grid gap-4 sm:grid-cols-2">
 								<div>
-									<label class="block text-sm font-medium text-slate-700">Jours d'envoi</label>
+									<label class="block text-sm font-medium text-slate-700">Send days</label>
 									<div class="mt-2 grid grid-cols-4 gap-2">
 										for d := 1; d <= 7; d++ {
 											<label class="flex cursor-pointer items-center gap-1.5 text-sm text-slate-700">
@@ -147,32 +151,32 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									</div>
 								</div>
 								<div>
-									<label for="sendTime" class="block text-sm font-medium text-slate-700">Heure d'envoi</label>
+									<label for="sendTime" class="block text-sm font-medium text-slate-700">Send time</label>
 									<input id="sendTime" name="send_time" type="time" value={ sendTimeValue(automation) }
 										class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 								</div>
 							</div>
 							<div class="mt-4">
-								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Fuseau horaire (IANA)</label>
+								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Timezone (IANA)</label>
 								<input id="sendTimezone" name="send_timezone" type="text" value={ sendTimezoneValue(automation) }
-									placeholder="Ex: Africa/Tunis, UTC"
+									placeholder="e.g. Africa/Tunis, UTC"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
 							<p class="mt-3 text-xs text-slate-500">
-								Un événement arrivant avant l'heure attend jusqu'à celle-ci ; arrivant à l'heure ou
-								après, il est envoyé immédiatement. Sur un jour non sélectionné, l'envoi attend le
-								prochain jour choisi à la même heure.
+								An event arriving before the time waits until it; an event at or after it is sent
+								immediately. On a day you didn't select, the send waits for the next selected day at the
+								same time.
 							</p>
 						</div>
 
 						<div id="delayedSchedule" class="hidden">
 							<div class="sm:w-64">
-								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Délai après l'événement (minutes)</label>
+								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
 								<input id="sendDelay" name="send_delay_minutes" type="number" min="1" max="20160" value={ delayValue(automation) }
-									placeholder="Ex: 30"
+									placeholder="e.g. 30"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
-							<p class="mt-3 text-xs text-slate-500">Le message part { delayValue(automation) } minutes après l'événement, même si l'heure d'envoi quotidienne est passée.</p>
+							<p class="mt-3 text-xs text-slate-500">The message is sent { delayValue(automation) } minutes after the event, even if the daily send time has passed.</p>
 						</div>
 					</div>
 
@@ -180,37 +184,98 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						<button type="submit"
 							class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
 							if isEdit {
-								Enregistrer
+								Save
 							} else {
-								Créer l'automation
+								Create automation
 							}
 						</button>
-						<a href="/automations" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700">Annuler</a>
+						<a href="/automations" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-700">Cancel</a>
 					</div>
 				</div>
 
 				<aside class="lg:col-span-1">
 					<div class="sticky top-6 rounded-xl border border-slate-200 bg-[#edf6ff] p-5">
-						<div class="text-sm font-semibold text-slate-800">Aperçu du message</div>
-						<div class="mt-1 text-xs text-slate-500">Ce que le client recevra</div>
+						<div class="text-sm font-semibold text-slate-800">Message preview</div>
+						<div class="mt-1 text-xs text-slate-500">What the customer will receive</div>
 						<div id="previewBody" class="mt-3 min-h-20 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-							Sélectionnez un template pour l'aperçu.
+							Select a template to preview.
 						</div>
 						<div class="mt-3 text-xs text-slate-500">
-							Les variables du template ({"{{1}}"} client, {"{{2}}"} commande, {"{{3}}"} statut) sont
-							remplies automatiquement à l'envoi.
+							The template variables ({"{{1}}"} customer, {"{{2}}"} order, {"{{3}}"} status) are
+							filled automatically when the message is sent.
 						</div>
 					</div>
 				</aside>
 			</form>
-
-			for _, t := range templates {
-				<div id={ templ.SafeURL("template-body-" + t.ID.String()) } class="hidden">{ templateBodies[t.ID] }</div>
-			}
 		</div>
 
 		<script>
 			(function () {
+				var catalog = {};
+				var currentShop = document.getElementById("shopSelect");
+				var select = document.getElementById("templateSelect");
+				var preview = document.getElementById("previewBody");
+
+				if (currentShop && select && preview) {
+					function renderPreview() {
+						var t = catalog[select.value];
+						if (t) {
+							preview.textContent = t.body || "Select a template to preview.";
+						} else {
+							preview.textContent = "Select a template to preview.";
+						}
+					}
+
+					function rebuild(copySelection) {
+						var previous = select.value;
+						select.innerHTML = "";
+						var placeholder = document.createElement("option");
+						placeholder.value = "";
+						placeholder.disabled = true;
+						placeholder.selected = true;
+						placeholder.textContent = "Choose a template…";
+						select.appendChild(placeholder);
+						for (var id in catalog) {
+							if (!catalog.hasOwnProperty(id)) { continue; }
+							var t = catalog[id];
+							var opt = document.createElement("option");
+							opt.value = id;
+							opt.textContent = t.name + " (" + t.language + ")";
+							select.appendChild(opt);
+						}
+						if (copySelection && previous && catalog[previous]) {
+							select.value = previous;
+						}
+						renderPreview();
+					}
+
+					function loadTemplates(shopID) {
+						fetch("/automations/shops/" + encodeURIComponent(shopID) + "/templates", {
+							headers: { "Accept": "application/json" }
+						}).then(function (resp) {
+							return resp.ok ? resp.json() : Promise.reject(resp.status);
+						}).then(function (data) {
+							catalog = {};
+							(data.templates || []).forEach(function (t) {
+								catalog[t.id] = { name: t.name, language: t.language, body: t.body };
+							});
+							rebuild(true);
+						}).catch(function (err) {
+							console.warn("template catalog load failed", err);
+						});
+					}
+
+					select.addEventListener("change", renderPreview);
+					currentShop.addEventListener("change", function () {
+						select.value = "";
+						loadTemplates(currentShop.value);
+					});
+
+					// Prime the JS catalog so switching shops works and the
+					// preview matches the server-side selected template.
+					loadTemplates(currentShop.value);
+				}
+
 				var modeInputs = document.querySelectorAll("input[name=send_mode]");
 				var fixed = document.getElementById("fixedSchedule");
 				var delayed = document.getElementById("delayedSchedule");
@@ -250,18 +315,6 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 					}
 					source.addEventListener("change", syncSource);
 					syncSource();
-				}
-
-				var preview = document.getElementById("previewBody");
-				var select = document.getElementById("templateSelect");
-				if (preview && select) {
-					function syncPreview() {
-						var el = document.getElementById("template-body-" + select.value);
-						preview.textContent = el ? el.textContent.trim() : "Sélectionnez un template pour l'aperçu.";
-						if (preview.textContent === "") { preview.textContent = "Sélectionnez un template pour l'aperçu."; }
-					}
-					select.addEventListener("change", syncPreview);
-					syncPreview();
 				}
 			})();
 		</script>
@@ -308,6 +361,15 @@ func automationTemplateID(a *automations.Automation) uuid.UUID {
 		return uuid.Nil
 	}
 	return a.TemplateID
+}
+
+// shopSelected reports whether a shop is the form's current target: the edited
+// automation's own shop, or the operator's active shop when creating.
+func shopSelected(a *automations.Automation, shop shops.Shop, page components.Page) bool {
+	if a != nil {
+		return a.ShopID == shop.ID
+	}
+	return page.ActiveShopID == shop.ID
 }
 
 func sendTimezoneValue(a *automations.Automation) string {

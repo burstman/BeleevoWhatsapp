@@ -27,17 +27,17 @@ type AutomationFlash struct {
 
 func typeLabel(a automations.Automation) string {
 	if a.DelayMinutes != nil {
-		return "Retardée"
+		return "Delayed"
 	}
 	if a.SendTime != nil {
-		return "Programmée"
+		return "Scheduled"
 	}
-	return "Instantanée"
+	return "Instant"
 }
 
 func typeDetail(a automations.Automation) string {
 	if a.DelayMinutes != nil {
-		return fmt.Sprintf("%d min après l'événement", *a.DelayMinutes)
+		return fmt.Sprintf("%d min after the event", *a.DelayMinutes)
 	}
 	if a.SendTime != nil {
 		tz := a.SendTimezone
@@ -49,14 +49,14 @@ func typeDetail(a automations.Automation) string {
 	return ""
 }
 
-var dayNames = [7]string{"Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"}
+var dayNames = [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
 
 func daysLabel(days []int) string {
 	if len(days) == 0 {
-		return "Tous les jours"
+		return "All days"
 	}
 	if len(days) == 7 {
-		return "Tous les jours"
+		return "All days"
 	}
 	var parts []string
 	for _, d := range days {
@@ -145,12 +145,12 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			return templ_7745c5c3_Err
 		}
 		if a.Enabled {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700\">Activé</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700\">Active</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<span class=\"inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500\">En pause</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<span class=\"inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500\">Paused</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -201,7 +201,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<input type=\"hidden\" name=\"enabled\" value=\"1\"> <button type=\"submit\" class=\"rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100\">Activer</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<input type=\"hidden\" name=\"enabled\" value=\"1\"> <button type=\"submit\" class=\"rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100\">Enable</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -219,7 +219,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50\">Modifier</a><form method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50\">Edit</a><form method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -232,7 +232,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" onsubmit=\"return confirm('Supprimer cette automation ?')\"><button type=\"submit\" class=\"rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50\">Supprimer</button></form></div></div><div class=\"mt-4 grid grid-cols-2 gap-4 border-y border-slate-100 py-3 lg:grid-cols-4\"><div><div class=\"text-xs font-medium uppercase tracking-wide text-slate-400\">Type</div><div class=\"mt-1 text-sm font-medium text-slate-700\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" onsubmit=\"return confirm('Delete this automation?')\"><button type=\"submit\" class=\"rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50\">Delete</button></form></div></div><div class=\"mt-4 grid grid-cols-2 gap-4 border-y border-slate-100 py-3 lg:grid-cols-4\"><div><div class=\"text-xs font-medium uppercase tracking-wide text-slate-400\">Type</div><div class=\"mt-1 text-sm font-medium text-slate-700\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -281,7 +281,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><div><div class=\"text-xs font-medium uppercase tracking-wide text-slate-400\">Déclencheur</div><div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><div><div class=\"text-xs font-medium uppercase tracking-wide text-slate-400\">Trigger</div><div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -312,12 +312,12 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			return templ_7745c5c3_Err
 		}
 		if a.TemplateID == uuid.Nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600\">Supprimé</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600\">Deleted</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700\">Approuvé</span></div><div class=\"mt-1 text-sm font-medium text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"mt-1\"><span class=\"inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700\">Approved</span></div><div class=\"mt-1 text-sm font-medium text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -389,7 +389,7 @@ func AutomationsPage(page components.Page, list []automations.Automation, templa
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"space-y-6\"><div class=\"flex items-center justify-between gap-4\"><div><h2 class=\"text-2xl font-bold text-slate-900\">Automations</h2><p class=\"mt-1 text-sm text-slate-500\">Chaque automation envoie un template approuvé quand un événement se produit — Instantané, à heure fixe ou après un délai.</p></div><a href=\"/automations/new\" class=\"inline-flex shrink-0 items-center gap-2 rounded-lg border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-200\">Nouvelle automation</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"space-y-6\"><div class=\"flex items-center justify-between gap-4\"><div><h2 class=\"text-2xl font-bold text-slate-900\">Automations</h2><p class=\"mt-1 text-sm text-slate-500\">Each automation sends an approved template when an event happens — instant, at a fixed time, or after a delay.</p></div><a href=\"/automations/new\" class=\"inline-flex shrink-0 items-center gap-2 rounded-lg border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-200\">New automation</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -432,7 +432,7 @@ func AutomationsPage(page components.Page, list []automations.Automation, templa
 				}
 			}
 			if len(list) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center\"><div class=\"text-sm font-semibold text-slate-700\">Aucune automation</div><div class=\"mt-1 text-sm text-slate-500\">Créez la première — par exemple un événement \"delivered\" qui envoie votre template order_delivered à 10h00.</div><a href=\"/automations/new\" class=\"mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Creer une automation</a></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center\"><div class=\"text-sm font-semibold text-slate-700\">No automations yet</div><div class=\"mt-1 text-sm text-slate-500\">Create the first one — for example a \"delivered\" event that sends your order_delivered template at 10:00.</div><a href=\"/automations/new\" class=\"mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700\">Create an automation</a></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

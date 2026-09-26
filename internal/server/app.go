@@ -100,6 +100,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/automations", kit.Handler(a.handleAutomations))
 		pr.Get("/automations/new", kit.Handler(a.handleAutomationEdit))
 		pr.Post("/automations", kit.Handler(a.handleAutomationCreate))
+		pr.Get("/automations/shops/{id}/templates", kit.Handler(a.handleShopTemplates))
 		pr.Get("/automations/{id}/edit", kit.Handler(a.handleAutomationEdit))
 		pr.Post("/automations/{id}/update", kit.Handler(a.handleAutomationUpdate))
 		pr.Post("/automations/{id}/toggle", kit.Handler(a.handleAutomationToggle))
