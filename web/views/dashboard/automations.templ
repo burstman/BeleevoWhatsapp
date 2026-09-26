@@ -181,9 +181,8 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 		<div x-show="testOpen" x-cloak @keydown.escape.window="testOpen = false"
 			class="fixed inset-0 z-50 flex items-center justify-center p-4"
 			x-transition.opacity>
-			<div class="absolute inset-0 bg-slate-900/60" @click="testOpen = false"></div>
-			<div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-				@click.outside="testOpen = false">
+			<div class="absolute inset-0 bg-slate-900/60" @click.self="testOpen = false"></div>
+			<div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
 				<div class="flex items-start justify-between gap-4">
 					<div>
 						<h4 class="text-base font-semibold text-slate-900">Test message</h4>
