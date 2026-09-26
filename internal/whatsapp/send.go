@@ -333,7 +333,19 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		}
 	}
 
-	merchant, err := s.merchantState(ctx, req.ShopID)
+	// Templates belong to the operator, so a template can live under another
+	// shop; the shop that owns it also owns the WhatsApp connection used for
+	// the send (the shared client sender). Customer, consent and the message
+	// ledger stay scoped to the shop that triggered the automation.
+	template, ownerShop, err := s.templateStateGlobal(ctx, req.TemplateID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, NewSendRejection(ErrCodeTemplateNotFound, "template not found for this merchant")
+		}
+		return nil, err
+	}
+
+	merchant, err := s.merchantState(ctx, ownerShop)
 	if err != nil {
 		return nil, err
 	}
@@ -343,13 +355,6 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 	}
 	consent, err := s.consentState(ctx, req.ShopID, req.CustomerID)
 	if err != nil {
-		return nil, err
-	}
-	template, err := s.templateState(ctx, req.ShopID, req.TemplateID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, NewSendRejection(ErrCodeTemplateNotFound, "template not found for this merchant")
-		}
 		return nil, err
 	}
 
@@ -379,7 +384,7 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		return nil, err
 	}
 
-	creds, err := s.Credentials(ctx, req.ShopID)
+	creds, err := s.Credentials(ctx, ownerShop)
 	if err != nil {
 		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, NotConnectedReason)
 		return nil, NewSendRejection(ErrCodeMetaAPIError, NotConnectedReason)

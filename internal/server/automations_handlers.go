@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
 	vdashboard "whatsappconverty/web/views/dashboard"
 )
@@ -33,7 +34,10 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		return err
 	}
 
-	templates, err := a.WhatsApp.Templates(ctx, active.ID)
+	// Templates belong to the client, so an automation may reference a
+	// template synced under another shop; names/bodies come from the full
+	// catalog, not just the active shop's.
+	templates, err := a.WhatsApp.TemplatesAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,6 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 
 	ctx := k.Request.Context()
 	var automation *automations.Automation
-	shopID := active.ID
 	if idParam := chi.URLParam(k.Request, "id"); idParam != "" {
 		id, pErr := uuid.Parse(idParam)
 		if pErr != nil {
@@ -98,14 +101,14 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 		if automation == nil {
 			return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
 		}
-		shopID = automation.ShopID
 	}
 
-	templates, err := a.WhatsApp.Templates(ctx, shopID)
+	templates, err := a.WhatsApp.TemplatesAll(ctx)
 	if err != nil {
 		return err
 	}
 	approved, _, _ := catalogFromTemplates(templates)
+	templateShops := shopNameMap(all)
 
 	flash := vdashboard.AutomationFlash{}
 	switch k.Request.URL.Query().Get("flash") {
@@ -125,7 +128,7 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Automation", "automations", active, all)
-	return k.Render(vdashboard.AutomationFormPage(page, automation, approved,
+	return k.Render(vdashboard.AutomationFormPage(page, automation, approved, templateShops,
 		automations.DeliveryStatuses(), automation != nil, flash))
 }
 
@@ -174,9 +177,10 @@ func (a *App) resolveShopID(k *kit.Kit, fallback uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, errors.New("shop not integrated")
 }
 
-// shopHasTemplate reports whether the shop owns a template with the given id.
-func (a *App) shopHasTemplate(ctx context.Context, shopID uuid.UUID, templateID uuid.UUID) (bool, error) {
-	templates, err := a.WhatsApp.Templates(ctx, shopID)
+// shopHasTemplate reports whether a template with the given id exists anywhere
+// in the client's catalog (templates are shared across shops).
+func (a *App) shopHasTemplate(ctx context.Context, templateID uuid.UUID) (bool, error) {
+	templates, err := a.WhatsApp.TemplatesAll(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -186,6 +190,15 @@ func (a *App) shopHasTemplate(ctx context.Context, shopID uuid.UUID, templateID 
 		}
 	}
 	return false, nil
+}
+
+// shopNameMap maps shop ids to display names for the shared template dropdown.
+func shopNameMap(shops []shops.Shop) map[uuid.UUID]string {
+	out := make(map[uuid.UUID]string, len(shops))
+	for _, s := range shops {
+		out[s.ID] = s.Name
+	}
+	return out
 }
 
 // handleAutomationCreate records a new event → template mapping for the chosen
@@ -216,7 +229,7 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=error")
 	}
 
-	owns, tErr := a.shopHasTemplate(ctx, shopID, templateID)
+	owns, tErr := a.shopHasTemplate(ctx, templateID)
 	if tErr != nil || !owns {
 		a.Log.Warn("automation create rejected (template)", "shop_id", shopID, "template_id", templateID, "error", tErr)
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=notemplate")
@@ -277,7 +290,7 @@ func (a *App) handleAutomationUpdate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/"+id.String()+"/edit?flash=missing")
 	}
 
-	owns, tErr := a.shopHasTemplate(ctx, shopID, templateID)
+	owns, tErr := a.shopHasTemplate(ctx, templateID)
 	if tErr != nil || !owns {
 		a.Log.Warn("automation update rejected (template)", "shop_id", shopID, "template_id", templateID, "error", tErr)
 		return k.Redirect(http.StatusSeeOther, "/automations/"+id.String()+"/edit?flash=notemplate")
@@ -359,8 +372,10 @@ func (a *App) handleAutomationDelete(k *kit.Kit) error {
 	return k.Redirect(http.StatusSeeOther, "/automations?flash=deleted")
 }
 
-// handleShopTemplates returns the approved templates of a shop as JSON so the
-// automation form can reload the message dropdown when the shop changes.
+// handleShopTemplates returns the approved templates the operator can attach
+// to an automation of one shop. Templates belong to the client and are shared
+// across shops, so the full catalog is returned with each template's shop
+// name, letting the form rebuild the dropdown when the shop changes.
 func (a *App) handleShopTemplates(k *kit.Kit) error {
 	if _, err := a.requireShop(k); err != nil {
 		return err
@@ -376,30 +391,26 @@ func (a *App) handleShopTemplates(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	found := false
-	for _, s := range integrated {
-		if s.ID == id {
-			found = true
-			break
-		}
-	}
+	shopNames := shopNameMap(integrated)
 
 	type item struct {
 		ID       string `json:"id"`
 		Name     string `json:"name"`
 		Language string `json:"language"`
 		Body     string `json:"body"`
+		Shop     string `json:"shop"`
 	}
 	items := []item{}
-	if found {
-		templates, err := a.WhatsApp.Templates(ctx, id)
-		if err != nil {
-			return err
-		}
-		for _, t := range templates {
-			if t.ApprovalStatus == "approved" && !t.MarketingFlagged {
-				items = append(items, item{t.ID.String(), t.Name, t.Language, whatsapp.TemplateBody(t)})
-			}
+	templates, err := a.WhatsApp.TemplatesAll(ctx)
+	if err != nil {
+		return err
+	}
+	for _, t := range templates {
+		if t.ApprovalStatus == "approved" && !t.MarketingFlagged {
+			items = append(items, item{
+				ID: t.ID.String(), Name: t.Name, Language: t.Language,
+				Body: whatsapp.TemplateBody(t), Shop: shopNames[t.ShopID],
+			})
 		}
 	}
 

@@ -137,30 +137,25 @@ const placeholderShopName = "New store"
 
 // handleConvertyConnect starts the OAuth round-trip for one shop using the
 // Converty app credentials that merchant pasted in (each merchant's app lives
-// inside their own Converty store). When no store is connected yet, a
-// placeholder shop is created so the callback has a tenant to attach the
-// integration to. The credentials are recorded on a pending integration row
-// before redirecting to Converty, because the callback must authenticate with
-// them when exchanging the code.
+// inside their own Converty store). Every connection creates a brand-new shop
+// so each connected store appears as its own tenant in the shop switcher and
+// in the automation form; the callback attaches the integration to that new
+// shop. The credentials are recorded on a pending integration row before
+// redirecting to Converty, because the callback must authenticate with them
+// when exchanging the code.
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
 		return fmt.Errorf("converty is not configured on this deployment")
 	}
 
-	active, all, err := a.activeShops(k)
-	if err != nil {
-		return err
+	placeholder, cErr := a.Shops.Create(k.Request.Context(), a.Pool, placeholderShopName)
+	if cErr != nil {
+		a.Log.Error("converty placeholder shop create failed", "error", cErr)
+		return cErr
 	}
-	if len(all) == 0 {
-		placeholder, cErr := a.Shops.Create(k.Request.Context(), a.Pool, placeholderShopName)
-		if cErr != nil {
-			a.Log.Error("converty placeholder shop create failed", "error", cErr)
-			return cErr
-		}
-		setActiveShopCookie(k, placeholder.ID)
-		active = placeholder
-		a.Log.Info("placeholder shop created for connect", "shop_id", active.ID)
-	}
+	setActiveShopCookie(k, placeholder.ID)
+	active := placeholder
+	a.Log.Info("placeholder shop created for connect", "shop_id", active.ID)
 
 	clientID := strings.TrimSpace(k.Request.FormValue("converty_client_id"))
 	clientSecret := k.Request.FormValue("converty_client_secret")

@@ -12,7 +12,7 @@ import (
 	"whatsappconverty/web/views/layouts"
 )
 
-templ AutomationFormPage(page components.Page, automation *automations.Automation, templates []whatsapp.MerchantTemplate, deliveryStatuses []string, isEdit bool, flash AutomationFlash) {
+templ AutomationFormPage(page components.Page, automation *automations.Automation, templates []whatsapp.MerchantTemplate, templateShops map[uuid.UUID]string, deliveryStatuses []string, isEdit bool, flash AutomationFlash) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-6xl">
 			<div class="flex items-center justify-between">
@@ -127,7 +127,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 								<option value="" disabled selected={ automation == nil && automationTemplateID(automation) == uuid.Nil }>Choose a template…</option>
 								for _, t := range templates {
-									<option value={ t.ID.String() } selected={ automationTemplateID(automation) == t.ID }>{ t.Name } ({ t.Language })</option>
+									<option value={ t.ID.String() } selected={ automationTemplateID(automation) == t.ID }>{ templateOptionLabel(t, templateShops) }</option>
 								}
 							</select>
 						}
@@ -240,7 +240,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							var t = catalog[id];
 							var opt = document.createElement("option");
 							opt.value = id;
-							opt.textContent = t.name + " (" + t.language + ")";
+							opt.textContent = t.name + " (" + t.language + ")" + (t.shop ? " · " + t.shop : "");
 							select.appendChild(opt);
 						}
 						if (copySelection && previous && catalog[previous]) {
@@ -257,7 +257,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						}).then(function (data) {
 							catalog = {};
 							(data.templates || []).forEach(function (t) {
-								catalog[t.id] = { name: t.name, language: t.language, body: t.body };
+								catalog[t.id] = { name: t.name, language: t.language, body: t.body, shop: t.shop || "" };
 							});
 							rebuild(true);
 						}).catch(function (err) {
@@ -377,4 +377,14 @@ func sendTimezoneValue(a *automations.Automation) string {
 		return "UTC"
 	}
 	return a.SendTimezone
+}
+
+// templateOptionLabel renders a shared-template dropdown entry with its owning
+// shop so automations can tell templates apart across stores.
+func templateOptionLabel(t whatsapp.MerchantTemplate, templateShops map[uuid.UUID]string) string {
+	label := t.Name + " (" + t.Language + ")"
+	if shop := templateShops[t.ShopID]; shop != "" {
+		label += " · " + shop
+	}
+	return label
 }

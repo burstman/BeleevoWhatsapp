@@ -191,6 +191,32 @@ func (s *Service) consentState(ctx context.Context, shopID, customerID uuid.UUID
 	return c, err
 }
 
+// templateStateGlobal loads a template by id from any shop (templates belong
+// to the operator, not one shop) and returns the shop that owns the data. The
+// owning shop is where the client WhatsApp connection lives, so a shop without
+// its own number can still send using the shared sender.
+func (s *Service) templateStateGlobal(ctx context.Context, templateID uuid.UUID) (TemplateState, uuid.UUID, error) {
+	var t TemplateState
+	var ownerShop uuid.UUID
+	var components []byte
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, shop_id, meta_template_name, language, category, approval_status, marketing_flagged, components
+		FROM templates
+		WHERE id = $1`,
+		templateID,
+	).Scan(&t.ID, &ownerShop, &t.Name, &t.Language, &t.Category, &t.ApprovalStatus, &t.MarketingFlagged, &components)
+	if err != nil {
+		return TemplateState{}, uuid.Nil, err
+	}
+	t.RawComponents = components
+	if len(components) > 0 {
+		if jErr := json.Unmarshal(components, &t.Components); jErr != nil {
+			return TemplateState{}, uuid.Nil, jErr
+		}
+	}
+	return t, ownerShop, nil
+}
+
 // templateState loads a merchant's template scoped to the shop.
 func (s *Service) templateState(ctx context.Context, shopID, templateID uuid.UUID) (TemplateState, error) {
 	var t TemplateState

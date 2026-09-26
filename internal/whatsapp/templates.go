@@ -293,6 +293,36 @@ func (s *Service) Templates(ctx context.Context, shopID uuid.UUID) ([]MerchantTe
 	return out, rows.Err()
 }
 
+// TemplatesAll lists every template regardless of which shop it was synced
+// into. On this single-client deployment templates belong to the operator, so
+// an automation of any shop may reference a template created for another shop
+// (they all send from the same client WhatsApp sender).
+func (s *Service) TemplatesAll(ctx context.Context) ([]MerchantTemplate, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, shop_id, meta_template_name, language, category, status,
+		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
+		       meta_template_id, components, created_at, updated_at
+		FROM templates
+		ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []MerchantTemplate
+	for rows.Next() {
+		var t MerchantTemplate
+		if err := rows.Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
+			&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
+			&t.MetaTemplateID, &t.Components, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			return nil, err
+		}
+		t.NumVariables = countVariablesFromJSON(t.Components)
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // Template returns one merchant template scoped to its shop.
 func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (MerchantTemplate, error) {
 	var t MerchantTemplate
