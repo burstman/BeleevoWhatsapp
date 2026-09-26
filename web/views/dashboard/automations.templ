@@ -98,7 +98,7 @@ func selectedMode(a *automations.Automation) string {
 	return "instant"
 }
 
-templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string) {
+templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, shopNames map[uuid.UUID]string) {
 	<div class="p-5">
 		<div class="flex items-start justify-between gap-4">
 			<div>
@@ -109,6 +109,7 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 					} else {
 						<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Paused</span>
 					}
+					<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" title="Owner shop">{ shopNames[a.ShopID] }</span>
 				</div>
 				if a.Description != "" {
 					<div class="mt-1 text-sm text-slate-500">{ a.Description }</div>
@@ -225,7 +226,7 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 	}
 }
 
-templ AutomationsPage(page components.Page, list []automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, deliveryStatuses []string, flash AutomationFlash) {
+templ AutomationsPage(page components.Page, list []automations.Automation, templates []whatsapp.MerchantTemplate, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, shopNames map[uuid.UUID]string, deliveryStatuses []string, flash AutomationFlash) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between gap-4">
@@ -264,7 +265,7 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 			} else {
 				for _, a := range list {
 					<div class={ templ.SafeClass(borderClass(a.Enabled)) } x-data="{ testOpen: false }">
-						@automationCardBody(a, templateNames, templateBodies)
+						@automationCardBody(a, templateNames, templateBodies, shopNames)
 					</div>
 				}
 			}

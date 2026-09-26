@@ -6,25 +6,24 @@ import (
 
 	"github.com/anthdm/superkit/kit"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"whatsappconverty/internal/delivery"
 	vsettings "whatsappconverty/web/views/settings"
 )
 
-// handleDeliverySettings renders the Delivery settings page: the Mes Colis
-// connection (where the access token is entered) plus every parcel currently
-// being watched for delivery events.
+// handleDeliverySettings renders the Delivery settings page: the shared Mes
+// Colis connection (where the access token is entered) plus every parcel
+// currently being watched across the operator's shops.
 func (a *App) handleDeliverySettings(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
-	}
 
 	ctx := k.Request.Context()
-	integ, err := a.Delivery.Integration(ctx, active.ID, delivery.ProviderMescolis)
+	shopID := primaryShop(all).ID
+	integ, err := a.Delivery.Integration(ctx, shopID, delivery.ProviderMescolis)
 	if err != nil && err != delivery.ErrNotConfigured {
 		return err
 	}
@@ -33,9 +32,13 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		integPtr = &integ
 	}
 
-	tracked, err := a.Delivery.Tracked(ctx, active.ID)
-	if err != nil {
-		return err
+	tracked := []delivery.TrackedOrder{}
+	for _, s := range all {
+		rows, tErr := a.Delivery.Tracked(ctx, s.ID)
+		if tErr != nil {
+			return tErr
+		}
+		tracked = append(tracked, rows...)
 	}
 
 	flash := vsettings.DeliveryFlash{}
@@ -54,17 +57,20 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		flash.Info = "Parcel removed from tracking."
 	}
 
-	page := a.dashboardPage(k, "Delivery", "delivery", active, all)
-	return k.Render(vsettings.Delivery(page, integPtr, tracked, flash))
+	shopNames := shopNameMap(all)
+	page := a.dashboardPage(k, "Delivery", "delivery", all)
+	return k.Render(vsettings.Delivery(page, integPtr, tracked, shopNames, flash))
 }
 
-// handleDeliveryConnect stores the shop's Mes Colis access token after a live
-// sanity check that the token reaches the API.
+// handleDeliveryConnect stores the shared Mes Colis access token after a live
+// sanity check that the token reaches the API. The connection lives on the
+// primary shop.
 func (a *App) handleDeliveryConnect(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	ctx := k.Request.Context()
 	token := strings.TrimSpace(k.Request.FormValue("access_token"))
@@ -77,42 +83,69 @@ func (a *App) handleDeliveryConnect(k *kit.Kit) error {
 	// Verify the token reaches Mes Colis before persisting anything.
 	client := delivery.NewMescolisClient(token, allowSubAccount, accountCode, a.Cfg, nil)
 	if err := client.Probe(ctx); err != nil {
-		a.Log.Warn("delivery connect rejected: token check failed", "shop_id", active.ID, "error", err)
+		a.Log.Warn("delivery connect rejected: token check failed", "shop_id", shopID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=testfailed")
 	}
 
-	if err := a.Delivery.SaveIntegration(ctx, active.ID, delivery.ProviderMescolis, token, accountCode, allowSubAccount); err != nil {
-		a.Log.Error("delivery connect failed to save", "shop_id", active.ID, "error", err)
+	if err := a.Delivery.SaveIntegration(ctx, shopID, delivery.ProviderMescolis, token, accountCode, allowSubAccount); err != nil {
+		a.Log.Error("delivery connect failed to save", "shop_id", shopID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=error")
 	}
 
-	a.Log.Info("delivery provider connected", "shop_id", active.ID, "provider", delivery.ProviderMescolis)
+	a.Log.Info("delivery provider connected", "shop_id", shopID, "provider", delivery.ProviderMescolis)
 	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=connected")
 }
 
-// handleDeliveryDisconnect removes the shop's delivery provider connection.
+// handleDeliveryDisconnect removes the shared delivery provider connection.
 func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	if err := a.Delivery.DeleteIntegration(k.Request.Context(), active.ID, delivery.ProviderMescolis); err != nil {
-		a.Log.Error("delivery disconnect failed", "shop_id", active.ID, "error", err)
+	shopID := primaryShop(all).ID
+
+	if err := a.Delivery.DeleteIntegration(k.Request.Context(), shopID, delivery.ProviderMescolis); err != nil {
+		a.Log.Error("delivery disconnect failed", "shop_id", shopID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=error")
 	}
-	a.Log.Info("delivery provider disconnected", "shop_id", active.ID, "provider", delivery.ProviderMescolis)
+	a.Log.Info("delivery provider disconnected", "shop_id", shopID, "provider", delivery.ProviderMescolis)
 	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=disconnected")
 }
 
-// handleDeliveryTrackRemove stops watching a parcel.
+// handleDeliveryTrackRemove stops watching a parcel, resolving the shop that
+// tracks it.
 func (a *App) handleDeliveryTrackRemove(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
 	barcode := chi.URLParam(k.Request, "barcode")
-	if err := a.Delivery.RemoveTracked(k.Request.Context(), active.ID, barcode); err != nil {
-		a.Log.Error("delivery untrack failed", "shop_id", active.ID, "barcode", barcode, "error", err)
+
+	var target uuid.UUID
+	found := false
+	for _, s := range all {
+		rows, tErr := a.Delivery.Tracked(k.Request.Context(), s.ID)
+		if tErr != nil {
+			return tErr
+		}
+		for _, t := range rows {
+			if t.Barcode == barcode {
+				target = s.ID
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		a.Log.Debug("delivery untrack: barcode not found", "barcode", barcode)
+		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=removed")
+	}
+
+	if err := a.Delivery.RemoveTracked(k.Request.Context(), target, barcode); err != nil {
+		a.Log.Error("delivery untrack failed", "shop_id", target, "barcode", barcode, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=error")
 	}
 	return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=removed")

@@ -15,10 +15,11 @@ import (
 
 // POST /api/whatsapp/customers — register a customer for the merchant.
 func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	var in struct {
 		Name  string `json:"name"`
@@ -31,7 +32,7 @@ func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
 		return a.writeAPIError(k, http.StatusBadRequest, whatsapp.NewSendRejection(whatsapp.ErrCodeTemplateVariableInvalid, "phone is required"))
 	}
 
-	id, err := a.WhatsApp.UpsertCustomer(k.Request.Context(), active.ID, in.Name, in.Phone)
+	id, err := a.WhatsApp.UpsertCustomer(k.Request.Context(), shopID, in.Name, in.Phone)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
 		return nil
@@ -41,11 +42,12 @@ func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
 
 // GET /api/whatsapp/customers — list the merchant's customers.
 func (a *App) handleAPICustomers(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	customers, err := a.WhatsApp.Customers(k.Request.Context(), active.ID)
+	shopID := primaryShop(all).ID
+	customers, err := a.WhatsApp.Customers(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
 		return nil
@@ -55,10 +57,11 @@ func (a *App) handleAPICustomers(k *kit.Kit) error {
 
 // POST /api/whatsapp/consent — record a customer opt-in for the merchant.
 func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	var in struct {
 		CustomerID string `json:"customer_id"`
@@ -74,7 +77,7 @@ func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
 		return a.writeAPIError(k, http.StatusBadRequest, whatsapp.NewSendRejection(whatsapp.ErrCodeCustomerNotOwned, "customer_id is required"))
 	}
 
-	if err := a.WhatsApp.GrantConsent(k.Request.Context(), active.ID, cid, in.Category, in.Source, in.Evidence); err != nil {
+	if err := a.WhatsApp.GrantConsent(k.Request.Context(), shopID, cid, in.Category, in.Source, in.Evidence); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return a.writeAPIError(k, http.StatusUnprocessableEntity, whatsapp.NewSendRejection(whatsapp.ErrCodeCustomerNotOwned, "customer not found for this merchant"))
 		}
@@ -86,10 +89,11 @@ func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/revoke — revoke a customer's opt-in.
 func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	var in struct {
 		CustomerID string `json:"customer_id"`
@@ -102,7 +106,7 @@ func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
 		return a.writeAPIError(k, http.StatusBadRequest, whatsapp.NewSendRejection(whatsapp.ErrCodeCustomerNotOwned, "customer_id is required"))
 	}
 
-	if err := a.WhatsApp.RevokeConsent(k.Request.Context(), active.ID, cid); err != nil {
+	if err := a.WhatsApp.RevokeConsent(k.Request.Context(), shopID, cid); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return a.writeAPIError(k, http.StatusUnprocessableEntity, whatsapp.NewSendRejection(whatsapp.ErrCodeCustomerNotOwned, "customer not found for this merchant"))
 		}
@@ -114,10 +118,11 @@ func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/templates — submit a new template for Meta review.
 func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	var in struct {
 		Name       string          `json:"name"`
@@ -133,7 +138,7 @@ func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
 			whatsapp.NewSendRejection(whatsapp.ErrCodeTemplateVariableInvalid, "name, language, category and components are required"))
 	}
 
-	tmpl, err := a.WhatsApp.CreateTemplate(k.Request.Context(), active.ID, whatsapp.TemplateDraft{
+	tmpl, err := a.WhatsApp.CreateTemplate(k.Request.Context(), shopID, whatsapp.TemplateDraft{
 		Name:       in.Name,
 		Language:   in.Language,
 		Category:   in.Category,
@@ -154,11 +159,12 @@ func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
 
 // GET /api/whatsapp/templates — list the merchant's templates.
 func (a *App) handleAPITemplates(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	templates, err := a.WhatsApp.Templates(k.Request.Context(), active.ID)
+	shopID := primaryShop(all).ID
+	templates, err := a.WhatsApp.Templates(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
 		return nil
@@ -168,10 +174,11 @@ func (a *App) handleAPITemplates(k *kit.Kit) error {
 
 // POST /api/whatsapp/messages — send a message through the shared WABA.
 func (a *App) handleAPISendMessage(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 
 	var in struct {
 		CustomerID      string            `json:"customer_id"`
@@ -194,7 +201,7 @@ func (a *App) handleAPISendMessage(k *kit.Kit) error {
 	}
 
 	res, err := a.WhatsApp.SendTemplateMessage(k.Request.Context(), whatsapp.SendRequest{
-		ShopID:          active.ID,
+		ShopID:          shopID,
 		CustomerID:      cid,
 		TemplateID:      tid,
 		ConvertyOrderID: in.ConvertyOrderID,
@@ -215,11 +222,12 @@ func (a *App) handleAPISendMessage(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages — list the merchant's messages.
 func (a *App) handleAPIMessages(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	messages, err := a.WhatsApp.Messages(k.Request.Context(), active.ID)
+	shopID := primaryShop(all).ID
+	messages, err := a.WhatsApp.Messages(k.Request.Context(), shopID)
 	if err != nil {
 		a.writeAPIError(k, http.StatusInternalServerError, err)
 		return nil
@@ -229,15 +237,16 @@ func (a *App) handleAPIMessages(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages/{id} — one message.
 func (a *App) handleAPIMessage(k *kit.Kit) error {
-	active, err := a.requireShop(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
+	shopID := primaryShop(all).ID
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return a.writeAPIError(k, http.StatusBadRequest, errors.New("invalid message id"))
 	}
-	m, err := a.WhatsApp.Message(k.Request.Context(), active.ID, id)
+	m, err := a.WhatsApp.Message(k.Request.Context(), shopID, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return a.writeAPIError(k, http.StatusNotFound, whatsapp.NewSendRejection(whatsapp.ErrCodeTemplateNotFound, "message not found"))

@@ -657,12 +657,12 @@ func automationTemplateID(a *automations.Automation) uuid.UUID {
 }
 
 // shopSelected reports whether a shop is the form's current target: the edited
-// automation's own shop, or the operator's active shop when creating.
+// automation's own shop, or the first integrated shop when creating.
 func shopSelected(a *automations.Automation, shop shops.Shop, page components.Page) bool {
 	if a != nil {
 		return a.ShopID == shop.ID
 	}
-	return page.ActiveShopID == shop.ID
+	return len(page.Shops) > 0 && page.Shops[0].ID == shop.ID
 }
 
 func sendTimezoneValue(a *automations.Automation) string {

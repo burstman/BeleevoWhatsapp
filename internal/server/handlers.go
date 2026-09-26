@@ -8,7 +8,6 @@ import (
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/database"
-	"whatsappconverty/internal/whatsapp"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
 	vlegal "whatsappconverty/web/views/legal"
@@ -40,32 +39,26 @@ func (a *App) handlePrivacyPage(k *kit.Kit) error {
 }
 
 func (a *App) handleOverview(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
-	if err != nil {
-		return err
-	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
-	}
-
-	stats, err := a.Dashboard.Stats(k.Request.Context(), active.ID)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
 
-	page := a.dashboardPage(k, "Overview", "overview", active, all)
+	stats, err := a.Dashboard.StatsAll(k.Request.Context())
+	if err != nil {
+		return err
+	}
+
+	page := a.dashboardPage(k, "Overview", "overview", all)
 	return k.Render(vdashboard.Overview(page, stats))
 }
 
 // handleTemplates renders the merchant's WhatsApp templates with their Meta
 // approval status.
 func (a *App) handleTemplates(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
-	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	purged := 0
@@ -115,52 +108,18 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Templates", "templates", active, all)
+	page := a.dashboardPage(k, "Templates", "templates", all)
 	return k.Render(vdashboard.TemplatesPage(page, templates, shopNames, flash))
-}
-
-// handleMessages renders the merchant's message history with delivery status
-// plus the approved templates available for a test send.
-func (a *App) handleMessages(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
-	if err != nil {
-		return err
-	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
-	}
-
-	messages, err := a.WhatsApp.Messages(k.Request.Context(), active.ID)
-	if err != nil {
-		return err
-	}
-
-	templates, err := a.WhatsApp.Templates(k.Request.Context(), active.ID)
-	if err != nil {
-		return err
-	}
-	approved := make([]whatsapp.MerchantTemplate, 0, len(templates))
-	for _, t := range templates {
-		if t.ApprovalStatus == "approved" {
-			approved = append(approved, t)
-		}
-	}
-
-	page := a.dashboardPage(k, "Messages", "messages", active, all)
-	return k.Render(vdashboard.MessagesPage(page, messages, approved))
 }
 
 // handlePlaceholder renders a shell page for features that arrive in later phases.
 func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 	return func(k *kit.Kit) error {
-		active, all, err := a.activeShops(k)
+		all, err := a.shopsFor(k)
 		if err != nil {
 			return err
 		}
-		if len(all) == 0 {
-			return k.Redirect(http.StatusSeeOther, "/integrations")
-		}
-		page := a.dashboardPage(k, sectionTitle(section), section, active, all)
+		page := a.dashboardPage(k, sectionTitle(section), section, all)
 		return k.Render(vdashboard.Placeholder(page, section))
 	}
 }
@@ -171,8 +130,6 @@ func sectionTitle(section string) string {
 		return "Automations"
 	case "templates":
 		return "Templates"
-	case "messages":
-		return "Messages"
 	case "settings":
 		return "Settings"
 	default:

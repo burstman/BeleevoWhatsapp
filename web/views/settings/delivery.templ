@@ -1,6 +1,8 @@
 package settings
 
 import (
+	"github.com/google/uuid"
+
 	"whatsappconverty/internal/delivery"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
@@ -11,7 +13,7 @@ type DeliveryFlash struct {
 	Info  string
 }
 
-templ Delivery(page components.Page, integ *delivery.Integration, tracked []delivery.TrackedOrder, flash DeliveryFlash) {
+templ Delivery(page components.Page, integ *delivery.Integration, tracked []delivery.TrackedOrder, shopNames map[uuid.UUID]string, flash DeliveryFlash) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-3xl space-y-6">
 			<div>
@@ -105,17 +107,25 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 				} else {
 					<table class="w-full text-left text-sm">
 						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
-							<tr>
-								<th class="px-6 py-3 font-medium">Barcode</th>
-								<th class="px-6 py-3 font-medium">Order</th>
-								<th class="px-6 py-3 font-medium">Customer</th>
-								<th class="px-6 py-3 font-medium">Status</th>
-								<th class="px-6 py-3 font-medium"></th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-slate-100">
+<tr>
+									<th class="px-6 py-3 font-medium">Shop</th>
+									<th class="px-6 py-3 font-medium">Barcode</th>
+									<th class="px-6 py-3 font-medium">Order</th>
+									<th class="px-6 py-3 font-medium">Customer</th>
+									<th class="px-6 py-3 font-medium">Status</th>
+									<th class="px-6 py-3 font-medium"></th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-slate-100">
 							for _, t := range tracked {
 								<tr>
+									<td class="px-6 py-3">
+										if name, ok := shopNames[t.ShopID]; ok {
+											<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ name }</span>
+										} else {
+											<span class="text-xs text-slate-400">{ t.ShopID.String()[:8] }</span>
+										}
+									</td>
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Barcode }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.OrderID }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>

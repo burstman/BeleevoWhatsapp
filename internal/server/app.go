@@ -88,7 +88,6 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(kit.WithAuthentication(authConfig, true))
 		pr.Get("/dashboard", kit.Handler(a.handleOverview))
-		pr.Get("/shops/{id}/select", kit.Handler(a.handleShopsSelect))
 		pr.Post("/auth/converty/connect", kit.Handler(a.handleConvertyConnect))
 		pr.Get("/auth/converty/callback", kit.Handler(a.handleConvertyCallback))
 		pr.Get("/integrations", kit.Handler(a.handleIntegrations))
@@ -109,7 +108,6 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/templates", kit.Handler(a.handleTemplates))
 		pr.Post("/templates/create", kit.Handler(a.handleTemplateCreate))
 		pr.Get("/templates/refresh", kit.Handler(a.handleTemplateRefresh))
-		pr.Get("/messages", kit.Handler(a.handleMessages))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
 		pr.Get("/settings/delivery", kit.Handler(a.handleDeliverySettings))
 		pr.Post("/settings/delivery/connect", kit.Handler(a.handleDeliveryConnect))

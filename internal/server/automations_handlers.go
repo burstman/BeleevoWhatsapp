@@ -20,28 +20,26 @@ import (
 // handleAutomations renders the automation page: every configured trigger shown
 // as a card (naming, trigger, template, delivery rule), plus the create button.
 func (a *App) handleAutomations(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
-	}
 
 	ctx := k.Request.Context()
-	list, err := a.Automations.ListByShop(ctx, active.ID)
+	list, err := a.Automations.ListAll(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Templates belong to the client, so an automation may reference a
 	// template synced under another shop; names/bodies come from the full
-	// catalog, not just the active shop's.
+	// catalog.
 	templates, err := a.WhatsApp.TemplatesAll(ctx)
 	if err != nil {
 		return err
 	}
 	approved, names, bodies := catalogFromTemplates(templates)
+	shopNames := shopNameMap(all)
 
 	flash := vdashboard.AutomationFlash{}
 	switch k.Request.URL.Query().Get("flash") {
@@ -74,8 +72,8 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Automations", "automations", active, all)
-	return k.Render(vdashboard.AutomationsPage(page, list, approved, names, bodies,
+	page := a.dashboardPage(k, "Automations", "automations", all)
+	return k.Render(vdashboard.AutomationsPage(page, list, approved, names, bodies, shopNames,
 		automations.DeliveryStatuses(), flash))
 }
 
@@ -84,12 +82,9 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 // target shop, so the edited automation resolves to its own shop, not the
 // operator's active one.
 func (a *App) handleAutomationEdit(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
-	}
-	if len(all) == 0 {
-		return k.Redirect(http.StatusSeeOther, "/integrations")
 	}
 
 	ctx := k.Request.Context()
@@ -133,7 +128,7 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Automation", "automations", active, all)
+	page := a.dashboardPage(k, "Automation", "automations", all)
 	return k.Render(vdashboard.AutomationFormPage(page, automation, approved, templateShops,
 		automations.DeliveryStatuses(), automation != nil, flash))
 }
@@ -161,19 +156,23 @@ func scheduleFromForm(k *kit.Kit) (*automations.Schedule, error) {
 }
 
 // resolveShopID validates the form's shop_id against the operator's integrated
-// shops and returns the target shop id (falling back to the active shop).
-func (a *App) resolveShopID(k *kit.Kit, fallback uuid.UUID) (uuid.UUID, error) {
+// shops and returns the target shop id (falling back to the first shop when no
+// selection was made — the form's dropdown preselects it).
+func (a *App) resolveShopID(k *kit.Kit) (uuid.UUID, error) {
+	integrated, err := a.Shops.ListIntegrated(k.Request.Context())
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if len(integrated) == 0 {
+		return uuid.Nil, errors.New("no shop integrated")
+	}
 	raw := strings.TrimSpace(k.Request.FormValue("shop_id"))
 	if raw == "" {
-		return fallback, nil
+		return integrated[0].ID, nil
 	}
 	shopID, err := uuid.Parse(raw)
 	if err != nil {
 		return uuid.Nil, errors.New("invalid shop")
-	}
-	integrated, err := a.Shops.ListIntegrated(k.Request.Context())
-	if err != nil {
-		return uuid.Nil, err
 	}
 	for _, s := range integrated {
 		if s.ID == shopID {
@@ -208,13 +207,8 @@ func shopNameMap(shops []shops.Shop) map[uuid.UUID]string {
 }
 
 // handleAutomationCreate records a new event → template mapping for the chosen
-// shop (defaulting to the active one).
+// shop (the form's Shop dropdown).
 func (a *App) handleAutomationCreate(k *kit.Kit) error {
-	active, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
-
 	ctx := k.Request.Context()
 	if err := k.Request.ParseForm(); err != nil {
 		return err
@@ -229,9 +223,9 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=missing")
 	}
 
-	shopID, sErr := a.resolveShopID(k, active.ID)
+	shopID, sErr := a.resolveShopID(k)
 	if sErr != nil {
-		a.Log.Warn("automation create rejected (shop)", "shop_id", active.ID, "error", sErr)
+		a.Log.Warn("automation create rejected (shop)", "error", sErr)
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=error")
 	}
 
@@ -255,18 +249,13 @@ func (a *App) handleAutomationCreate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/new?flash=error")
 	}
 
-	setActiveShopCookie(k, shopID)
 	a.Log.Info("automation created", "shop_id", shopID, "source", source, "status", status)
 	return k.Redirect(http.StatusSeeOther, "/automations?flash=created")
 }
 
 // handleAutomationUpdate saves edits to an existing automation, keeping the
-// automation's own shop regardless of the operator's active shop.
+// automation's own shop.
 func (a *App) handleAutomationUpdate(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
@@ -316,17 +305,12 @@ func (a *App) handleAutomationUpdate(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/automations/"+id.String()+"/edit?flash=error")
 	}
 
-	setActiveShopCookie(k, shopID)
 	a.Log.Info("automation updated", "shop_id", shopID, "id", id)
 	return k.Redirect(http.StatusSeeOther, "/automations?flash=updated")
 }
 
 // handleAutomationToggle enables or disables an automation.
 func (a *App) handleAutomationToggle(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
@@ -354,10 +338,6 @@ func (a *App) handleAutomationToggle(k *kit.Kit) error {
 // fills in, so the message can be previewed live before it fires on real
 // events. Sample variables stand in for the real order data.
 func (a *App) handleAutomationTest(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
@@ -435,10 +415,6 @@ func testVariables(n int) map[string]string {
 
 // handleAutomationDelete removes an automation.
 func (a *App) handleAutomationDelete(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
@@ -466,7 +442,7 @@ func (a *App) handleAutomationDelete(k *kit.Kit) error {
 // across shops, so the full catalog is returned with each template's shop
 // name, letting the form rebuild the dropdown when the shop changes.
 func (a *App) handleShopTemplates(k *kit.Kit) error {
-	if _, err := a.requireShop(k); err != nil {
+	if _, err := a.shopsFor(k); err != nil {
 		return err
 	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))

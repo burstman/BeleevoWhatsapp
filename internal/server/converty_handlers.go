@@ -88,7 +88,7 @@ func truncateBytes(b []byte, n int) string {
 // handleIntegrations renders the Shop Integration page: every Converty store
 // connection across the operator's shops with its management actions.
 func (a *App) handleIntegrations(k *kit.Kit) error {
-	active, all, err := a.activeShops(k)
+	all, err := a.shopsFor(k)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Shop Integration", "integrations", active, all)
+	page := a.dashboardPage(k, "Shop Integration", "integrations", all)
 	return k.Render(vdashboard.IntegrationsPage(page, integrations, shopNames, flash))
 }
 
@@ -140,13 +140,13 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 const placeholderShopName = "New store"
 
 // handleConvertyConnect starts the OAuth round-trip for one shop using the
-// Converty app credentials that merchant pasted in (each merchant's app lives
-// inside their own Converty store). Every connection creates a brand-new shop
-// so each connected store appears as its own tenant in the shop switcher and
-// in the automation form; the callback attaches the integration to that new
-// shop. The credentials are recorded on a pending integration row before
-// redirecting to Converty, because the callback must authenticate with them
-// when exchanging the code.
+// Converty app credentials that the operator pasted in (each merchant's app
+// lives inside their own Converty store). Every connection creates a brand-new
+// shop so each connected store appears as its own tenant in the automation
+// form; the callback attaches the integration to that new shop. The
+// credentials are recorded on a pending integration row before redirecting to
+// Converty, because the callback must authenticate with them when exchanging
+// the code.
 func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	if !a.Converty.Configured() {
 		return fmt.Errorf("converty is not configured on this deployment")
@@ -157,9 +157,7 @@ func (a *App) handleConvertyConnect(k *kit.Kit) error {
 		a.Log.Error("converty placeholder shop create failed", "error", cErr)
 		return cErr
 	}
-	setActiveShopCookie(k, placeholder.ID)
-	active := placeholder
-	a.Log.Info("placeholder shop created for connect", "shop_id", active.ID)
+	a.Log.Info("placeholder shop created for connect", "shop_id", placeholder.ID)
 
 	clientID := strings.TrimSpace(k.Request.FormValue("converty_client_id"))
 	clientSecret := k.Request.FormValue("converty_client_secret")
@@ -169,13 +167,13 @@ func (a *App) handleConvertyConnect(k *kit.Kit) error {
 
 	encSecret, err := a.Converty.EncryptClientSecret(clientSecret)
 	if err != nil {
-		a.Log.Error("converty client secret encryption failed", "shop_id", active.ID, "error", err)
+		a.Log.Error("converty client secret encryption failed", "shop_id", placeholder.ID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
-	integrationID, err := a.Converty.CreatePendingIntegration(k.Request.Context(), active.ID, clientID, encSecret)
+	integrationID, err := a.Converty.CreatePendingIntegration(k.Request.Context(), placeholder.ID, clientID, encSecret)
 	if err != nil {
-		a.Log.Error("converty pending integration create failed", "shop_id", active.ID, "error", err)
+		a.Log.Error("converty pending integration create failed", "shop_id", placeholder.ID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
@@ -192,16 +190,11 @@ func (a *App) handleConvertyConnect(k *kit.Kit) error {
 	}
 
 	a.Log.Info("converty connect started",
-		"shop_id", active.ID, "integration_id", integrationID, "redirect", a.Cfg.ConvertyRedirectURI)
+		"shop_id", placeholder.ID, "integration_id", integrationID, "redirect", a.Cfg.ConvertyRedirectURI)
 	return k.Redirect(http.StatusFound, a.Converty.AuthorizeURL(clientID, a.Cfg.ConvertyRedirectURI, state))
 }
 
 func (a *App) handleConvertyCallback(k *kit.Kit) error {
-	active, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
-
 	sess := k.GetSession(auth.SessionCookieName)
 	savedState, _ := sess.Values["converty_oauth_state"].(string)
 	integrationIDStr, _ := sess.Values["converty_oauth_integration_id"].(string)
@@ -212,9 +205,20 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	state := k.Request.URL.Query().Get("state")
 	code := k.Request.URL.Query().Get("code")
 
+	// The pending integration row remembers its own shop, so the callback does
+	// not depend on any per-request shop selection; if the session is gone, we
+	// can only redirect (orphan cleanup then relies on the shop-side sweep).
+	integrationID, err := uuid.Parse(integrationIDStr)
+	var shopID uuid.UUID
+	if err == nil {
+		if integ, iErr := a.Converty.IntegrationByIDAnyShop(k.Request.Context(), integrationID); iErr == nil && integ.ShopID != uuid.Nil {
+			shopID = integ.ShopID
+		}
+	}
+
 	dropPending := func() {
-		if id, pErr := uuid.Parse(integrationIDStr); pErr == nil {
-			if dErr := a.Converty.DeleteIntegration(k.Request.Context(), active.ID, id); dErr != nil {
+		if shopID != uuid.Nil && integrationID != uuid.Nil {
+			if dErr := a.Converty.DeleteIntegration(k.Request.Context(), shopID, integrationID); dErr != nil {
 				a.Log.Warn("converty pending integration cleanup failed", "error", dErr)
 			}
 		}
@@ -223,12 +227,15 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	// cleanupOrphanShop deletes the placeholder shop created at connect time
 	// when the authorization was abandoned before any store attached to it.
 	cleanupOrphanShop := func(ctx context.Context) {
-		if n, cErr := a.Converty.CountIntegrations(ctx, active.ID); cErr == nil && n == 0 {
-			if shop, gErr := a.Shops.GetByID(ctx, active.ID); gErr == nil && shop.Name == placeholderShopName {
-				if dErr := a.Shops.Delete(ctx, active.ID); dErr != nil {
-					a.Log.Warn("converty orphan placeholder shop cleanup failed", "shop_id", active.ID, "error", dErr)
+		if shopID == uuid.Nil {
+			return
+		}
+		if n, cErr := a.Converty.CountIntegrations(ctx, shopID); cErr == nil && n == 0 {
+			if shop, gErr := a.Shops.GetByID(ctx, shopID); gErr == nil && shop.Name == placeholderShopName {
+				if dErr := a.Shops.Delete(ctx, shopID); dErr != nil {
+					a.Log.Warn("converty orphan placeholder shop cleanup failed", "shop_id", shopID, "error", dErr)
 				} else {
-					a.Log.Info("converty orphan placeholder shop removed", "shop_id", active.ID)
+					a.Log.Info("converty orphan placeholder shop removed", "shop_id", shopID)
 				}
 			}
 		}
@@ -241,8 +248,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
-	integrationID, err := uuid.Parse(integrationIDStr)
-	if err != nil {
+	if shopID == uuid.Nil || integrationID == uuid.Nil {
 		a.Log.Warn("converty callback rejected: missing integration id", "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
@@ -250,9 +256,9 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 	ctx, cancel := context.WithTimeout(k.Request.Context(), 20*time.Second)
 	defer cancel()
 
-	clientID, clientSecret, err := a.Converty.ClientCredentials(ctx, active.ID, integrationID)
+	clientID, clientSecret, err := a.Converty.ClientCredentials(ctx, shopID, integrationID)
 	if err != nil {
-		a.Log.Error("converty client credentials load failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
+		a.Log.Error("converty client credentials load failed", "shop_id", shopID, "integration_id", integrationID, "error", err)
 		dropPending()
 		cleanupOrphanShop(ctx)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
@@ -260,7 +266,7 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 
 	tok, err := a.Converty.ExchangeCode(ctx, clientID, clientSecret, code)
 	if err != nil {
-		a.Log.Error("converty code exchange failed", "shop_id", active.ID, "error", err)
+		a.Log.Error("converty code exchange failed", "shop_id", shopID, "error", err)
 		dropPending()
 		cleanupOrphanShop(ctx)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
@@ -271,34 +277,34 @@ func (a *App) handleConvertyCallback(k *kit.Kit) error {
 		// A failed store sync should not discard the freshly connected tokens:
 		// persist them and subscribe webhooks, but flag the sync problem.
 		a.Log.Error("converty stores/me failed", "error", err)
-		cErr := a.Converty.CompleteIntegration(ctx, active.ID, integrationID, converty.Store{}, converty.DefaultScopes, tok, time.Now())
+		cErr := a.Converty.CompleteIntegration(ctx, shopID, integrationID, converty.Store{}, converty.DefaultScopes, tok, time.Now())
 		if cErr != nil {
 			a.Log.Error("converty integration save failed", "error", cErr)
 			return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 		}
 		if store.Name != "" {
-			_ = a.Shops.Update(ctx, active.ID, store.Name)
+			_ = a.Shops.Update(ctx, shopID, store.Name)
 		}
-		a.subscribeWebhooks(ctx, active.ID, integrationID)
+		a.subscribeWebhooks(ctx, shopID, integrationID)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 	}
 
-	err = a.Converty.CompleteIntegration(ctx, active.ID, integrationID, store, converty.DefaultScopes, tok, time.Now())
+	err = a.Converty.CompleteIntegration(ctx, shopID, integrationID, store, converty.DefaultScopes, tok, time.Now())
 	if err != nil {
-		a.Log.Error("converty integration save failed", "shop_id", active.ID, "integration_id", integrationID, "error", err)
+		a.Log.Error("converty integration save failed", "shop_id", shopID, "integration_id", integrationID, "error", err)
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=error")
 	}
 
 	// The shop's display name follows its first connected store.
 	if store.Name != "" {
-		if err := a.Shops.Update(ctx, active.ID, store.Name); err != nil {
-			a.Log.Warn("converty shop rename after connect failed", "shop_id", active.ID, "error", err)
+		if err := a.Shops.Update(ctx, shopID, store.Name); err != nil {
+			a.Log.Warn("converty shop rename after connect failed", "shop_id", shopID, "error", err)
 		}
 	}
 
-	a.subscribeWebhooks(ctx, active.ID, integrationID)
+	a.subscribeWebhooks(ctx, shopID, integrationID)
 
-	a.Log.Info("converty connected", "shop_id", active.ID, "integration_id", integrationID, "store", store.Name)
+	a.Log.Info("converty connected", "shop_id", shopID, "integration_id", integrationID, "store", store.Name)
 	return k.Redirect(http.StatusSeeOther, "/integrations?flash=connected")
 }
 
@@ -361,10 +367,6 @@ func (a *App) subscribeWebhooks(ctx context.Context, shopID, integrationID uuid.
 // handleIntegrationRefresh forces a Converty OAuth token rotation for one
 // integration.
 func (a *App) handleIntegrationRefresh(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := integrationID(k)
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
@@ -396,10 +398,6 @@ func (a *App) handleIntegrationRefresh(k *kit.Kit) error {
 // handleIntegrationTest verifies an integration by calling Converty with its
 // access token (rotating first if needed).
 func (a *App) handleIntegrationTest(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := integrationID(k)
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
@@ -430,10 +428,6 @@ func (a *App) handleIntegrationTest(k *kit.Kit) error {
 
 // handleIntegrationUpdate edits the display details of one integration.
 func (a *App) handleIntegrationUpdate(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := integrationID(k)
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
@@ -468,10 +462,6 @@ func (a *App) handleIntegrationUpdate(k *kit.Kit) error {
 // handleIntegrationActivate toggles whether one integration processes new
 // order events.
 func (a *App) handleIntegrationActivate(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := integrationID(k)
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")
@@ -507,10 +497,6 @@ func (a *App) handleIntegrationActivate(k *kit.Kit) error {
 // the local row is dropped. Unsubscribe failures are logged but never block
 // the local delete, so the user is always freed from their account.
 func (a *App) handleIntegrationDelete(k *kit.Kit) error {
-	_, err := a.requireShop(k)
-	if err != nil {
-		return err
-	}
 	id, err := integrationID(k)
 	if err != nil {
 		return k.Redirect(http.StatusSeeOther, "/integrations?flash=notfound")

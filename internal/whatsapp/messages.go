@@ -35,6 +35,33 @@ type MetaError struct {
 	Title string `json:"title"`
 }
 
+// MessagesAll lists every message across the operator's shops, newest first.
+// The message history is shared; each row carries its own shop id.
+func (s *Service) MessagesAll(ctx context.Context) ([]Message, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, shop_id, customer_id, template_id, converty_order_id,
+		       recipient_phone, meta_message_id, status, error_code, error_message,
+		       meta_errors, template_variables, sent_at, delivered_at, read_at, failed_at, created_at
+		FROM messages
+		ORDER BY created_at DESC
+		LIMIT 500`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Message
+	for rows.Next() {
+		m, err := scanMessage(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 // Messages lists a merchant's messages, newest first.
 func (s *Service) Messages(ctx context.Context, shopID uuid.UUID) ([]Message, error) {
 	rows, err := s.pool.Query(ctx, `

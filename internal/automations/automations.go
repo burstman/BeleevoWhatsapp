@@ -130,6 +130,32 @@ func (a Automation) Schedule() *Schedule {
 	return s
 }
 
+// ListAll returns every automation across the operator's shops, newest first.
+// Listings are no longer scoped to a shop: each card shows its own shop.
+func (p *Processor) ListAll(ctx context.Context) ([]Automation, error) {
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, shop_id, name, description, event_source, order_status, template_id, enabled,
+		       send_time, send_timezone, send_days, delay_minutes, created_at, updated_at
+		FROM automations
+		ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Automation
+	for rows.Next() {
+		var a Automation
+		if err := rows.Scan(&a.ID, &a.ShopID, &a.Name, &a.Description, &a.EventSource, &a.OrderStatus,
+			&a.TemplateID, &a.Enabled, &a.SendTime, &a.SendTimezone, &a.SendDays, &a.DelayMinutes,
+			&a.CreatedAt, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 // ListByShop returns the automations configured for a shop.
 func (p *Processor) ListByShop(ctx context.Context, shopID uuid.UUID) ([]Automation, error) {
 	rows, err := p.pool.Query(ctx, `

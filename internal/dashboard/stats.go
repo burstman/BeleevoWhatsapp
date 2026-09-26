@@ -76,3 +76,51 @@ func (r *Repository) Stats(ctx context.Context, shopID uuid.UUID) (Stats, error)
 
 	return s, nil
 }
+
+// StatsAll aggregates the dashboard metrics across every shop the operator
+// owns. There is no per-shop overview anymore.
+func (r *Repository) StatsAll(ctx context.Context) (Stats, error) {
+	var s Stats
+
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN status IN ('sent','delivered','read') THEN 1 ELSE 0 END), 0) AS sent,
+			COALESCE(SUM(CASE WHEN status IN ('delivered','read') THEN 1 ELSE 0 END), 0) AS delivered,
+			COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed
+		FROM messages`,
+	).Scan(&s.MessagesSent, &s.MessagesDelivered, &s.MessagesFailed)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM automations
+		WHERE enabled = true`,
+	).Scan(&s.ActiveAutomations)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM shops WHERE whatsapp_enabled = true
+		)`,
+	).Scan(&s.WhatsappConnected)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		SELECT
+			EXISTS(
+				SELECT 1 FROM converty_integrations WHERE status = 'connected'
+			),
+			COALESCE((SELECT store_name FROM converty_integrations WHERE status = 'connected' LIMIT 1), '')`,
+	).Scan(&s.ConvertyConnected, &s.ConvertyStoreName)
+	if err != nil {
+		return Stats{}, err
+	}
+
+	return s, nil
+}
