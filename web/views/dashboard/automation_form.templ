@@ -243,7 +243,6 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 	var sendDelay = document.getElementById("sendDelay");
 	var select = document.getElementById("templateSelect");
 	var preview = document.getElementById("previewBody");
-	var button = document.getElementById("automationSubmit");
 	var problem = document.getElementById("automationProblem");
 	var catalog = {};
 
@@ -301,19 +300,21 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 		return "";
 	}
 
+	function problems() {
+		return [templateProblem(), scheduleProblem()].filter(Boolean).join(" ");
+	}
+
+	// The button is never disabled: a control that silently refuses to submit is
+	// indistinguishable from a broken page. The reason is shown next to the button,
+	// an incomplete submit is held back here, and the server re-checks everything
+	// and flashes the field that is wrong.
 	function validate() {
-		var message = [templateProblem(), scheduleProblem()].filter(Boolean).join(" ");
+		var message = problems();
 		if (problem) {
 			problem.textContent = message;
 			problem.classList.toggle("hidden", message === "");
 		}
-		if (button) {
-			button.disabled = message !== "";
-			button.classList.toggle("bg-slate-300", message !== "");
-			button.classList.toggle("bg-indigo-600", message === "");
-			button.classList.toggle("hover:bg-indigo-700", message === "");
-			button.classList.toggle("cursor-not-allowed", message !== "");
-		}
+		return message;
 	}
 
 	function renderPreview() {
@@ -377,6 +378,9 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 		validate();
 	});
 	form.addEventListener("input", function () { validate(); });
+	form.addEventListener("submit", function (evt) {
+		if (validate() !== "") { evt.preventDefault(); }
+	});
 
 	syncSource();
 	syncMode();
