@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/anthdm/superkit/kit"
 
@@ -62,6 +63,9 @@ func (a *App) handleTemplateCreate(k *kit.Kit) error {
 	}
 
 	positional, tokens := whatsapp.TokenizeTemplateBody(body)
+	if utf8.RuneCountInString(positional) > whatsapp.MaxTemplateBodyChars {
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=toolong")
+	}
 
 	numbers := whatsapp.PlaceholderNumbers(positional)
 	if len(numbers) == 0 {

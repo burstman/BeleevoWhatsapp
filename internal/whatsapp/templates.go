@@ -11,6 +11,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// MaxTemplateBodyChars is Meta's hard limit for a template BODY component,
+// including the {{N}} placeholders.
+const MaxTemplateBodyChars = 1024
+
 // MerchantTemplate is a merchant's template on the shared messaging account,
 // tracked with Meta's review lifecycle.
 type MerchantTemplate struct {

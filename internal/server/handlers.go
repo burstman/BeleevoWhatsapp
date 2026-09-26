@@ -8,6 +8,7 @@ import (
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/database"
+	"whatsappconverty/internal/whatsapp"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
 	vlegal "whatsappconverty/web/views/legal"
@@ -104,6 +105,8 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = "The body must contain at least one {{N}} placeholder."
 	case "example":
 		flash.Error = "Provide an example value for every {{N}} placeholder."
+	case "toolong":
+		flash.Error = "The message exceeds Meta's " + strconv.Itoa(whatsapp.MaxTemplateBodyChars) + "-character limit."
 	case "error", "internal", "refresh":
 		flash.Error = "Something went wrong — try again."
 	}
