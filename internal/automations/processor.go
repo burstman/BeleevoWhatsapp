@@ -153,6 +153,8 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		OrderID:        orderID,
 		StatusLabel:    change.Label,
 		TrackingCode:   change.Barcode,
+		DriverName:     change.DriverName,
+		DriverPhone:    change.DriverPhone,
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
 		fire:           ruleFromSchedule(sch),
 	})

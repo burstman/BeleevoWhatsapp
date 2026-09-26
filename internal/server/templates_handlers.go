@@ -10,9 +10,60 @@ import (
 	"unicode/utf8"
 
 	"github.com/anthdm/superkit/kit"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"whatsappconverty/internal/whatsapp"
 )
+
+// handleTemplateDelete removes a template the operator no longer wants. The
+// template is soft-deleted (lifecycle state "deleted") after a best-effort
+// delete on the messaging account that owns it, so it can never be sent again.
+// A template still referenced by an automation is refused: the operator must
+// detach it first, so no automation is silently broken.
+func (a *App) handleTemplateDelete(k *kit.Kit) error {
+	if _, err := a.shopsFor(k); err != nil {
+		return err
+	}
+
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=notfound")
+	}
+
+	tpl, err := a.WhatsApp.TemplateByID(k.Request.Context(), id)
+	if err != nil {
+		a.Log.Error("template delete lookup failed", "template_id", id, "error", err.Error())
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=error")
+	}
+	if tpl.ID == uuid.Nil || tpl.ApprovalStatus == "deleted" {
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=notfound")
+	}
+
+	users, err := a.Automations.ListAll(k.Request.Context())
+	if err != nil {
+		a.Log.Error("template delete: automation lookup failed", "error", err.Error())
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=error")
+	}
+	var attached []string
+	for _, au := range users {
+		if au.TemplateID == tpl.ID {
+			attached = append(attached, au.Name)
+		}
+	}
+	if len(attached) > 0 {
+		return k.Redirect(http.StatusSeeOther,
+			"/templates?flash=inuse&names="+url.QueryEscape(strings.Join(attached, ", ")))
+	}
+
+	if err := a.WhatsApp.DeleteByMerchant(k.Request.Context(), tpl); err != nil {
+		a.Log.Warn("template delete failed", "template_id", tpl.ID, "name", tpl.Name, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/templates?flash=error")
+	}
+
+	a.Log.Info("template deleted by operator", "template_id", tpl.ID, "name", tpl.Name, "language", tpl.Language)
+	return k.Redirect(http.StatusSeeOther, "/templates?flash=deleted")
+}
 
 // handleTemplateRefresh re-syncs the merchant's template approval statuses
 // from Meta's review engine and returns to the templates page.

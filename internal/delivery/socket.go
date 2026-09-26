@@ -240,14 +240,15 @@ func (s *Service) onSocketEvent(ctx context.Context, shopID string, e mescolisEv
 			"shop_id", shopID, "barcode", e.Barcode)
 		return nil
 	}
-	return s.recordTransition(ctx, sid, e.Barcode, tracked.OrderID, tracked.LastStatus, e.Status, "", onChanged)
+	return s.recordTransition(ctx, sid, e.Barcode, tracked.OrderID, tracked.LastStatus, e.Status, "",
+		e.DeliverymanName, e.DeliverymanPhoneNumber, onChanged)
 }
 
 // recordTransition persists one observed status and reports the change to the
 // automation pipeline. An unchanged status only bumps last_seen_at (the caller
 // models "seen" semantics as a touch). This is the single funnel for both the
 // REST poller and the live socket.
-func (s *Service) recordTransition(ctx context.Context, shopID uuid.UUID, barcode, orderID, prev, status, labelHint string, onChanged func(context.Context, StatusChange) error) error {
+func (s *Service) recordTransition(ctx context.Context, shopID uuid.UUID, barcode, orderID, prev, status, labelHint, driverName, driverPhone string, onChanged func(context.Context, StatusChange) error) error {
 	if prev == status {
 		return s.TouchTracked(ctx, shopID, barcode)
 	}
@@ -264,12 +265,14 @@ func (s *Service) recordTransition(ctx context.Context, shopID uuid.UUID, barcod
 		"shop_id", shopID, "barcode", barcode, "from", prev, "to", status)
 	if onChanged != nil {
 		return onChanged(ctx, StatusChange{
-			ShopID:   shopID,
-			Barcode:  barcode,
-			OrderID:  orderID,
-			Status:   status,
-			Label:    label,
-			Previous: prev,
+			ShopID:      shopID,
+			Barcode:     barcode,
+			OrderID:     orderID,
+			Status:      status,
+			Label:       label,
+			Previous:    prev,
+			DriverName:  driverName,
+			DriverPhone: driverPhone,
 		})
 	}
 	return nil

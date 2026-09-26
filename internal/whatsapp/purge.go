@@ -141,6 +141,38 @@ func (s *Service) HandlePurgeMarketingTemplate(ctx context.Context, task *asynq.
 	return s.purgeTemplate(ctx, j)
 }
 
+// DeleteByMerchant removes a template at the operator's request: best-effort
+// removal from the messaging account that owns it, then the local row moves to
+// the "deleted" lifecycle state so it can never be selected or sent. Same
+// lifecycle as the marketing purge; only the trigger differs.
+func (s *Service) DeleteByMerchant(ctx context.Context, t MerchantTemplate) error {
+	s.log.Info("deleting template at operator request",
+		"shop_id", t.ShopID, "template_id", t.ID, "name", t.Name, "language", t.Language)
+
+	if creds, cErr := s.Credentials(ctx, t.ShopID); cErr == nil {
+		if err := s.DeleteTemplate(ctx, creds.AccessToken, creds.MessagingAccountID, t.Name, t.Language); err != nil {
+			// Best-effort: Meta may already have removed it (404). The local row
+			// still transitions to deleted, which is what actually stops sends.
+			s.log.Warn("meta delete of template failed", "name", t.Name, "error", err)
+		}
+	}
+
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE templates
+		SET approval_status = 'deleted',
+		    purge_scheduled_at = NULL,
+		    updated_at        = now()
+		WHERE id = $1 AND shop_id = $2 AND approval_status <> 'deleted'`,
+		t.ID, t.ShopID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("template is already deleted")
+	}
+	return nil
+}
+
 // pgInterval converts a Go duration to text Postgres accepts as an interval
 // literal (time.Duration.String() like "15m0s" is not valid Postgres syntax).
 func pgInterval(d time.Duration) string {

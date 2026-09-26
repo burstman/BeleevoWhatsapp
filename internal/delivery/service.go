@@ -165,12 +165,14 @@ func (s *Service) APIKey(ctx context.Context, shopID uuid.UUID, provider string)
 // Message is the "unsaved happens" of the delivery package: a single change of
 // status observed by the poller, handed to the automation processor.
 type StatusChange struct {
-	ShopID   uuid.UUID
-	Barcode  string
-	OrderID  string
-	Status   string
-	Label    string
-	Previous string
+	ShopID      uuid.UUID
+	Barcode     string
+	OrderID     string
+	Status      string
+	Label       string
+	Previous    string
+	DriverName  string
+	DriverPhone string
 }
 
 // Reconcile polls every connected shop's watched parcels and reports each
@@ -250,7 +252,8 @@ func (s *Service) reconcileShop(ctx context.Context, integ Integration, onChange
 			orderID = t.OrderID
 			break
 		}
-		if err := s.recordTransition(ctx, integ.ShopID, remote.Barcode, orderID, prev, remote.Status, remote.StatusLabel, onChanged); err != nil {
+		if err := s.recordTransition(ctx, integ.ShopID, remote.Barcode, orderID, prev, remote.Status, remote.StatusLabel,
+			remote.DeliverymanName, remote.DeliverymanPhoneNumber, onChanged); err != nil {
 			s.log.Warn("delivery reconcile: transition failed", "barcode", remote.Barcode, "error", err)
 		}
 	}

@@ -351,6 +351,28 @@ func (s *Service) Template(ctx context.Context, shopID, templateID uuid.UUID) (M
 	return t, err
 }
 
+// TemplateByID loads one template regardless of which shop owns it. Templates
+// are shared across the platform's shops, so a request may name a row that does
+// not belong to the shop the request came from.
+func (s *Service) TemplateByID(ctx context.Context, templateID uuid.UUID) (MerchantTemplate, error) {
+	var t MerchantTemplate
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, shop_id, meta_template_name, language, category, status,
+		       approval_status, rejection_reason, marketing_flagged, meta_warnings,
+		       meta_template_id, components, variables_map, created_at, updated_at
+		FROM templates
+		WHERE id = $1`,
+		templateID,
+	).Scan(&t.ID, &t.ShopID, &t.Name, &t.Language, &t.Category,
+		&t.Status, &t.ApprovalStatus, &t.RejectionReason, &t.MarketingFlagged, &t.MetaWarnings,
+		&t.MetaTemplateID, &t.Components, &t.Variables, &t.CreatedAt, &t.UpdatedAt)
+	if err == pgx.ErrNoRows {
+		return MerchantTemplate{}, nil
+	}
+	t.NumVariables = countVariablesFromJSON(t.Components)
+	return t, err
+}
+
 // countVariablesFromJSON derives the placeholder count from stored Meta
 // components so senders can build the correct variable set without re-parsing.
 func countVariablesFromJSON(raw []byte) int {

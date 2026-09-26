@@ -303,6 +303,7 @@ serializeBody: function (root) {
 								<th class="px-6 py-3 font-medium">Category</th>
 								<th class="px-6 py-3 font-medium">Shop</th>
 								<th class="px-6 py-3 font-medium">Status</th>
+								<th class="px-6 py-3 text-right font-medium">Actions</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -322,7 +323,7 @@ serializeBody: function (root) {
 										if t.ApprovalStatus == "deleted" {
 											@ApprovalBadge("deleted")
 											<p class="mt-1 text-xs text-slate-500">
-												Automatically deleted — Meta treated it as marketing content.
+												Deleted — it can no longer be sent.
 											</p>
 											if t.MetaWarnings != "" {
 												<p class="mt-1 text-xs text-slate-400 italic">{ t.MetaWarnings }</p>
@@ -348,6 +349,20 @@ serializeBody: function (root) {
 											}
 										} else {
 											@ApprovalBadge(t.ApprovalStatus)
+										}
+									</td>
+									<td class="px-6 py-3 text-right">
+										if t.ApprovalStatus == "deleted" {
+											<span class="text-xs text-slate-400">—</span>
+										} else {
+											<form method="post" action={ templ.URL("/templates/" + t.ID.String() + "/delete") }
+												data-name={ t.Name } data-language={ t.Language } x-data
+												@submit="if (! confirm('Delete template ' + $el.dataset.name + ' (' + $el.dataset.language + ')? It can no longer be sent.')) $event.preventDefault()">
+												<button type="submit"
+													class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+													Delete
+												</button>
+											</form>
 										}
 									</td>
 								</tr>
