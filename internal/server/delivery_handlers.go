@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/anthdm/superkit/kit"
@@ -54,7 +55,11 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 	case "connected":
 		flash.Info = "Mes Colis connected — parcel statuses are now polled."
 	case "testfailed":
-		flash.Error = "Connection test failed — check that the access token is valid for Mes Colis Express."
+		if msg := k.Request.URL.Query().Get("error"); msg != "" {
+			flash.Error = "Connection test failed: " + msg
+		} else {
+			flash.Error = "Connection test failed — check that the access token is valid for Mes Colis Express."
+		}
 	case "missing":
 		flash.Error = "The access token is required."
 	case "error", "internal":
@@ -96,7 +101,11 @@ func (a *App) handleDeliveryConnect(k *kit.Kit) error {
 	client := delivery.NewMescolisClient(token, allowSubAccount, accountCode, a.Cfg, nil)
 	if err := client.Probe(ctx); err != nil {
 		a.Log.Warn("delivery connect rejected: token check failed", "shop_id", shopID, "error", err)
-		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=testfailed")
+		msg := strings.TrimSpace(err.Error())
+		if msg == "" {
+			msg = "token rejected"
+		}
+		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=testfailed&error="+url.QueryEscape(msg))
 	}
 
 	if err := a.Delivery.SaveIntegration(ctx, shopID, delivery.ProviderMescolis, token, accountCode, allowSubAccount); err != nil {
