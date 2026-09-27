@@ -170,37 +170,38 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 						No parcels being watched yet. Once a Converty order event carries a tracking reference, the parcel appears here automatically.
 					</div>
 				} else {
-					// The card clips its corners, so a table wider than the card would
-					// lose its right-hand columns with no way to reach them. Scrolling
-					// inside the card keeps every column readable on a narrow screen.
+					// The card clips its corners, so keep the table inside it. Gutter
+					// is trimmed to px-3 (px-6 on the outer edges only) and the one
+					// unbreakable value is truncated, because 8 columns at px-6 is
+					// ~380px of padding and that is what pushed columns off screen.
 					<div class="overflow-x-auto">
-					<table class="w-full min-w-[64rem] text-left text-sm">
+					<table class="w-full table-fixed text-left text-sm">
 						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
 <tr>
-									<th class="px-6 py-3 font-medium">Shop</th>
-									<th class="px-6 py-3 font-medium">Barcode</th>
-									<th class="px-6 py-3 font-medium">Order</th>
-									<th class="px-6 py-3 font-medium">Customer</th>
-									<th class="px-6 py-3 font-medium">Status</th>
-									<th class="px-6 py-3 font-medium">Driver</th>
-									<th class="px-6 py-3 font-medium">Last seen</th>
-									<th class="px-6 py-3 font-medium"></th>
+									<th class="hidden w-[10%] px-3 py-3 font-medium first:pl-6 xl:table-cell">Shop</th>
+									<th class="w-[13%] px-3 py-3 font-medium first:pl-6">Barcode</th>
+									<th class="w-[10%] px-3 py-3 font-medium">Order</th>
+									<th class="w-[15%] px-3 py-3 font-medium">Customer</th>
+									<th class="w-[14%] px-3 py-3 font-medium">Status</th>
+									<th class="w-[14%] px-3 py-3 font-medium">Driver</th>
+									<th class="w-[15%] px-3 py-3 font-medium last:pr-6">Last seen</th>
+									<th class="w-[9%] px-3 py-3 font-medium last:pr-6"></th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
 							for _, t := range tracked {
 								<tr>
-									<td class="px-6 py-3">
+									<td class="hidden px-3 py-3 first:pl-6 xl:table-cell">
 										if name, ok := shopNames[t.ShopID]; ok {
 											<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ name }</span>
 										} else {
 											<span class="text-xs text-slate-500">{ t.ShopID.String()[:8] }</span>
 										}
 									</td>
-									<td class="px-6 py-3 font-medium text-slate-900">{ t.Barcode }</td>
-									<td class="px-6 py-3 text-slate-600">{ t.OrderID }</td>
-									<td class="px-6 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>
-									<td class="px-6 py-3">
+									<td class="px-3 py-3 font-medium text-slate-900">{ t.Barcode }</td>
+									<td class="px-3 py-3 text-slate-600"><span class="block truncate" title={ t.OrderID }>{ t.OrderID }</span></td>
+									<td class="px-3 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>
+									<td class="px-3 py-3">
 										if t.LastStatus == "" {
 											<span class="text-slate-500">waiting for first poll</span>
 										} else {
@@ -208,7 +209,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 											<span class="text-xs text-slate-500"> ({ t.LastStatus })</span>
 										}
 									</td>
-									<td class="px-6 py-3">
+									<td class="px-3 py-3">
 										if t.HasDriver() {
 											if t.DriverName != "" {
 												<span class="font-medium text-slate-900">{ t.DriverName }</span>
@@ -222,7 +223,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not assigned</span>
 										}
 									</td>
-									<td class="px-6 py-3">
+									<td class="px-3 py-3">
 										if t.MissingCount > 0 {
 											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not listed at the carrier, { seenAge(t.MissingFor(now)) }</span>
 										} else {
@@ -234,10 +235,10 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 											<span class="ml-1 text-xs text-slate-500">final, no longer polled</span>
 										}
 									</td>
-									<td class="px-6 py-3 text-right">
+									<td class="px-3 py-3 text-right last:pr-6">
 										<form method="post" action={ templ.SafeURL("/settings/delivery/track/" + t.Barcode + "/remove") }
 											onsubmit="return confirm('Stop tracking this parcel?')">
-											<button type="submit" class="text-sm font-medium text-rose-600 transition hover:text-rose-700">Remove</button>
+											<button type="submit" class="whitespace-nowrap text-sm font-medium text-rose-600 transition hover:text-rose-700">Remove</button>
 										</form>
 									</td>
 								</tr>
