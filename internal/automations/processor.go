@@ -16,9 +16,9 @@ import (
 )
 
 // Processor evaluates order and delivery events against the shop's automations
-// and turns a match into a WhatsApp send (queued, or inline when Redis is
-// absent). It is the single entry point used by the webhook handler and the
-// delivery reconcile ticker.
+// and turns a match into a WhatsApp send: inline when the rule says now,
+// queued when it says later. It is the single entry point used by the webhook
+// handler and the delivery reconcile ticker.
 type Processor struct {
 	cfg      config.Config
 	pool     *pgxpool.Pool
@@ -331,15 +331,22 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		IdempotencyKey:  in.IdempotencyKey,
 	}
 
-	queued, err := p.whatsapp.EnqueueSendAt(ctx, job, scheduledFire(in.fire, time.Now()))
-	if err != nil {
-		p.log.Warn("automation: enqueue failed, sending inline", "error", err)
-		queued = false
-	}
-	if queued {
-		p.log.Info("automation send queued",
+	// An instant automation sends right here: the event already happened, so a
+	// queue hop would only make the customer wait. A delayed or fixed-window
+	// rule parks the job until its moment instead.
+	if at := scheduledFire(in.fire, time.Now()); !at.IsZero() {
+		if err := p.whatsapp.EnqueueSendAt(ctx, job, at); err != nil {
+			// Deliberately no inline fallback: sending now would deliver a message
+			// hours before the merchant asked for it. Reporting the failure lets
+			// the event be retried instead.
+			p.log.Warn("automation: scheduling send failed",
+				"shop_id", in.ShopID, "template_id", in.TemplateID,
+				"trigger", in.StatusLabel, "fire_at", at, "error", err)
+			return err
+		}
+		p.log.Info("automation send scheduled",
 			"shop_id", in.ShopID, "customer_id", in.CustomerID,
-			"template_id", in.TemplateID, "trigger", in.StatusLabel)
+			"template_id", in.TemplateID, "trigger", in.StatusLabel, "fire_at", at)
 		return nil
 	}
 

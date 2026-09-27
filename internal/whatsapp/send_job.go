@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 
 	"whatsappconverty/internal/queue"
 )
@@ -21,7 +21,7 @@ type SendWhatsAppTemplateJob struct {
 	// AutomationID is the automation that queued this send, empty for a send that
 	// did not come from one. The worker re-checks it before sending so pausing an
 	// automation also stops a message that was already queued — including one
-	// parked in Redis for a future scheduled time.
+	// waiting in the job table for a future scheduled time.
 	AutomationID    uuid.UUID         `json:"automation_id,omitempty"`
 	CustomerID      uuid.UUID         `json:"customer_id"`
 	TemplateID      uuid.UUID         `json:"template_id"`
@@ -31,51 +31,39 @@ type SendWhatsAppTemplateJob struct {
 	IdempotencyKey  string            `json:"idempotency_key"`
 }
 
-// EnqueueSend places a send on the queue and reports whether it was accepted.
-// When no asynq client exists (no Redis), it returns queued=false and the
-// caller falls back to an inline SendTemplateMessage so automation keeps
-// working in degraded mode.
-func (s *Service) EnqueueSend(ctx context.Context, job SendWhatsAppTemplateJob) (queued bool, err error) {
-	return s.EnqueueSendAt(ctx, job, time.Time{})
-}
-
-// EnqueueSendAt is EnqueueSend with an optional absolute delivery moment. A
-// zero time sends immediately; otherwise the task is parked in Redis until the
-// worker clock reaches it (survives restarts). Times already in the past are
-// sent immediately.
-func (s *Service) EnqueueSendAt(ctx context.Context, job SendWhatsAppTemplateJob, at time.Time) (queued bool, err error) {
-	if s.queue == nil {
-		return false, nil
+// EnqueueSendAt parks a send in the job queue until its moment. A zero time, or
+// a time already past, means "at the next tick" — but a send that is due right
+// now does not come through here at all: the caller sends it inline, so an order
+// notification reaches the customer without waiting for a tick.
+//
+// The job is keyed on the send's idempotency key, so a webhook that arrives
+// twice cannot queue the same message twice.
+func (s *Service) EnqueueSendAt(ctx context.Context, job SendWhatsAppTemplateJob, at time.Time) error {
+	if job.ShopID == uuid.Nil || job.CustomerID == uuid.Nil || job.TemplateID == uuid.Nil {
+		return errors.New("whatsapp: send job is missing shop, customer or template")
 	}
 	payload, err := json.Marshal(job)
 	if err != nil {
-		return false, err
+		return err
 	}
-	task := asynq.NewTask(queue.TaskSendWhatsAppTemplate, payload)
-	opts := []asynq.Option{
-		asynq.Queue("critical"),
-		asynq.MaxRetry(5),
-		asynq.Timeout(60 * time.Second),
-		asynq.Retention(24 * time.Hour),
-	}
-	if !at.IsZero() && at.After(time.Now()) {
-		opts = append(opts, asynq.ProcessAt(at))
-	}
-	_, err = s.queue.Enqueue(task, opts...)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return queue.Enqueue(ctx, s.pool, queue.Params{
+		Kind:      queue.TaskSendWhatsAppTemplate,
+		ShopID:    job.ShopID,
+		Payload:   payload,
+		RunAt:     at,
+		DedupeKey: job.IdempotencyKey,
+	})
 }
 
-// HandleSendWhatsAppTemplate is the worker handler for automated sends. Sends
-// refused by the send gate (*SendRejection) are logged and not retried — the
-// message row already records the failure — while transient infrastructure
-// errors bubble up so asynq retries them.
-func (s *Service) HandleSendWhatsAppTemplate(ctx context.Context, task *asynq.Task) error {
+// HandleSendWhatsAppTemplate is the queue handler for automated sends. A send
+// refused by the send gate (*SendRejection) is logged and dropped — the message
+// row already records the failure and no retry would change the answer — while a
+// transient infrastructure error bubbles up so the runner retries it.
+func (s *Service) HandleSendWhatsAppTemplate(ctx context.Context, payload []byte) error {
 	var job SendWhatsAppTemplateJob
-	if err := json.Unmarshal(task.Payload(), &job); err != nil {
-		return err
+	if err := json.Unmarshal(payload, &job); err != nil {
+		// A payload we cannot read will never become readable.
+		return queue.Permanent(fmt.Errorf("whatsapp: decode send job: %w", err))
 	}
 
 	_, err := s.SendTemplateMessage(ctx, SendRequest{
@@ -89,7 +77,7 @@ func (s *Service) HandleSendWhatsAppTemplate(ctx context.Context, task *asynq.Ta
 	})
 	var rej *SendRejection
 	if errors.As(err, &rej) {
-		s.log.Warn("automation send rejected, no retry",
+		s.log.Warn("scheduled send rejected, no retry",
 			"shop_id", job.ShopID, "customer_id", job.CustomerID,
 			"template_id", job.TemplateID, "code", rej.Code, "reason", rej.Reason)
 		return nil

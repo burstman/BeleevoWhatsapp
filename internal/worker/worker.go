@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"whatsappconverty/internal/automations"
@@ -25,27 +24,22 @@ import (
 // poll so no update is ever missed while a socket is down.
 const reconcileInterval = 2 * time.Minute
 
-// Server runs the background job processor (asynq) inside the web process so
-// the deploy needs only one service: Render free tier has no background-worker
-// service type. On paid plans this same package can still be run standalone
-// via cmd/worker.
+// Server runs the background job processor inside the web process so the deploy
+// needs only one service: Render free tier has no background-worker service
+// type. On paid plans this same package can still be run standalone via
+// cmd/worker.
 type Server struct {
 	log    *slog.Logger
-	srv    *asynq.Server
+	runner *queue.Runner
 	pool   *pgxpool.Pool
 	stop   context.CancelFunc
 	closed bool
 }
 
-// Start wires the asynq worker, begins consuming the delayed job queues, and
-// launches the delivery reconcile ticker. It owns its own DB pool so it can run
-// inside either process (app or worker).
+// Start wires the job runner, begins draining queued work, and launches the
+// delivery reconcile ticker. It owns its own DB pool so it can run inside either
+// process (app or worker).
 func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
-	redisOpt, err := queue.RedisClientOpt(cfg.RedisURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid redis url: %w", err)
-	}
-
 	pool, err := database.Connect(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("worker database connection failed: %w", err)
@@ -55,33 +49,21 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	del := delivery.NewService(cfg, pool, logger)
 	automations := automations.NewProcessor(cfg, pool, logger, wa, del)
 
-	srv := asynq.NewServer(redisOpt, asynq.Config{
-		Concurrency: 10,
-		Logger:      asynqLogger{logger},
-		Queues:      map[string]int{"default": 6, "critical": 4},
-	})
-
-	mux := asynq.NewServeMux()
-	mux.HandleFunc(queue.TaskPurgeMarketingTemplate, wa.HandlePurgeMarketingTemplate)
-	mux.HandleFunc(queue.TaskSendWhatsAppTemplate, gateAutomation(automations, func(ctx context.Context, task *asynq.Task) error {
-		return wa.HandleSendWhatsAppTemplate(ctx, task)
-	}, logger))
-
-	if err := srv.Start(mux); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("worker failed to start: %w", err)
-	}
+	runner := queue.NewRunner(pool, logger)
+	runner.Handle(queue.TaskPurgeMarketingTemplate, wa.HandlePurgeMarketingTemplate)
+	runner.Handle(queue.TaskSendWhatsAppTemplate, gateAutomation(automations, wa.HandleSendWhatsAppTemplate, logger))
 
 	deliveryCtx, stopDelivery := context.WithCancel(context.Background())
+	runner.Start(deliveryCtx)
 	go reconcileLoop(deliveryCtx, logger, automations)
 	go del.RunSocketSupervisor(deliveryCtx, func(ctx context.Context, ch delivery.StatusChange) error {
 		return automations.OnDeliveryChange(ctx, ch)
 	})
 
 	logger.Info("background worker started",
-		"redis", redisOpt.Addr, "concurrency", 10,
+		"queue", "postgres", "job_interval", queue.DefaultInterval,
 		"reconcile_interval", reconcileInterval, "mescolis_socket", delivery.MescolisSocketURL)
-	return &Server{log: logger, srv: srv, pool: pool, stop: stopDelivery}, nil
+	return &Server{log: logger, runner: runner, pool: pool, stop: stopDelivery}, nil
 }
 
 // automationLookup is the part of the automation processor the gate needs. It is
@@ -91,20 +73,21 @@ type automationLookup interface {
 }
 
 // gateAutomation re-checks an automation before its queued send is delivered.
-// Pausing switches off what fires next, but the job was already parked in Redis
-// — a scheduled send can sit there for hours — so without this check a pause
-// would only stop future events and the pending message would still go out.
-func gateAutomation(lookup automationLookup, next asynq.HandlerFunc, logger *slog.Logger) asynq.HandlerFunc {
-	return func(ctx context.Context, task *asynq.Task) error {
+// Pausing switches off what fires next, but the job was already parked in the
+// queue — a scheduled send can sit there for hours — so without this check a
+// pause would only stop future events and the pending message would still go
+// out.
+func gateAutomation(lookup automationLookup, next queue.Handler, logger *slog.Logger) queue.Handler {
+	return func(ctx context.Context, payload []byte) error {
 		var job whatsapp.SendWhatsAppTemplateJob
-		if err := json.Unmarshal(task.Payload(), &job); err != nil {
+		if err := json.Unmarshal(payload, &job); err != nil {
 			// Malformed payload: let the sender deal with it rather than guessing here.
-			return next(ctx, task)
+			return next(ctx, payload)
 		}
 		if job.AutomationID == uuid.Nil {
 			// Not an automation send, or one queued before automation ids were
 			// recorded. Nothing to check.
-			return next(ctx, task)
+			return next(ctx, payload)
 		}
 
 		active, err := lookup.AutomationEnabled(ctx, job.AutomationID)
@@ -113,7 +96,7 @@ func gateAutomation(lookup automationLookup, next asynq.HandlerFunc, logger *slo
 			// the send gate decide.
 			logger.Warn("automation gate: lookup failed, sending anyway",
 				"automation_id", job.AutomationID, "shop_id", job.ShopID, "error", err)
-			return next(ctx, task)
+			return next(ctx, payload)
 		}
 		if !active {
 			logger.Info("queued send dropped: automation paused or deleted",
@@ -121,7 +104,7 @@ func gateAutomation(lookup automationLookup, next asynq.HandlerFunc, logger *slo
 				"customer_id", job.CustomerID, "template_id", job.TemplateID)
 			return nil
 		}
-		return next(ctx, task)
+		return next(ctx, payload)
 	}
 }
 
@@ -163,7 +146,7 @@ func reconcileLoop(ctx context.Context, logger *slog.Logger, automations *automa
 	}
 }
 
-// Shutdown stops the job processor and closes its database pool.
+// Shutdown stops the job runner and closes its database pool.
 func (s *Server) Shutdown() {
 	if s.closed {
 		return
@@ -172,15 +155,6 @@ func (s *Server) Shutdown() {
 	if s.stop != nil {
 		s.stop()
 	}
-	s.srv.Shutdown()
 	s.pool.Close()
 	s.log.Info("background worker shut down")
 }
-
-type asynqLogger struct{ log *slog.Logger }
-
-func (l asynqLogger) Debug(args ...any) { l.log.Debug("asynq", "msg", args) }
-func (l asynqLogger) Info(args ...any)  { l.log.Info("asynq", "msg", args) }
-func (l asynqLogger) Warn(args ...any)  { l.log.Warn("asynq", "msg", args) }
-func (l asynqLogger) Error(args ...any) { l.log.Error("asynq", "msg", args) }
-func (l asynqLogger) Fatal(args ...any) { l.log.Error("asynq fatal", "msg", args) }

@@ -19,7 +19,6 @@ type Config struct {
 	AppURL   string
 
 	DatabaseURL string
-	RedisURL    string
 
 	SuperkitSecret string
 
@@ -82,7 +81,6 @@ func Load() Config {
 		HTTPAddr:       getenv("HTTP_LISTEN_ADDR", ":"+port),
 		AppURL:         getenv("APP_URL", "http://localhost:"+port),
 		DatabaseURL:    getenv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/converty_whatsapp?sslmode=disable"),
-		RedisURL:       getenv("REDIS_URL", "redis://localhost:6379/0"),
 		SuperkitSecret: getenv("SUPERKIT_SECRET", "dev-only-change-me-please-32-bytes"),
 
 		AdminEmail:    getenv("ADMIN_EMAIL", "admin@bleevoo.local"),

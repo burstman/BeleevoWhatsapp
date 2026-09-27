@@ -67,19 +67,15 @@ func main() {
 	}
 
 	// Run the background job processor in-process so Render's free tier (which
-	// has no background-worker service type) still processes delayed jobs, e.g.
+	// has no background-worker service type) still processes scheduled sends and
 	// the marketing-template purge. cmd/worker can run it standalone on paid
-	// plans. If Redis is misconfigured the API must keep serving, so only stop
-	// the process when the database itself is unreachable.
-	var bg *worker.Server
-	if cfg.RedisURL != "" {
-		if bg, err = worker.Start(cfg, logger); err != nil {
-			logger.Error("background worker disabled", "error", err)
-		} else {
-			defer bg.Shutdown()
-		}
+	// plans. The queue lives in the same database, so a failure here leaves
+	// nothing but delayed jobs undone; the API must keep serving either way.
+	bg, err := worker.Start(cfg, logger)
+	if err != nil {
+		logger.Error("background worker disabled; scheduled jobs will not run", "error", err)
 	} else {
-		logger.Warn("no REDIS_URL set; background jobs disabled")
+		defer bg.Shutdown()
 	}
 
 	router := chi.NewMux()

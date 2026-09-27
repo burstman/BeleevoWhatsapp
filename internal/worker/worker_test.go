@@ -9,9 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 
-	"whatsappconverty/internal/queue"
 	"whatsappconverty/internal/whatsapp"
 )
 
@@ -28,13 +26,14 @@ func (f *fakeLookup) AutomationEnabled(_ context.Context, id uuid.UUID) (bool, e
 	return f.active, f.err
 }
 
-func sendTask(t *testing.T, job whatsapp.SendWhatsAppTemplateJob) *asynq.Task {
+// sendPayload is a queued send as the runner hands it to a handler.
+func sendPayload(t *testing.T, job whatsapp.SendWhatsAppTemplateJob) []byte {
 	t.Helper()
 	payload, err := json.Marshal(job)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	return asynq.NewTask(queue.TaskSendWhatsAppTemplate, payload)
+	return payload
 }
 
 func quietLogger() *slog.Logger {
@@ -42,17 +41,17 @@ func quietLogger() *slog.Logger {
 }
 
 // A send queued while the automation was on must not go out after a pause, and
-// the job itself is what the gate must consult — not anything cached in Redis.
+// the job itself is what the gate must consult — not any cached trigger state.
 func TestGateDropsSendForPausedAutomation(t *testing.T) {
 	automationID := uuid.New()
 	lookup := &fakeLookup{active: false}
 	sent := 0
-	handler := gateAutomation(lookup, func(context.Context, *asynq.Task) error {
+	handler := gateAutomation(lookup, func(context.Context, []byte) error {
 		sent++
 		return nil
 	}, quietLogger())
 
-	err := handler(context.Background(), sendTask(t, whatsapp.SendWhatsAppTemplateJob{
+	err := handler(context.Background(), sendPayload(t, whatsapp.SendWhatsAppTemplateJob{
 		ShopID:       uuid.New(),
 		AutomationID: automationID,
 		CustomerID:   uuid.New(),
@@ -72,12 +71,12 @@ func TestGateDropsSendForPausedAutomation(t *testing.T) {
 func TestGateSendsForActiveAutomation(t *testing.T) {
 	lookup := &fakeLookup{active: true}
 	sent := 0
-	handler := gateAutomation(lookup, func(context.Context, *asynq.Task) error {
+	handler := gateAutomation(lookup, func(context.Context, []byte) error {
 		sent++
 		return nil
 	}, quietLogger())
 
-	if err := handler(context.Background(), sendTask(t, whatsapp.SendWhatsAppTemplateJob{
+	if err := handler(context.Background(), sendPayload(t, whatsapp.SendWhatsAppTemplateJob{
 		AutomationID: uuid.New(),
 	})); err != nil {
 		t.Fatalf("handler: %v", err)
@@ -90,12 +89,12 @@ func TestGateSendsForActiveAutomation(t *testing.T) {
 func TestGateIgnoresSendsWithoutAnAutomation(t *testing.T) {
 	lookup := &fakeLookup{active: false}
 	sent := 0
-	handler := gateAutomation(lookup, func(context.Context, *asynq.Task) error {
+	handler := gateAutomation(lookup, func(context.Context, []byte) error {
 		sent++
 		return nil
 	}, quietLogger())
 
-	if err := handler(context.Background(), sendTask(t, whatsapp.SendWhatsAppTemplateJob{
+	if err := handler(context.Background(), sendPayload(t, whatsapp.SendWhatsAppTemplateJob{
 		ShopID: uuid.New(),
 	})); err != nil {
 		t.Fatalf("handler: %v", err)
@@ -111,12 +110,12 @@ func TestGateIgnoresSendsWithoutAnAutomation(t *testing.T) {
 func TestGateSendsWhenTheLookupFails(t *testing.T) {
 	lookup := &fakeLookup{err: errors.New("database unavailable")}
 	sent := 0
-	handler := gateAutomation(lookup, func(context.Context, *asynq.Task) error {
+	handler := gateAutomation(lookup, func(context.Context, []byte) error {
 		sent++
 		return nil
 	}, quietLogger())
 
-	if err := handler(context.Background(), sendTask(t, whatsapp.SendWhatsAppTemplateJob{
+	if err := handler(context.Background(), sendPayload(t, whatsapp.SendWhatsAppTemplateJob{
 		AutomationID: uuid.New(),
 	})); err != nil {
 		t.Fatalf("handler: %v", err)

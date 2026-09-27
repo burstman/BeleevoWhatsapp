@@ -2,8 +2,9 @@
 # Creates: web service only. Background jobs (e.g. the marketing-template
 # purge) run inside the web service, because Render free tier has no
 # background-worker service type. The web build also produces ./migrate.
-# PostgreSQL is provided by Neon (external) and Redis by Upstash (external,
-# free tier allows only one Render Key-Value instance) — set URL env vars.
+# PostgreSQL is provided by Neon (external) and is the only backing store the
+# app needs: the job queue, the send rate limiter and all tenant data live
+# there. Set URL env vars.
 #
 # All secrets are provided via Render environment variables (not stored here).
 
@@ -36,8 +37,6 @@ services:
         sync: false # openssl rand -hex 32; keeps the same value across restarts
       - key: DATABASE_URL
         sync: false # paste your Neon connection string (use the direct, non-pooled one)
-      - key: REDIS_URL
-        sync: false # Your Upstash Redis URL — use the rediss:// form (TLS), e.g. rediss://default:TOKEN@host.upstash.io:6379
       - key: SUPERKIT_SECRET
         sync: false # set manually in the Render dashboard
       - key: ADMIN_EMAIL
@@ -63,8 +62,6 @@ services:
     #     - key: APP_ENV
     #       value: production
     #     - key: DATABASE_URL
-    #       sync: false
-    #     - key: REDIS_URL
     #       sync: false
     #     - key: SUPERKIT_SECRET
     #       sync: false
