@@ -448,11 +448,11 @@ func (a *App) handleAutomationTest(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	var numVariables int
+	var chosen whatsapp.MerchantTemplate
 	found := false
 	for _, t := range templates {
 		if t.ID == automation.TemplateID {
-			numVariables = t.NumVariables
+			chosen = t
 			found = true
 			break
 		}
@@ -465,7 +465,7 @@ func (a *App) handleAutomationTest(k *kit.Kit) error {
 		ShopID:     automation.ShopID,
 		TemplateID: automation.TemplateID,
 		To:         to,
-		Variables:  testVariables(numVariables),
+		Variables:  testVariables(chosen),
 	}); err != nil {
 		var rej *whatsapp.SendRejection
 		if errors.As(err, &rej) {
@@ -481,15 +481,25 @@ func (a *App) handleAutomationTest(k *kit.Kit) error {
 	return k.Redirect(http.StatusSeeOther, "/automations?flash=tested")
 }
 
-// testVariables fills every template slot positionally with sample values so
-// the send gate's variable-count check passes; unused slots get an em dash.
-func testVariables(n int) map[string]string {
-	vocab := []string{"Hamed", "CVY-TEST", "Sample status"}
-	vars := make(map[string]string, n)
-	for i := 0; i < n; i++ {
-		v := "—"
-		if i < len(vocab) && vocab[i] != "" {
+// testVariables fills the template slots so a test message looks like the real
+// one. A semantic template is filled with the example of the chip the merchant
+// dropped at each position, so "Livreur: {{driver_name}}" shows a name instead of
+// whatever used to sit in that slot. A legacy positional template falls back to
+// the classic sample vocabulary, and any slot left with nothing gets an em dash
+// so the send gate's variable-count check still passes.
+func testVariables(t whatsapp.MerchantTemplate) map[string]string {
+	vocab := []string{"Hamed", "CVY-TEST", "out for delivery", "1234567890113", "Ali Mansour", "+216 98 111 222"}
+	vars := make(map[string]string, t.NumVariables)
+	for i := 0; i < t.NumVariables; i++ {
+		v := ""
+		if i < len(t.Variables) {
+			v = whatsapp.TokenExample(t.Variables[i])
+		}
+		if v == "" && i < len(vocab) {
 			v = vocab[i]
+		}
+		if v == "" {
+			v = "—"
 		}
 		vars[strconv.Itoa(i+1)] = v
 	}
