@@ -212,11 +212,22 @@ func decodeMescolisError(resp *http.Response) error {
 	return fmt.Errorf("mescolis api error: http %d", resp.StatusCode)
 }
 
+// StatusRemovedUpstream is not a carrier status: it records that the barcode
+// stopped being listed at all, which happens when a parcel is deleted in Mes
+// Colis. It is deliberately absent from KnownStatuses so it can never be chosen
+// as an automation trigger.
+const StatusRemovedUpstream = "removed-upstream"
+
+// MissesBeforeSettled is how many consecutive sweeps must come back without the
+// barcode before the parcel is treated as deleted at the carrier. The poller runs
+// every two minutes, so three misses settle in about six.
+const MissesBeforeSettled = 3
+
 // StatusTerminal reports whether a Mes Colis status is terminal: no further
 // progress is expected, so the poller stops watching the parcel.
 func StatusTerminal(status string) bool {
 	switch status {
-	case "delivered", "delivered-and-paid", "return-sender", "final-return":
+	case "delivered", "delivered-and-paid", "return-sender", "final-return", StatusRemovedUpstream:
 		return true
 	}
 	return false
@@ -238,6 +249,8 @@ func LabelFor(status string) string {
 		return "Return to sender"
 	case "final-return":
 		return "Returned"
+	case StatusRemovedUpstream:
+		return "Removed at carrier"
 	}
 	if status == "" {
 		return "Unknown"

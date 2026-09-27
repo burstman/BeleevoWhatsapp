@@ -22,7 +22,27 @@ type TrackedOrder struct {
 	CustomerPhone string
 	LastStatus    string
 	StatusLabel   string
+	DriverName    string // last driver the carrier reported, may legitimately be ""
+	DriverPhone   string
+	MissingCount  int // consecutive sweeps the carrier did not know this barcode
+	LastMissingAt *time.Time
 	LastSeenAt    time.Time
+}
+
+// MissingFor reports how long the carrier has not listed the parcel, or 0 when it
+// answered the last sweep.
+func (t TrackedOrder) MissingFor(now time.Time) time.Duration {
+	if t.LastMissingAt == nil {
+		return 0
+	}
+	return now.Sub(*t.LastMissingAt)
+}
+
+// HasDriver reports whether a deliveryman is attached to the parcel. A delivery
+// template that places {{driver_name}} or {{driver_phone}} cannot send while
+// this is false, which is worth seeing on the Delivery page.
+func (t TrackedOrder) HasDriver() bool {
+	return t.DriverName != "" || t.DriverPhone != ""
 }
 
 // UpsertTracked records a parcel to watch. Already-known barcodes are
@@ -64,7 +84,8 @@ func existingValue(ctx context.Context, s *Service, shopID uuid.UUID, barcode, c
 func (s *Service) Tracked(ctx context.Context, shopID uuid.UUID) ([]TrackedOrder, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, barcode, order_id, customer_id, customer_name, customer_phone,
-		       last_status, status_label, last_seen_at
+		       last_status, status_label, driver_name, driver_phone,
+		       missing_count, last_missing_at, last_seen_at
 		FROM delivery_orders
 		WHERE shop_id = $1
 		ORDER BY last_seen_at DESC`,
@@ -79,7 +100,8 @@ func (s *Service) Tracked(ctx context.Context, shopID uuid.UUID) ([]TrackedOrder
 	for rows.Next() {
 		var t TrackedOrder
 		if err := rows.Scan(&t.ID, &t.ShopID, &t.Barcode, &t.OrderID, &t.CustomerID, &t.CustomerName,
-			&t.CustomerPhone, &t.LastStatus, &t.StatusLabel, &t.LastSeenAt); err != nil {
+			&t.CustomerPhone, &t.LastStatus, &t.StatusLabel, &t.DriverName, &t.DriverPhone,
+			&t.MissingCount, &t.LastMissingAt, &t.LastSeenAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -92,7 +114,8 @@ func (s *Service) TrackedByBarcode(ctx context.Context, shopID uuid.UUID, barcod
 	var t TrackedOrder
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, shop_id, barcode, order_id, customer_id, customer_name, customer_phone,
-		       last_status, status_label, last_seen_at
+		       last_status, status_label, driver_name, driver_phone,
+		       missing_count, last_missing_at, last_seen_at
 		FROM delivery_orders
 		WHERE shop_id = $1 AND barcode = $2`,
 		shopID, barcode,
@@ -104,18 +127,81 @@ func (s *Service) TrackedByBarcode(ctx context.Context, shopID uuid.UUID, barcod
 	return t, err
 }
 
-// UpdateTrackedStatus persists an observed status transition.
-func (s *Service) UpdateTrackedStatus(ctx context.Context, shopID uuid.UUID, barcode, status, label string) error {
+// TrackedAnyShopByBarcode finds a watched parcel by barcode alone. The carrier
+// account is the operator's, so a socket connection opened for one shop can
+// carry events for parcels another shop registered; the row says which shop
+// owns it, and the transition has to be recorded there.
+func (s *Service) TrackedAnyShopByBarcode(ctx context.Context, barcode string) (TrackedOrder, error) {
+	var t TrackedOrder
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, shop_id, barcode, order_id, customer_id, customer_name, customer_phone,
+		       last_status, status_label, driver_name, driver_phone,
+		       missing_count, last_missing_at, last_seen_at
+		FROM delivery_orders
+		WHERE barcode = $1
+		ORDER BY last_seen_at DESC
+		LIMIT 1`,
+		barcode,
+	).Scan(&t.ID, &t.ShopID, &t.Barcode, &t.OrderID, &t.CustomerID, &t.CustomerName,
+		&t.CustomerPhone, &t.LastStatus, &t.StatusLabel, &t.DriverName, &t.DriverPhone,
+		&t.MissingCount, &t.LastMissingAt, &t.LastSeenAt)
+	if err == pgx.ErrNoRows {
+		return TrackedOrder{}, nil
+	}
+	return t, err
+}
+
+// UpdateTrackedStatus persists an observed status transition along with the
+// driver the carrier reported, if any. An empty observation keeps whatever was
+// stored before: the REST poll and the socket both feed this funnel and a
+// partial answer (a status without a deliveryman) must not erase a name another
+// call already supplied.
+func (s *Service) UpdateTrackedStatus(ctx context.Context, shopID uuid.UUID, barcode, status, label, driverName, driverPhone string) error {
 	if label == "" {
 		label = LabelFor(status)
 	}
 	_, err := s.pool.Exec(ctx, `
 		UPDATE delivery_orders
-		SET last_status = $3, status_label = $4, last_seen_at = now(), updated_at = now()
+		SET last_status = $3, status_label = $4,
+		    driver_name = CASE WHEN $5 = '' THEN delivery_orders.driver_name ELSE $5 END,
+		    driver_phone = CASE WHEN $6 = '' THEN delivery_orders.driver_phone ELSE $6 END,
+		    missing_count = 0, last_missing_at = NULL,
+		    last_seen_at = now(), updated_at = now()
 		WHERE shop_id = $1 AND barcode = $2`,
-		shopID, barcode, status, label,
+		shopID, barcode, status, label, driverName, driverPhone,
 	)
 	return err
+}
+
+// MarkMissingUpstream records that the carrier did not know the barcode. Only
+// after missesBeforeMissedInARow consecutive misses is the parcel settled as
+// StatusRemovedUpstream, so one replication hiccup cannot silently end tracking.
+func (s *Service) MarkMissingUpstream(ctx context.Context, shopID uuid.UUID, barcode string, missesBefore int) (settled bool, err error) {
+	if missesBefore < 1 {
+		missesBefore = 1
+	}
+	var label string
+	// last_seen_at is left alone on purpose: it answers "when did the carrier last
+	// know this parcel", and a miss is not a sighting. last_missing_at carries the
+	// other half of the picture.
+	err = s.pool.QueryRow(ctx, `
+		UPDATE delivery_orders
+		SET missing_count = missing_count + 1,
+		    last_missing_at = now(),
+		    last_status = CASE WHEN missing_count + 1 >= $3 THEN $4 ELSE delivery_orders.last_status END,
+		    status_label = CASE WHEN missing_count + 1 >= $3 THEN $5 ELSE delivery_orders.status_label END,
+		    updated_at = now()
+		WHERE shop_id = $1 AND barcode = $2
+		RETURNING last_status`,
+		shopID, barcode, missesBefore, StatusRemovedUpstream, LabelFor(StatusRemovedUpstream),
+	).Scan(&label)
+	if err == pgx.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return label == StatusRemovedUpstream, nil
 }
 
 // TouchTracked bumps last_seen_at without changing the status (an unchanged
@@ -123,7 +209,7 @@ func (s *Service) UpdateTrackedStatus(ctx context.Context, shopID uuid.UUID, bar
 func (s *Service) TouchTracked(ctx context.Context, shopID uuid.UUID, barcode string) error {
 	_, err := s.pool.Exec(ctx, `
 		UPDATE delivery_orders
-		SET last_seen_at = now()
+		SET last_seen_at = now(), missing_count = 0, last_missing_at = NULL
 		WHERE shop_id = $1 AND barcode = $2`,
 		shopID, barcode,
 	)

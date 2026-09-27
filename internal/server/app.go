@@ -111,6 +111,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/templates/{id}/delete", kit.Handler(a.handleTemplateDelete))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
 		pr.Get("/settings/delivery", kit.Handler(a.handleDeliverySettings))
+		pr.Post("/settings/delivery/poll", kit.Handler(a.handleDeliveryPoll))
 		pr.Post("/settings/delivery/connect", kit.Handler(a.handleDeliveryConnect))
 		pr.Post("/settings/delivery/disconnect", kit.Handler(a.handleDeliveryDisconnect))
 		pr.Post("/settings/delivery/track/{barcode}/remove", kit.Handler(a.handleDeliveryTrackRemove))

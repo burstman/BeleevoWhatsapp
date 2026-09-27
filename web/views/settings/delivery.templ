@@ -1,6 +1,9 @@
 package settings
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/delivery"
@@ -13,8 +16,57 @@ type DeliveryFlash struct {
 	Info  string
 }
 
+// pollStaleAfter is when a parcel that has not been seen for longer than this is
+// flagged: the poller sweeps every two minutes, so a longer silence means the
+// sweep is failing rather than the parcel being quiet.
+const pollStaleAfter = 10 * time.Minute
+
+// seenAge renders an elapsed time in the compact form the table uses.
+func seenAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	}
+	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// seenClass marks a parcel the poller has not touched in a while, so an operator
+// can tell a quiet parcel from a broken sweep.
+func seenClass(d time.Duration) string {
+	if d > pollStaleAfter {
+		return "font-medium text-rose-600"
+	}
+	return "text-slate-500"
+}
+
+// watchedSummary counts what the operator is waiting on, including how many
+// parcels a driver is attached to: a delivery template that places a driver
+// variable cannot send until there is one.
+func watchedSummary(tracked []delivery.TrackedOrder) (watched, withDriver, terminal int) {
+	for _, t := range tracked {
+		watched++
+		if t.HasDriver() {
+			withDriver++
+		}
+		if delivery.StatusTerminal(t.LastStatus) {
+			terminal++
+		}
+	}
+	return
+}
+
+func watchedSummaryText(tracked []delivery.TrackedOrder) string {
+	watched, withDriver, terminal := watchedSummary(tracked)
+	return fmt.Sprintf("%d watched \u00b7 %d with a driver \u00b7 %d finished", watched, withDriver, terminal)
+}
+
 templ Delivery(page components.Page, integ *delivery.Integration, tracked []delivery.TrackedOrder, shopNames map[uuid.UUID]string, flash DeliveryFlash) {
 	@layouts.Shell(page) {
+		{{ now := time.Now() }}
 		<div class="mx-auto max-w-3xl space-y-6">
 			<div>
 				<h1 class="text-2xl font-bold text-slate-900">Delivery</h1>
@@ -93,12 +145,25 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 			}
 
 			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-				<div class="border-b border-slate-100 px-6 py-4">
+				<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-6 py-4">
 					<h3 class="text-sm font-semibold text-slate-700">Tracked parcels</h3>
+					if len(tracked) > 0 {
+						<span class="text-xs text-slate-500">{ watchedSummaryText(tracked) }</span>
+					}
 				</div>
-				<div class="border-b border-slate-100 px-6 py-3 text-xs text-slate-500">
-					Parcels appear when a Converty order event carries a tracking reference. You can
-					remove one here to stop polling it.
+				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 text-xs text-slate-500">
+					<span>
+						Parcels appear when a Converty order event carries a tracking reference. You can
+						remove one here to stop polling it.
+					</span>
+					if integ != nil {
+						<form method="post" action="/settings/delivery/poll">
+							<button type="submit"
+								class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
+							Check now
+						</button>
+						</form>
+					}
 				</div>
 				if len(tracked) == 0 {
 					<div class="px-6 py-10 text-center text-sm text-slate-500">
@@ -113,6 +178,8 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 									<th class="px-6 py-3 font-medium">Order</th>
 									<th class="px-6 py-3 font-medium">Customer</th>
 									<th class="px-6 py-3 font-medium">Status</th>
+									<th class="px-6 py-3 font-medium">Driver</th>
+									<th class="px-6 py-3 font-medium">Last seen</th>
 									<th class="px-6 py-3 font-medium"></th>
 								</tr>
 							</thead>
@@ -135,6 +202,32 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 										} else {
 											<span class="font-medium text-slate-900">{ t.StatusLabel }</span>
 											<span class="text-xs text-slate-400"> ({ t.LastStatus })</span>
+										}
+									</td>
+									<td class="px-6 py-3">
+										if t.HasDriver() {
+											if t.DriverName != "" {
+												<span class="font-medium text-slate-900">{ t.DriverName }</span>
+											} else {
+												<span class="text-slate-500">name not reported</span>
+											}
+											if t.DriverPhone != "" {
+												<span class="ml-1 text-xs text-slate-400">{ t.DriverPhone }</span>
+											}
+										} else {
+											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not assigned</span>
+										}
+									</td>
+									<td class="px-6 py-3">
+										if t.MissingCount > 0 {
+											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not listed at the carrier, { seenAge(t.MissingFor(now)) }</span>
+										} else {
+											<span class={ seenClass(now.Sub(t.LastSeenAt)) }>{ seenAge(now.Sub(t.LastSeenAt)) }</span>
+										}
+										if t.LastStatus == delivery.StatusRemovedUpstream {
+											<span class="ml-1 text-xs text-slate-400">deleted at the carrier, no longer polled</span>
+										} else if delivery.StatusTerminal(t.LastStatus) {
+											<span class="ml-1 text-xs text-slate-400">final, no longer polled</span>
 										}
 									</td>
 									<td class="px-6 py-3 text-right">

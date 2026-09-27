@@ -223,24 +223,26 @@ func (s *Service) socketRunOnce(ctx context.Context, shopID, token string, onCha
 // onSocketEvent turns one pushed status into the same tracked-parcel pipeline
 // the REST poller uses, so delivery automations fire in near real time.
 func (s *Service) onSocketEvent(ctx context.Context, shopID string, e mescolisEvent, onChanged func(context.Context, StatusChange) error) error {
-	sid, err := uuid.Parse(shopID)
-	if err != nil {
+	if _, err := uuid.Parse(shopID); err != nil {
 		return err
 	}
 	if e.Barcode == "" || e.Status == "" {
 		s.log.Debug("mescolis socket event missing barcode/status", "shop_id", shopID)
 		return nil
 	}
-	tracked, err := s.TrackedByBarcode(ctx, sid, e.Barcode)
+	// The connection was opened with the operator's account token, not a single
+	// shop's, so the event is resolved by barcode and the transition is recorded
+	// against the shop that actually registered the parcel.
+	tracked, err := s.TrackedAnyShopByBarcode(ctx, e.Barcode)
 	if err != nil {
 		return err
 	}
 	if tracked.ID == uuid.Nil {
 		s.log.Debug("mescolis socket event for untracked parcel, ignoring",
-			"shop_id", shopID, "barcode", e.Barcode)
+			"connection_shop_id", shopID, "barcode", e.Barcode)
 		return nil
 	}
-	return s.recordTransition(ctx, sid, e.Barcode, tracked.OrderID, tracked.LastStatus, e.Status, "",
+	return s.recordTransition(ctx, tracked.ShopID, e.Barcode, tracked.OrderID, tracked.LastStatus, e.Status, "",
 		e.DeliverymanName, e.DeliverymanPhoneNumber, onChanged)
 }
 
@@ -257,12 +259,17 @@ func (s *Service) recordTransition(ctx context.Context, shopID uuid.UUID, barcod
 	if label == "" {
 		label = LabelFor(status)
 	}
-	if err := s.UpdateTrackedStatus(ctx, shopID, barcode, status, label); err != nil {
+	if err := s.UpdateTrackedStatus(ctx, shopID, barcode, status, label, driverName, driverPhone); err != nil {
 		return err
 	}
 
+	// The driver is worth logging separately: it is what a delivery template
+	// places in the message, and a status change often arrives before the carrier
+	// assigns anyone, which is why a send can be skipped for a missing variable.
 	s.log.Info("delivery status changed",
-		"shop_id", shopID, "barcode", barcode, "from", prev, "to", status)
+		"shop_id", shopID, "barcode", barcode, "from", prev, "to", status,
+		"label", label, "driver_attached", driverName != "" || driverPhone != "",
+		"driver_name", driverName, "terminal", StatusTerminal(status))
 	if onChanged != nil {
 		return onChanged(ctx, StatusChange{
 			ShopID:      shopID,

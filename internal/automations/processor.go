@@ -163,12 +163,23 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 // ReconcileDelivery runs one sweep of the delivery poller. It is safe to call
 // repeatedly and is invoked on a ticker by the worker process.
 func (p *Processor) ReconcileDelivery(ctx context.Context) error {
+	_, err := p.SweepDelivery(ctx)
+	return err
+}
+
+// SweepDelivery is ReconcileDelivery with the number of status changes it
+// observed, so the manual "Check now" button on the Delivery page can show that
+// the poller is alive instead of leaving the operator guessing.
+func (p *Processor) SweepDelivery(ctx context.Context) (int, error) {
 	if p.delivery == nil {
-		return nil
+		return 0, nil
 	}
-	return p.delivery.Reconcile(ctx, func(ctx context.Context, ch delivery.StatusChange) error {
+	changes := 0
+	err := p.delivery.Reconcile(ctx, func(ctx context.Context, ch delivery.StatusChange) error {
+		changes++
 		return p.OnDeliveryChange(ctx, ch)
 	})
+	return changes, err
 }
 
 // SendInput is the resolved, ready-to-send automation input. fire decides when

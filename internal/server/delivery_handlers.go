@@ -1,8 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/anthdm/superkit/kit"
@@ -68,6 +70,14 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		flash.Info = "Delivery provider disconnected."
 	case "removed":
 		flash.Info = "Parcel removed from tracking."
+	case "polled":
+		changes, _ := strconv.Atoi(k.Request.URL.Query().Get("changes"))
+		checked, _ := strconv.Atoi(k.Request.URL.Query().Get("checked"))
+		if changes == 0 {
+			flash.Info = fmt.Sprintf("Checked %d parcel(s) — no new status changes.", checked)
+		} else {
+			flash.Info = fmt.Sprintf("Checked %d parcel(s) — %d status change(s) found.", checked, changes)
+		}
 	}
 
 	shopNames := shopNameMap(all)
@@ -148,6 +158,39 @@ func maskedToken(t string) string {
 		return "<short>"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
+}
+
+// handleDeliveryPoll runs the delivery sweep on demand. It is the same call the
+// two-minute ticker makes, automations included, so an operator can prove the
+// poller reaches Mes Colis instead of waiting to see whether a message arrives.
+func (a *App) handleDeliveryPoll(k *kit.Kit) error {
+	ctx := k.Request.Context()
+
+	allShops, err := a.Shops.List(ctx)
+	if err != nil {
+		return err
+	}
+	checked := 0
+	for _, s := range allShops {
+		rows, tErr := a.Delivery.Tracked(ctx, s.ID)
+		if tErr != nil {
+			return tErr
+		}
+		for _, t := range rows {
+			if !delivery.StatusTerminal(t.LastStatus) {
+				checked++
+			}
+		}
+	}
+
+	changes, err := a.Automations.SweepDelivery(ctx)
+	if err != nil {
+		a.Log.Error("delivery manual sweep failed", "error", err)
+		return k.Redirect(http.StatusSeeOther, "/settings/delivery?flash=error")
+	}
+	a.Log.Info("delivery manual sweep", "parcels_checked", checked, "status_changes", changes)
+	return k.Redirect(http.StatusSeeOther,
+		"/settings/delivery?flash=polled&changes="+strconv.Itoa(changes)+"&checked="+strconv.Itoa(checked))
 }
 
 // handleDeliveryTrackRemove stops watching a parcel, resolving the shop that
