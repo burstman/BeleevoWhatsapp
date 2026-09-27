@@ -202,7 +202,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<table class=\"w-full text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-400\"><tr><th class=\"px-6 py-3 font-medium\">Shop</th><th class=\"px-6 py-3 font-medium\">Barcode</th><th class=\"px-6 py-3 font-medium\">Order</th><th class=\"px-6 py-3 font-medium\">Customer</th><th class=\"px-6 py-3 font-medium\">Status</th><th class=\"px-6 py-3 font-medium\">Driver</th><th class=\"px-6 py-3 font-medium\">Last seen</th><th class=\"px-6 py-3 font-medium\"></th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "   <div class=\"overflow-x-auto\"><table class=\"w-full min-w-[64rem] text-left text-sm\"><thead class=\"bg-slate-50 text-xs uppercase tracking-wide text-slate-600\"><tr><th class=\"px-6 py-3 font-medium\">Shop</th><th class=\"px-6 py-3 font-medium\">Barcode</th><th class=\"px-6 py-3 font-medium\">Order</th><th class=\"px-6 py-3 font-medium\">Customer</th><th class=\"px-6 py-3 font-medium\">Status</th><th class=\"px-6 py-3 font-medium\">Driver</th><th class=\"px-6 py-3 font-medium\">Last seen</th><th class=\"px-6 py-3 font-medium\"></th></tr></thead> <tbody class=\"divide-y divide-slate-100\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -219,7 +219,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 191, Col: 129}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 195, Col: 129}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 						if templ_7745c5c3_Err != nil {
@@ -230,14 +230,14 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span class=\"text-xs text-slate-400\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span class=\"text-xs text-slate-500\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var7 string
 						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.ShopID.String()[:8])
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 193, Col: 71}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 197, Col: 71}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 						if templ_7745c5c3_Err != nil {
@@ -255,7 +255,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(t.Barcode)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 196, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 200, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -268,7 +268,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.OrderID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 197, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 201, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(t.CustomerName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 198, Col: 62}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 202, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -294,7 +294,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(t.CustomerPhone)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 198, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 202, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -305,7 +305,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						return templ_7745c5c3_Err
 					}
 					if t.LastStatus == "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"text-slate-400\">waiting for first poll</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"text-slate-500\">waiting for first poll</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -317,20 +317,20 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(t.StatusLabel)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 203, Col: 67}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 207, Col: 67}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> <span class=\"text-xs text-slate-400\">(")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> <span class=\"text-xs text-slate-500\">(")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var13 string
 						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(t.LastStatus)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 204, Col: 64}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 208, Col: 64}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 						if templ_7745c5c3_Err != nil {
@@ -354,7 +354,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 							var templ_7745c5c3_Var14 string
 							templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.DriverName)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 210, Col: 67}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 214, Col: 67}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 							if templ_7745c5c3_Err != nil {
@@ -375,14 +375,14 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 							return templ_7745c5c3_Err
 						}
 						if t.DriverPhone != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"ml-1 text-xs text-slate-400\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"ml-1 text-xs text-slate-500\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var15 string
 							templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(t.DriverPhone)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 215, Col: 69}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 219, Col: 69}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 							if templ_7745c5c3_Err != nil {
@@ -411,7 +411,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var16 string
 						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(seenAge(t.MissingFor(now)))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 223, Col: 177}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 227, Col: 177}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 						if templ_7745c5c3_Err != nil {
@@ -447,7 +447,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						var templ_7745c5c3_Var19 string
 						templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(seenAge(now.Sub(t.LastSeenAt)))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 225, Col: 92}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 229, Col: 92}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 						if templ_7745c5c3_Err != nil {
@@ -459,12 +459,12 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						}
 					}
 					if t.LastStatus == delivery.StatusRemovedUpstream {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<span class=\"ml-1 text-xs text-slate-400\">deleted at the carrier, no longer polled</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<span class=\"ml-1 text-xs text-slate-500\">deleted at the carrier, no longer polled</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else if delivery.StatusTerminal(t.LastStatus) {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"ml-1 text-xs text-slate-400\">final, no longer polled</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"ml-1 text-xs text-slate-500\">final, no longer polled</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -476,7 +476,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 					var templ_7745c5c3_Var20 templ.SafeURL
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings/delivery/track/" + t.Barcode + "/remove"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 234, Col: 105}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/settings/delivery.templ`, Line: 238, Col: 105}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -487,7 +487,7 @@ func Delivery(page components.Page, integ *delivery.Integration, tracked []deliv
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</tbody></table>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</tbody></table></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

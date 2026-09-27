@@ -170,8 +170,12 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 						No parcels being watched yet. Once a Converty order event carries a tracking reference, the parcel appears here automatically.
 					</div>
 				} else {
-					<table class="w-full text-left text-sm">
-						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+					// The card clips its corners, so a table wider than the card would
+					// lose its right-hand columns with no way to reach them. Scrolling
+					// inside the card keeps every column readable on a narrow screen.
+					<div class="overflow-x-auto">
+					<table class="w-full min-w-[64rem] text-left text-sm">
+						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
 <tr>
 									<th class="px-6 py-3 font-medium">Shop</th>
 									<th class="px-6 py-3 font-medium">Barcode</th>
@@ -190,7 +194,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 										if name, ok := shopNames[t.ShopID]; ok {
 											<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ name }</span>
 										} else {
-											<span class="text-xs text-slate-400">{ t.ShopID.String()[:8] }</span>
+											<span class="text-xs text-slate-500">{ t.ShopID.String()[:8] }</span>
 										}
 									</td>
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Barcode }</td>
@@ -198,10 +202,10 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 									<td class="px-6 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>
 									<td class="px-6 py-3">
 										if t.LastStatus == "" {
-											<span class="text-slate-400">waiting for first poll</span>
+											<span class="text-slate-500">waiting for first poll</span>
 										} else {
 											<span class="font-medium text-slate-900">{ t.StatusLabel }</span>
-											<span class="text-xs text-slate-400"> ({ t.LastStatus })</span>
+											<span class="text-xs text-slate-500"> ({ t.LastStatus })</span>
 										}
 									</td>
 									<td class="px-6 py-3">
@@ -212,7 +216,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 												<span class="text-slate-500">name not reported</span>
 											}
 											if t.DriverPhone != "" {
-												<span class="ml-1 text-xs text-slate-400">{ t.DriverPhone }</span>
+												<span class="ml-1 text-xs text-slate-500">{ t.DriverPhone }</span>
 											}
 										} else {
 											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not assigned</span>
@@ -225,9 +229,9 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 											<span class={ seenClass(now.Sub(t.LastSeenAt)) }>{ seenAge(now.Sub(t.LastSeenAt)) }</span>
 										}
 										if t.LastStatus == delivery.StatusRemovedUpstream {
-											<span class="ml-1 text-xs text-slate-400">deleted at the carrier, no longer polled</span>
+											<span class="ml-1 text-xs text-slate-500">deleted at the carrier, no longer polled</span>
 										} else if delivery.StatusTerminal(t.LastStatus) {
-											<span class="ml-1 text-xs text-slate-400">final, no longer polled</span>
+											<span class="ml-1 text-xs text-slate-500">final, no longer polled</span>
 										}
 									</td>
 									<td class="px-6 py-3 text-right">
@@ -240,6 +244,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 							}
 						</tbody>
 					</table>
+					</div>
 				}
 			</div>
 		</div>
