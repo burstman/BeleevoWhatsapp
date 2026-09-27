@@ -340,6 +340,26 @@ func (p *Processor) AutomationByID(ctx context.Context, id uuid.UUID) (*Automati
 	return &a, err
 }
 
+// AutomationEnabled reports whether an automation is still active. A queued send
+// is re-checked through it immediately before delivery: an automation that was
+// paused or deleted after the event fired must not deliver a message the
+// operator has switched off. Unknown ids report false, so a deleted automation
+// cancels the sends it had already queued.
+func (p *Processor) AutomationEnabled(ctx context.Context, id uuid.UUID) (bool, error) {
+	if id == uuid.Nil {
+		return true, nil
+	}
+	var enabled bool
+	err := p.pool.QueryRow(ctx, `SELECT enabled FROM automations WHERE id = $1`, id).Scan(&enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return enabled, nil
+}
+
 // match returns the enabled automation for a trigger, or an empty automation
 // when none (or one whose template was deleted) is configured.
 func (p *Processor) match(ctx context.Context, shopID uuid.UUID, source, status string) (Automation, error) {

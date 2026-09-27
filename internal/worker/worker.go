@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -61,7 +63,9 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(queue.TaskPurgeMarketingTemplate, wa.HandlePurgeMarketingTemplate)
-	mux.HandleFunc(queue.TaskSendWhatsAppTemplate, wa.HandleSendWhatsAppTemplate)
+	mux.HandleFunc(queue.TaskSendWhatsAppTemplate, gateAutomation(automations, func(ctx context.Context, task *asynq.Task) error {
+		return wa.HandleSendWhatsAppTemplate(ctx, task)
+	}, logger))
 
 	if err := srv.Start(mux); err != nil {
 		pool.Close()
@@ -78,6 +82,47 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 		"redis", redisOpt.Addr, "concurrency", 10,
 		"reconcile_interval", reconcileInterval, "mescolis_socket", delivery.MescolisSocketURL)
 	return &Server{log: logger, srv: srv, pool: pool, stop: stopDelivery}, nil
+}
+
+// automationLookup is the part of the automation processor the gate needs. It is
+// an interface so the gate can be tested without a database.
+type automationLookup interface {
+	AutomationEnabled(ctx context.Context, id uuid.UUID) (bool, error)
+}
+
+// gateAutomation re-checks an automation before its queued send is delivered.
+// Pausing switches off what fires next, but the job was already parked in Redis
+// — a scheduled send can sit there for hours — so without this check a pause
+// would only stop future events and the pending message would still go out.
+func gateAutomation(lookup automationLookup, next asynq.HandlerFunc, logger *slog.Logger) asynq.HandlerFunc {
+	return func(ctx context.Context, task *asynq.Task) error {
+		var job whatsapp.SendWhatsAppTemplateJob
+		if err := json.Unmarshal(task.Payload(), &job); err != nil {
+			// Malformed payload: let the sender deal with it rather than guessing here.
+			return next(ctx, task)
+		}
+		if job.AutomationID == uuid.Nil {
+			// Not an automation send, or one queued before automation ids were
+			// recorded. Nothing to check.
+			return next(ctx, task)
+		}
+
+		active, err := lookup.AutomationEnabled(ctx, job.AutomationID)
+		if err != nil {
+			// A failed lookup must not swallow a customer message: send on and let
+			// the send gate decide.
+			logger.Warn("automation gate: lookup failed, sending anyway",
+				"automation_id", job.AutomationID, "shop_id", job.ShopID, "error", err)
+			return next(ctx, task)
+		}
+		if !active {
+			logger.Info("queued send dropped: automation paused or deleted",
+				"automation_id", job.AutomationID, "shop_id", job.ShopID,
+				"customer_id", job.CustomerID, "template_id", job.TemplateID)
+			return nil
+		}
+		return next(ctx, task)
+	}
 }
 
 // reconcileLoop ticks the delivery poller until the context is cancelled.

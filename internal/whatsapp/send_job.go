@@ -17,7 +17,12 @@ import (
 // full tenant-scoped send gate. It carries the same fields as SendRequest so a
 // worker has everything needed without re-deriving context.
 type SendWhatsAppTemplateJob struct {
-	ShopID          uuid.UUID         `json:"shop_id"`
+	ShopID uuid.UUID `json:"shop_id"`
+	// AutomationID is the automation that queued this send, empty for a send that
+	// did not come from one. The worker re-checks it before sending so pausing an
+	// automation also stops a message that was already queued — including one
+	// parked in Redis for a future scheduled time.
+	AutomationID    uuid.UUID         `json:"automation_id,omitempty"`
 	CustomerID      uuid.UUID         `json:"customer_id"`
 	TemplateID      uuid.UUID         `json:"template_id"`
 	ConvertyOrderID string            `json:"converty_order_id"`
