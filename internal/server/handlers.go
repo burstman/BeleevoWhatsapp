@@ -36,7 +36,15 @@ func (a *App) handleIndex(k *kit.Kit) error {
 // live apps. It intentionally skips auth so the URL can be published to the
 // WhatsApp review and marketing materials.
 func (a *App) handlePrivacyPage(k *kit.Kit) error {
-	return k.Render(vlegal.Privacy())
+	return k.Render(vlegal.Privacy(a.Cfg.SupportEmail))
+}
+
+// handleDataDeletionPage renders the public data-deletion instructions, the
+// URL Meta's app review asks for alongside the privacy policy. Like the
+// policy it is unauthenticated so reviewers and customers can open it
+// directly.
+func (a *App) handleDataDeletionPage(k *kit.Kit) error {
+	return k.Render(vlegal.DataDeletion(a.Cfg.SupportEmail))
 }
 
 func (a *App) handleOverview(k *kit.Kit) error {

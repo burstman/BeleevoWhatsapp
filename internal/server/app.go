@@ -76,6 +76,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Use(kit.WithAuthentication(authConfig, false))
 		pr.Get("/", kit.Handler(a.handleIndex))
 		pr.Get("/privacy", kit.Handler(a.handlePrivacyPage))
+		pr.Get("/data-deletion", kit.Handler(a.handleDataDeletionPage))
 		pr.Get("/login", kit.Handler(a.handleLoginGet))
 		pr.Post("/login", kit.Handler(a.handleLoginPost))
 		pr.Post("/logout", kit.Handler(a.handleLogout))

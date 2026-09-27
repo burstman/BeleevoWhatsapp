@@ -242,7 +242,7 @@ func AuthLayout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<footer class=\"mt-8 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500\"><a href=\"/privacy\" class=\"font-medium text-slate-600 hover:text-slate-700\">Privacy Policy</a> <a href=\"/data-deletion\" class=\"font-medium text-slate-600 hover:text-slate-700\">Data deletion</a></footer></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

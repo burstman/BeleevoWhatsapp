@@ -84,6 +84,11 @@ func (a *App) handleLogout(k *kit.Kit) error {
 	return k.Redirect(http.StatusSeeOther, "/login")
 }
 
+// handleNotFound renders the 404 page. The status has to be set explicitly:
+// Render only streams the component to the ResponseWriter, so without this a
+// missing page answers 200. Link checkers (including Meta's) then treat a dead
+// link as a working page.
 func (a *App) handleNotFound(k *kit.Kit) error {
+	k.Response.WriteHeader(http.StatusNotFound)
 	return k.Render(errortpl.NotFoundPage())
 }

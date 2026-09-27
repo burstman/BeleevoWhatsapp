@@ -1,0 +1,98 @@
+package viewslegal
+
+// DataDeletion is the public data-deletion instructions page. Meta's app
+// review asks for a Data Deletion Instructions URL whenever an app stores user
+// data, so it is served unauthenticated at /data-deletion and describes exactly
+// what the Platform holds, how to ask for erasure and what is retained.
+templ DataDeletion(supportEmail string) {
+	@Shell("Data Deletion Instructions", "How to request deletion of your personal data held by Converty WhatsApp.") {
+		<h1 class="text-3xl font-bold text-slate-900">Data Deletion Instructions</h1>
+		<p class="mt-1 text-sm text-slate-500">Last updated: September 27, 2026</p>
+		<p class="mt-4 text-sm leading-relaxed text-slate-700">
+			This page explains what personal data Converty WhatsApp (the "Platform") holds, how
+			to ask us to delete it, and what we are required to keep. It is the companion to
+			our <a href="/privacy" class="font-medium text-indigo-600 underline hover:text-indigo-700">Privacy Policy</a>.
+		</p>
+
+		<div class="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">1. What data we hold</h2>
+				<p class="mt-2">For your shop we hold:</p>
+				<ul class="mt-2 list-disc space-y-1 pl-5">
+					<li><span class="font-medium">Account data</span> — your name, email address and a hashed password, plus active sign-in sessions.</li>
+					<li><span class="font-medium">Integration data</span> — your shop details, the Converty and WhatsApp credentials you connected (stored encrypted), your WhatsApp number and business account identifiers.</li>
+					<li><span class="font-medium">Automation configuration</span> — the order statuses you chose to notify, the templates you selected, the send times you set and the tokens each template fills in.</li>
+				</ul>
+				<p class="mt-2">For your customers we hold:</p>
+				<ul class="mt-2 list-disc space-y-1 pl-5">
+					<li><span class="font-medium">Customer records</span> — the name and phone number of a customer who received a message from you, and their consent or opt-out status.</li>
+					<li><span class="font-medium">Message records</span> — what was sent, to which number, using which template, with its delivery status and timestamps.</li>
+					<li><span class="font-medium">Order and delivery records</span> — the order references, statuses, tracking codes, carrier and driver details needed to produce your notifications, and the last time each parcel was polled.</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">2. How to request deletion</h2>
+				@contactLine(supportEmail, "Data deletion request")
+				<p class="mt-2">
+					If you are a customer of one of the shops using the Platform, the fastest route is
+					to ask that shop directly, since it decides which messages you receive. You can
+					also write to us directly and we will pass the request to the relevant shop.
+				</p>
+				<p class="mt-2">
+					We aim to confirm receipt within 7 days and to complete the deletion within 30
+					days of confirming the request. We will tell you what we deleted and what, if
+					anything, we are required to retain.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">3. What we delete</h2>
+				<p class="mt-2">
+					On request we remove your account and integration credentials, your automation
+					configuration, and the customer, consent, message, order and delivery records
+					associated with your shop. We also stop all sending immediately: a deletion
+					request is treated as a full opt-out, so no further message can be sent to the
+					affected numbers.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">4. What we keep, and why</h2>
+				<p class="mt-2">
+					Some records are retained in a reduced or anonymised form where we are required
+					or permitted to keep them:
+				</p>
+				<ul class="mt-2 list-disc space-y-1 pl-5">
+					<li><span class="font-medium">Message delivery evidence</span> — we keep the fact that a message was sent and its delivery status, without the message body, for the period needed to answer delivery disputes and billing enquiries.</li>
+					<li><span class="font-medium">Suppression records</span> — we keep a record of numbers that asked not to be contacted, so we never re-send to someone who opted out. Deleting these would let us contact a recipient again by mistake.</li>
+					<li><span class="font-medium">Security and operational logs</span> — retained to investigate abuse, fraud and incidents, and then deleted.</li>
+				</ul>
+			</section>
+
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">5. Data held by other providers</h2>
+				<p class="mt-2">
+					Messages are delivered through Meta's WhatsApp Business infrastructure, and a
+					copy of the message content, recipient number and delivery status is processed by
+					Meta under its own policies and retention rules. We cannot erase data from
+					Meta's systems on your behalf. We can, and do, stop sending to a number and
+					delete our own copy of your data. Converty and the carrier share only the
+					details listed in section 1 of this page, and you can ask us to stop the
+					corresponding integration, which ends that sharing.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="text-lg font-semibold text-slate-900">6. Contact</h2>
+				<p class="mt-2">
+					Questions about this page, or about the deletion of your data, can be sent to
+					our support team.
+				</p>
+				@contactLine(supportEmail, "Data deletion request")
+			</section>
+		</div>
+
+		@legalFooter()
+	}
+}

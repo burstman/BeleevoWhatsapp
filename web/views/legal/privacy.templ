@@ -2,20 +2,10 @@ package viewslegal
 
 // Privacy is the public Privacy Policy page (Meta requires each live app to
 // publish one). Served unauthenticated at /privacy.
-templ Privacy() {
-	<!DOCTYPE html>
-	<html lang="en" class="h-full">
-		<head>
-			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>Privacy Policy · Converty WhatsApp</title>
-			<link rel="stylesheet" href="/static/css/styles.css"/>
-		</head>
-		<body class="h-full bg-slate-50 text-slate-900 antialiased">
-			<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-				<a href="/" class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">← Back to home</a>
-				<h1 class="text-3xl font-bold text-slate-900">Privacy Policy</h1>
-				<p class="mt-1 text-sm text-slate-500">Last updated: September 22, 2026</p>
+templ Privacy(supportEmail string) {
+	@Shell("Privacy Policy", "How Converty WhatsApp collects, uses, shares and deletes personal data.") {
+<h1 class="text-3xl font-bold text-slate-900">Privacy Policy</h1>
+				<p class="mt-1 text-sm text-slate-500">Last updated: September 27, 2026</p>
 
 				<div class="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
 					<section>
@@ -62,20 +52,38 @@ templ Privacy() {
 						</p>
 					</section>
 
-					<section>
-						<h2 class="text-lg font-semibold text-slate-900">5. How we share information</h2>
-						<p class="mt-2">
-							We share information only to the extent necessary to operate the Service.
-							This includes Meta Platforms, Inc. (the provider of WhatsApp Business
-							infrastructure through which messages are delivered), and hosting/cloud
-							infrastructure providers we rely on. Our service providers are bound by
-							confidentiality and data-protection obligations. We may disclose data where
-							required by law, or to protect the rights and safety of users and the public.
-						</p>
-					</section>
+				<section>
+					<h2 class="text-lg font-semibold text-slate-900">5. How we share information</h2>
+					<p class="mt-2">
+						We share information only to the extent necessary to operate the Service,
+						with the following providers acting as sub-processors:
+					</p>
+					<ul class="mt-2 list-disc space-y-1 pl-5">
+						<li><span class="font-medium">Meta Platforms, Inc.</span> — the provider of WhatsApp Business infrastructure through which messages are delivered. Message content, recipient phone numbers and delivery status are processed by Meta to route the messages, in line with the WhatsApp Business Messaging Policy.</li>
+						<li><span class="font-medium">Converty</span> — the commerce platform that sends us the order events (order reference, status, customer name and phone number) that trigger the messages we send on the merchant's behalf.</li>
+						<li><span class="font-medium">Mes Colis Express</span> — the carrier API we query for parcel tracking status when a merchant connects their delivery account, limited to the references they configure.</li>
+						<li><span class="font-medium">Hosting and database providers</span> — cloud infrastructure, which processes data on our instructions under confidentiality and data-protection obligations.</li>
+					</ul>
+					<p class="mt-2">
+						We do not sell personal data. We may disclose data where required by law, or
+						to protect the rights and safety of users and the public.
+					</p>
+				</section>
 
-					<section>
-						<h2 class="text-lg font-semibold text-slate-900">6. How long we keep data</h2>
+				<section>
+					<h2 class="text-lg font-semibold text-slate-900">6. Opting out</h2>
+					<p class="mt-2">
+						Notifications are sent to customers by the merchant that uses the Service.
+						Recipients can stop the messages at any time by replying with the keyword
+						registered as an opt-out for that template, by blocking the sending number,
+						or by asking the merchant directly. When a customer opts out, the Platform
+						records that decision and does not send further messages to that number for
+						the template concerned.
+					</p>
+				</section>
+
+				<section>
+					<h2 class="text-lg font-semibold text-slate-900">7. How long we keep data</h2>
 						<p class="mt-2">
 							We retain account data for as long as your account is active, and delete or
 							anonymise it within a reasonable period after you close your account.
@@ -86,7 +94,7 @@ templ Privacy() {
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900">7. Security</h2>
+						<h2 class="text-lg font-semibold text-slate-900">8. Security</h2>
 						<p class="mt-2">
 							Access tokens and sensitive credentials are encrypted at rest, and access
 							to production systems is restricted and monitored. No method of
@@ -95,28 +103,28 @@ templ Privacy() {
 						</p>
 					</section>
 
-					<section>
-						<h2 class="text-lg font-semibold text-slate-900">8. Your rights</h2>
-						<p class="mt-2">
-							Depending on where you live, you may have rights of access, rectification,
-							erasure, restriction, portability and objection under applicable data
-							protection law (including the GDPR if you are in the EEA). To exercise a
-							right, contact us using the details below. You may also complain to your
-							local supervisory authority.
-						</p>
-					</section>
+				<section>
+					<h2 class="text-lg font-semibold text-slate-900">9. Your rights</h2>
+					<p class="mt-2">
+						Depending on where you live, you may have rights of access, rectification,
+						erasure, restriction, portability and objection under applicable data
+						protection law (including the GDPR if you are in the EEA). You may also
+						complain to your local supervisory authority.
+					</p>
+					<p class="mt-2">
+						<a href="/data-deletion" class="font-medium text-indigo-600 underline hover:text-indigo-700">How to request deletion of your data</a>
+						describes what we hold, how to ask us to erase it and how long each category
+						is kept. Write to us at the address in the next section for any other right.
+					</p>
+				</section>
+
+				<section>
+					<h2 class="text-lg font-semibold text-slate-900">10. Contact</h2>
+					@contactLine(supportEmail, "Privacy")
+				</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900">9. Contact</h2>
-						<p class="mt-2">
-							Questions about this policy or your data can be sent to our support team.
-							Please reference "Privacy" in the subject line. (Update this section with
-							your contact email address before going live.)
-						</p>
-					</section>
-
-					<section>
-						<h2 class="text-lg font-semibold text-slate-900">10. Changes to this policy</h2>
+						<h2 class="text-lg font-semibold text-slate-900">11. Changes to this policy</h2>
 						<p class="mt-2">
 							We may update this policy from time to time. The "Last updated" date at the
 							top of this page reflects the latest revision. Material changes will be
@@ -125,11 +133,6 @@ templ Privacy() {
 					</section>
 				</div>
 
-				<footer class="mt-12 flex items-center gap-4 border-t border-slate-200 pt-4 text-xs text-slate-500">
-					<span>Converty WhatsApp © 2026</span>
-					<a href="/privacy" class="font-medium text-slate-600">Privacy</a>
-				</footer>
-			</div>
-		</body>
-	</html>
+		@legalFooter()
+	}
 }

@@ -27,6 +27,12 @@ type Config struct {
 	AdminEmail    string
 	AdminPassword string
 
+	// SupportEmail is published on the public Privacy Policy and Data Deletion
+	// pages as the address customers and Meta's reviewers can reach us on. It
+	// must be a real, monitored mailbox: Meta rejects a privacy policy whose
+	// contact section is missing or unreachable.
+	SupportEmail string
+
 	// Converty OAuth integration (Phase 2).
 	ConvertyClientID     string
 	ConvertyClientSecret string
@@ -85,6 +91,7 @@ func Load() Config {
 
 		AdminEmail:    getenv("ADMIN_EMAIL", "admin@bleevoo.local"),
 		AdminPassword: getenv("ADMIN_PASSWORD", "change-me-admin-12345"),
+		SupportEmail:  getenv("SUPPORT_EMAIL", ""),
 
 		ConvertyClientID:        getenv("CONVERTY_CLIENT_ID", ""),
 		ConvertyClientSecret:    getenv("CONVERTY_CLIENT_SECRET", ""),

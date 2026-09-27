@@ -43,6 +43,8 @@ services:
         sync: false # the single operator account email (no public registration)
       - key: ADMIN_PASSWORD
         sync: false # the single operator account password
+      - key: SUPPORT_EMAIL
+        sync: false # published on /privacy + /data-deletion; a real, monitored mailbox
       - key: META_SYSTEM_USER_TOKEN
         sync: false # platform's long-lived Meta system-user token (provisioning)
       - key: META_PHONE_NUMBER_ID
