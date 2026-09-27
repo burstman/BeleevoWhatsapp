@@ -44,7 +44,7 @@ services:
       - key: ADMIN_PASSWORD
         sync: false # the single operator account password
       - key: SUPPORT_EMAIL
-        sync: false # published on /privacy + /data-deletion; a real, monitored mailbox
+        sync: false # optional override; defaults to the address in internal/config
       - key: META_SYSTEM_USER_TOKEN
         sync: false # platform's long-lived Meta system-user token (provisioning)
       - key: META_PHONE_NUMBER_ID
