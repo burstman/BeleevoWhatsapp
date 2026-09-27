@@ -99,7 +99,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</div>
 							<div id="convertyTrigger" class={ triggerClass(source, "converty") }>
 								<label for="eventStatus" class="block text-sm font-medium text-slate-700">Trigger on</label>
-								<select id="eventStatus" name="event_status" required
+								<select id="eventStatus" name="event_status" required disabled={ source == "delivery" }
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
 									for _, s := range automations.ConvertyStatuses() {
@@ -109,7 +109,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 							</div>
 							<div id="deliveryTrigger" class={ triggerClass(source, "delivery") }>
 								<label for="eventStatusDelivery" class="block text-sm font-medium text-slate-700">Trigger on</label>
-								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+								<select id="eventStatusDelivery" name={ deliveryStatusField(source) } disabled={ source != "delivery" } class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
 									<option value="" disabled selected={ automationStatus(automation) == "" }>Choose a status…</option>
 									for _, s := range deliveryStatuses {
 										<option value={ s } selected={ automationStatus(automation) == s }>{ s }</option>
@@ -155,7 +155,7 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 									<div class="mt-2 grid grid-cols-4 gap-2">
 										for d := 1; d <= 7; d++ {
 											<label class="flex cursor-pointer items-center gap-1.5 text-sm text-slate-700">
-												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) }
+												<input type="checkbox" name="send_days" value={ strconv.Itoa(d) } checked={ dayChecked(automation, d) } disabled={ selectedMode(automation) != "fixed" }
 													class="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500" />
 												{ dayNames[d-1] }
 											</label>
@@ -164,13 +164,13 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 								</div>
 								<div>
 									<label for="sendTime" class="block text-sm font-medium text-slate-700">Send time</label>
-									<input id="sendTime" name="send_time" type="time" value={ sendTimeValue(automation) }
+									<input id="sendTime" name="send_time" type="time" value={ sendTimeValue(automation) } disabled={ selectedMode(automation) != "fixed" }
 										class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 								</div>
 							</div>
 							<div class="mt-4">
 								<label for="sendTimezone" class="block text-sm font-medium text-slate-700">Timezone (IANA)</label>
-								<input id="sendTimezone" name="send_timezone" type="text" value={ sendTimezoneValue(automation) }
+								<input id="sendTimezone" name="send_timezone" type="text" value={ sendTimezoneValue(automation) } disabled={ selectedMode(automation) != "fixed" }
 									placeholder="e.g. Africa/Tunis, UTC"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
@@ -184,11 +184,11 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 						<div id="delayedSchedule" class={ scheduleClass(automation, "delayed") }>
 							<div class="sm:w-64">
 								<label for="sendDelay" class="block text-sm font-medium text-slate-700">Delay after the event (minutes)</label>
-								<input id="sendDelay" name="send_delay_minutes" type="number" min="1" max="20160" value={ delayValue(automation) }
+								<input id="sendDelay" name="send_delay_minutes" type="number" min="1" max="20160" value={ delayInputValue(automation) } disabled={ selectedMode(automation) != "delayed" }
 									placeholder="e.g. 30"
 									class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
-							<p class="mt-3 text-xs text-slate-500">The message is sent { delayValue(automation) } minutes after the event, even if the daily send time has passed.</p>
+							<p class="mt-3 text-xs text-slate-500">The message is sent { delayHint(automation) } minutes after the event, even if the daily send time has passed.</p>
 						</div>
 					</div>
 
@@ -255,13 +255,21 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 		return form.querySelectorAll("input[name=send_days]:checked").length;
 	}
 
+	// Hidden fields must be disabled, not just invisible: a control that fails
+	// validation inside a display:none panel is skipped by the browser, so the
+	// submit is refused and the only trace is a console line pointing at a field
+	// the user cannot see. Disabling also keeps them out of the POST body.
+	function setHidden(el, hidden) {
+		if (!el) { return; }
+		el.classList.toggle("hidden", hidden);
+		var fields = el.querySelectorAll("input, select, textarea");
+		for (var i = 0; i < fields.length; i++) { fields[i].disabled = hidden; }
+	}
+
 	function syncSource() {
 		var delivery = source && source.value === "delivery";
-		if (conv && del) {
-			conv.classList.toggle("hidden", delivery);
-			del.classList.toggle("hidden", !delivery);
-		}
-		// A hidden required select blocks the submit with no visible error.
+		setHidden(conv, delivery);
+		setHidden(del, !delivery);
 		if (status && statusDel) {
 			status.required = !delivery;
 			statusDel.name = delivery ? "event_status" : "event_status_delivery";
@@ -270,8 +278,8 @@ templ AutomationFormPage(page components.Page, automation *automations.Automatio
 
 	function syncMode() {
 		var value = mode();
-		if (fixed) { fixed.classList.toggle("hidden", value !== "fixed"); }
-		if (delayed) { delayed.classList.toggle("hidden", value !== "delayed"); }
+		setHidden(fixed, value !== "fixed");
+		setHidden(delayed, value !== "delayed");
 	}
 
 	function templateProblem() {

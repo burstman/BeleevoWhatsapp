@@ -2,6 +2,7 @@ package viewsdashboard
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -83,6 +84,23 @@ func delayValue(a *automations.Automation) int {
 		return 0
 	}
 	return *a.DelayMinutes
+}
+
+// delayInputValue leaves the box empty for a new automation: a 0 next to min=1 is
+// a native range violation, and a field that fails validation while its panel is
+// hidden blocks the whole submit with an error Chrome cannot even show.
+func delayInputValue(a *automations.Automation) string {
+	if a == nil || a.DelayMinutes == nil {
+		return ""
+	}
+	return strconv.Itoa(*a.DelayMinutes)
+}
+
+func delayHint(a *automations.Automation) string {
+	if a == nil || a.DelayMinutes == nil {
+		return "the delay"
+	}
+	return strconv.Itoa(*a.DelayMinutes)
 }
 
 func selectedMode(a *automations.Automation) string {

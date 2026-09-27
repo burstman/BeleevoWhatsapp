@@ -10,6 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -93,6 +94,23 @@ func delayValue(a *automations.Automation) int {
 	return *a.DelayMinutes
 }
 
+// delayInputValue leaves the box empty for a new automation: a 0 next to min=1 is
+// a native range violation, and a field that fails validation while its panel is
+// hidden blocks the whole submit with an error Chrome cannot even show.
+func delayInputValue(a *automations.Automation) string {
+	if a == nil || a.DelayMinutes == nil {
+		return ""
+	}
+	return strconv.Itoa(*a.DelayMinutes)
+}
+
+func delayHint(a *automations.Automation) string {
+	if a == nil || a.DelayMinutes == nil {
+		return "the delay"
+	}
+	return strconv.Itoa(*a.DelayMinutes)
+}
+
 func selectedMode(a *automations.Automation) string {
 	if a == nil {
 		return "instant"
@@ -134,7 +152,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(a.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 106, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 124, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -162,7 +180,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(shopNames[a.ShopID])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 112, Col: 157}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 130, Col: 157}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -180,7 +198,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(a.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 115, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 133, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -198,7 +216,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var5 templ.SafeURL
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/automations/" + a.ID.String() + "/toggle"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 119, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 137, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +244,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var6 templ.SafeURL
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/automations/" + a.ID.String() + "/edit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 131, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 149, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -249,7 +267,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var7 templ.SafeURL
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/automations/" + a.ID.String() + "/delete"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 137, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 155, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -262,7 +280,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(typeLabel(a))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 148, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 166, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -280,7 +298,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(daysLabel(a.SendDays))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 150, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 168, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -298,7 +316,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(typeDetail(a))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 152, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 170, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -311,7 +329,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(automations.SourceLabel(a.EventSource))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 157, Col: 158}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 175, Col: 158}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -324,7 +342,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(a.OrderStatus)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 159, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 177, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -347,7 +365,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templateNames[a.TemplateID])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 171, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 189, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -365,7 +383,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(templateBodies[a.TemplateID])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 176, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 194, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -383,7 +401,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(templateNames[a.TemplateID])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 192, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 210, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -396,7 +414,7 @@ func automationCardBody(a automations.Automation, templateNames map[uuid.UUID]st
 			var templ_7745c5c3_Var16 templ.SafeURL
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/automations/" + a.ID.String() + "/test"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 203, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 221, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -456,7 +474,7 @@ func AutomationsPage(page components.Page, list []automations.Automation, templa
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 247, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 265, Col: 107}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
@@ -475,7 +493,7 @@ func AutomationsPage(page components.Page, list []automations.Automation, templa
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Info)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 250, Col: 115}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/automations.templ`, Line: 268, Col: 115}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
