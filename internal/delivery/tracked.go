@@ -177,6 +177,23 @@ func (s *Service) UpdateTrackedStatus(ctx context.Context, shopID uuid.UUID, bar
 	return err
 }
 
+// AttachDriver stores a courier the carrier reported without touching the status
+// or its label. Mes Colis pushes a courier attached after the parcel is already
+// moving as the *same* status with a driver attached, and the label it showed us
+// earlier is the merchant's wording, so overwriting it here would throw away a
+// better label than the one we would put back.
+func (s *Service) AttachDriver(ctx context.Context, shopID uuid.UUID, barcode, driverName, driverPhone string) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE delivery_orders
+		SET driver_name = CASE WHEN $3 = '' THEN delivery_orders.driver_name ELSE $3 END,
+		    driver_phone = CASE WHEN $4 = '' THEN delivery_orders.driver_phone ELSE $4 END,
+		    last_seen_at = now(), updated_at = now()
+		WHERE shop_id = $1 AND barcode = $2`,
+		shopID, barcode, driverName, driverPhone,
+	)
+	return err
+}
+
 // MarkMissingUpstream records that the carrier did not know the barcode. Only
 // after missesBeforeMissedInARow consecutive misses is the parcel settled as
 // StatusRemovedUpstream, so one replication hiccup cannot silently end tracking.

@@ -145,6 +145,14 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		orderID = change.OrderID
 	}
 
+	// A courier arriving on an unchanged status re-runs this with the canonical
+	// label, but the carrier's own wording is what the merchant has been reading
+	// all along, so keep it in the message.
+	statusLabel := change.Label
+	if change.Status == tracked.LastStatus && tracked.StatusLabel != "" {
+		statusLabel = tracked.StatusLabel
+	}
+
 	// The poller does not carry the driver on the change, so the stored row is
 	// the source of truth: the Mescolis socket is what records it. Prefer the
 	// change when it does have one, so a future path stays authoritative.
@@ -166,7 +174,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		CustomerName:   tracked.CustomerName,
 		CustomerPhone:  tracked.CustomerPhone,
 		OrderID:        orderID,
-		StatusLabel:    change.Label,
+		StatusLabel:    statusLabel,
 		TrackingCode:   change.Barcode,
 		DriverName:     driverName,
 		DriverPhone:    driverPhone,
@@ -416,6 +424,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) (sendOutcome, error)
 		p.log.Info("automation send scheduled",
 			"shop_id", in.ShopID, "customer_id", in.CustomerID,
 			"template_id", in.TemplateID, "trigger", in.StatusLabel, "fire_at", at)
+		p.clearSuppression(ctx, in.AutomationID, in.IdempotencyKey)
 		return outcomeScheduled, nil
 	}
 
@@ -429,6 +438,10 @@ func (p *Processor) send(ctx context.Context, in SendInput) (sendOutcome, error)
 		p.log.Warn("automation inline send failed", "shop_id", in.ShopID, "error", err)
 		return "", err
 	}
+	// The customer has the message now, so the held-back row that described the
+	// wait is over: leaving it would leave the merchant holding a message they
+	// already sent and told us to send again.
+	p.clearSuppression(ctx, in.AutomationID, in.IdempotencyKey)
 	return outcomeSent, nil
 }
 

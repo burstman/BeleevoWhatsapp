@@ -252,7 +252,35 @@ func (s *Service) onSocketEvent(ctx context.Context, shopID string, e mescolisEv
 // REST poller and the live socket.
 func (s *Service) recordTransition(ctx context.Context, shopID uuid.UUID, barcode, orderID, prev, status, labelHint, driverName, driverPhone string, onChanged func(context.Context, StatusChange) error) error {
 	if prev == status {
-		return s.TouchTracked(ctx, shopID, barcode)
+		if driverName == "" && driverPhone == "" {
+			return s.TouchTracked(ctx, shopID, barcode)
+		}
+		// The status did not change but a courier came with it, and that is the
+		// one observation a message held back on that courier is waiting for.
+		// Dropping it because "nothing changed" is how a name that has already
+		// arrived left a customer without their message all day.
+		if err := s.AttachDriver(ctx, shopID, barcode, driverName, driverPhone); err != nil {
+			return err
+		}
+		s.log.Info("delivery driver attached",
+			"shop_id", shopID, "barcode", barcode, "status", status,
+			"driver_name", driverName, "driver_phone", driverPhone)
+		if onChanged == nil {
+			return nil
+		}
+		// Re-run the pipeline for the same status. Every send this reaches is
+		// keyed on the parcel, so an order already messaged is skipped rather
+		// than messaged twice.
+		return onChanged(ctx, StatusChange{
+			ShopID:      shopID,
+			Barcode:     barcode,
+			OrderID:     orderID,
+			Status:      status,
+			Label:       LabelFor(status),
+			Previous:    prev,
+			DriverName:  driverName,
+			DriverPhone: driverPhone,
+		})
 	}
 
 	label := labelHint

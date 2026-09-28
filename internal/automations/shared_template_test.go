@@ -268,3 +268,93 @@ func TestDriverlessParcelIsNotHeldBack(t *testing.T) {
 		t.Errorf("suppressions = %d, want 0: the driver defaults should have satisfied the template", len(rows))
 	}
 }
+
+// A held-back message is a promise that it goes out when the missing piece
+// arrives. Once the courier is known the send happens by itself, and the row
+// that said "waiting on this" has to go with it: left behind, the merchant is
+// told to send a message the customer already received.
+//
+// The send here is scheduled rather than instant so it never reaches Meta - the
+// point under test is what happens to the held-back row, not the carrier's reply.
+//
+//	go test ./internal/automations/ -run TestSentMessageClearsHeldBackRow -v
+func TestSentMessageClearsHeldBackRow(t *testing.T) {
+	ctx := context.Background()
+	db := sharedTemplateDB(t)
+
+	shop := db.shop(t)
+	customer := seedCustomer(t, db, shop, "Radhwen Marayah", "+21693531118")
+
+	templateID := uuid.New()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO templates
+			(id, shop_id, meta_template_name, language, category, status,
+			 approval_status, marketing_flagged, components, variables_map, source)
+		VALUES ($1, $2, 'ordre_en_cours', 'fr', 'UTILITY', 'approved', 'approved', false,
+			'[{"type":"BODY","text":"Bonjour {{1}}, votre commande {{2}} est en route. Livreur: {{3}} Tel: {{4}}"}]'::jsonb,
+			'["customer_name","tracking_code","driver_name","driver_phone"]'::jsonb, 'delivery')`,
+		templateID, shop); err != nil {
+		t.Fatalf("insert template: %v", err)
+	}
+
+	automationID := uuid.New()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO automations (id, shop_id, order_status, name, event_source, template_id, delay_minutes)
+		VALUES ($1, $2, 'in-progress', 'Out for delivery', 'delivery', $3, 30)`,
+		automationID, shop, templateID); err != nil {
+		t.Fatalf("insert automation: %v", err)
+	}
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := &Processor{
+		pool:     db.Pool,
+		whatsapp: whatsapp.NewService(config.Config{}, db.Pool, log),
+		delivery: delivery.NewService(config.Config{}, db.Pool, log),
+		log:      log,
+	}
+	automation, err := p.match(ctx, shop, SourceDelivery, "in-progress")
+	if err != nil {
+		t.Fatalf("match: %v", err)
+	}
+
+	in := SendInput{
+		ShopID:         shop,
+		AutomationID:   automationID,
+		CustomerID:     customer,
+		TemplateID:     templateID,
+		CustomerName:   "Radhwen Marayah",
+		CustomerPhone:  "+21693531118",
+		OrderID:        "922153764102",
+		StatusLabel:    "En cours",
+		TrackingCode:   "922153764102",
+		DriverName:     "Borhen edine ben khlifa",
+		DriverPhone:    "29656683",
+		IdempotencyKey: "msc:" + shop.String() + ":in-progress:922153764102",
+		fire:           ruleFromSchedule(automation.Schedule()),
+	}
+
+	// The courier is unknown, so the message is held back.
+	held := in
+	held.DriverName, held.DriverPhone = "", ""
+	p.RecordSuppression(ctx, held, []whatsapp.TokenKey{whatsapp.TokenDriverName, whatsapp.TokenDriverPhone})
+	rows, err := SuppressionsForAutomation(ctx, db.Pool, automationID, 50)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("held-back rows = %d (err %v), want 1", len(rows), err)
+	}
+
+	outcome, err := p.send(ctx, in)
+	if err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if outcome != outcomeScheduled {
+		t.Fatalf("outcome = %q, want %q", outcome, outcomeScheduled)
+	}
+
+	rows, err = SuppressionsForAutomation(ctx, db.Pool, automationID, 50)
+	if err != nil {
+		t.Fatalf("read held-back rows: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("held-back rows = %d after the send, want 0: the customer has the message now", len(rows))
+	}
+}

@@ -119,3 +119,91 @@ func pool2Service(t *testing.T, pool *pgxpool.Pool) *Service {
 	t.Helper()
 	return NewService(config.Config{}, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
+
+// A courier is routinely attached to a parcel that is already out for delivery.
+// Mes Colis pushes that as the *same* status with the driver attached, so the
+// observation the message is waiting for arrives on a transition that, by the
+// "did the status change" test, never happened.
+//
+// recordTransition answered an unchanged status with a bare touch, which dropped
+// the driver on the floor. Nothing errored: the parcel kept its old empty driver,
+// the message stayed held back, and the name was sitting in the payload the whole
+// time. Two parcels in this deployment were waiting on exactly that.
+//
+//	go test ./internal/delivery/ -run TestDriverOnUnchangedStatus -v
+func TestDriverOnUnchangedStatus(t *testing.T) {
+	ctx := context.Background()
+	pool := deliveryTestDB(t)
+	svc := pool2Service(t, pool)
+	shop := uuid.New()
+	barcode := "948758517362"
+
+	if _, err := pool.Exec(ctx, `INSERT INTO shops (id, name) VALUES ($1, 'driver replay test')`, shop); err != nil {
+		t.Fatalf("insert shop: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO delivery_orders
+			(shop_id, barcode, order_id, customer_name, customer_phone, last_status,
+			 status_label, driver_name, driver_phone)
+		VALUES ($1, $2, '6ab7cab7', 'Badri Mondher', '+21698162832', 'in-progress',
+			'En cours', '', '')`,
+		shop, barcode); err != nil {
+		t.Fatalf("insert parcel: %v", err)
+	}
+
+	var seen []StatusChange
+	record := func(_ context.Context, ch StatusChange) error {
+		seen = append(seen, ch)
+		return nil
+	}
+
+	// The courier is attached: same status, driver present.
+	if err := svc.recordTransition(ctx, shop, barcode, "6ab7cab7", "in-progress", "in-progress", "",
+		"extra 1", "25223877", record); err != nil {
+		t.Fatalf("recordTransition: %v", err)
+	}
+
+	tracked, err := svc.TrackedByBarcode(ctx, shop, barcode)
+	if err != nil {
+		t.Fatalf("TrackedByBarcode: %v", err)
+	}
+	if tracked.DriverName != "extra 1" || tracked.DriverPhone != "25223877" {
+		t.Errorf("driver = %q / %q, want the courier from the push - discarding it is the bug this pins",
+			tracked.DriverName, tracked.DriverPhone)
+	}
+	if tracked.LastStatus != "in-progress" {
+		t.Errorf("status = %q, want it left alone", tracked.LastStatus)
+	}
+	if tracked.StatusLabel != "En cours" {
+		t.Errorf("label = %q, want the carrier's wording kept: a driver event carries no label of its own",
+			tracked.StatusLabel)
+	}
+	if len(seen) != 1 {
+		t.Fatalf("pipeline ran %d times, want 1: the held-back message is waiting for exactly this", len(seen))
+	}
+	if seen[0].DriverName != "extra 1" || seen[0].DriverPhone != "25223877" {
+		t.Errorf("replayed driver = %q / %q, want the courier from the push", seen[0].DriverName, seen[0].DriverPhone)
+	}
+	if seen[0].Status != "in-progress" || seen[0].Previous != "in-progress" {
+		t.Errorf("replay status = %q (from %q), want the automation re-matched on in-progress",
+			seen[0].Status, seen[0].Previous)
+	}
+
+	// An unchanged status with no courier is still just a touch: nothing to store
+	// and nothing to re-run.
+	seen = nil
+	if err := svc.recordTransition(ctx, shop, barcode, "6ab7cab7", "in-progress", "in-progress", "",
+		"", "", record); err != nil {
+		t.Fatalf("recordTransition: %v", err)
+	}
+	if len(seen) != 0 {
+		t.Errorf("pipeline ran %d times for a bare re-observation, want 0", len(seen))
+	}
+	tracked, err = svc.TrackedByBarcode(ctx, shop, barcode)
+	if err != nil {
+		t.Fatalf("TrackedByBarcode: %v", err)
+	}
+	if tracked.DriverName != "extra 1" {
+		t.Errorf("driver = %q, want the stored courier kept: a silent poll must not erase it", tracked.DriverName)
+	}
+}
