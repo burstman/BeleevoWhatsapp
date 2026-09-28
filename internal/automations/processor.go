@@ -155,6 +155,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 	if change.DriverPhone != "" {
 		driverPhone = change.DriverPhone
 	}
+	driverName, driverPhone = driverWithDefaults(driverName, driverPhone)
 
 	sch := automation.Schedule()
 	_, err = p.send(ctx, SendInput{
@@ -320,6 +321,33 @@ const (
 	outcomeTemplateMissing sendOutcome = "template_missing"
 	outcomeRejected        sendOutcome = "rejected"
 )
+
+// DefaultDriverName and DefaultDriverPhone stand in for a courier the carrier
+// has not reported. The name is French on purpose: it is read by the customer in
+// a message whose whole body is the merchant's own French copy.
+const (
+	DefaultDriverName  = "Inconnu"
+	DefaultDriverPhone = "00000000"
+)
+
+// driverWithDefaults fills the driver tokens in rather than letting the event
+// wait for a name that may never arrive.
+//
+// Mes Colis reports a driver on the push that moves a parcel into progress and
+// never in its REST API, so a courier attached afterwards is invisible to us - the
+// merchant watches a held-back message they have no way to fix, because the name
+// is visible on the carrier's screen and nowhere they can type it. Telling the
+// customer the parcel is on its way is worth more than silence; a customer who
+// needs the courier specifically can read the name on the parcel tracking page.
+func driverWithDefaults(name, phone string) (string, string) {
+	if name == "" {
+		name = DefaultDriverName
+	}
+	if phone == "" {
+		phone = DefaultDriverPhone
+	}
+	return name, phone
+}
 
 // send executes one automation: it resolves the template (driving the variable
 // set and the declared purpose), ensures opt-in consent, and enqueues the send

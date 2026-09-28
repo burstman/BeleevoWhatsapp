@@ -250,7 +250,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
 
 			if retry.Attempted > 0 || retry.AlreadySent > 0 || retry.TemplateMissing > 0 {
-				<div class={ "rounded-xl border px-4 py-3 text-sm", retryBannerClass(retry.StillHeld + retry.TemplateMissing) }>
+				<div class={ "rounded-xl border px-4 py-3 text-sm", retryBannerClass(retry.StillHeld + retry.TemplateMissing + retry.Rejected) }>
 					if retry.Sent > 0 {
 						<span class="font-medium">{ strconv.Itoa(retry.Sent) } message(s) sent now.</span>
 					} else if retry.Scheduled > 0 {
@@ -269,6 +269,11 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 					if retry.StillHeld > 0 {
 						<span>
 							{ strconv.Itoa(retry.StillHeld) } still held back — the template needs data this order does not have yet.
+						</span>
+					}
+					if retry.Rejected > 0 {
+						<span>
+							{ strconv.Itoa(retry.Rejected) } were refused by the send rules (consent, or a template the carrier treats as marketing). Retrying will not change it.
 						</span>
 					}
 					if retry.AlreadySent > 0 {

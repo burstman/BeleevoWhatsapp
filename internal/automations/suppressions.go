@@ -120,6 +120,11 @@ type RetryResult struct {
 	StillHeld       int
 	AlreadySent     int
 	TemplateMissing int
+	// Rejected counts sends the send rules refused: no consent for the category,
+	// or a template the carrier treats as marketing. The event is untouched and
+	// will be tried again, but no amount of retrying fixes it, so it is counted
+	// apart from an order that is short of data.
+	Rejected int
 }
 
 // pendingSend is one event the merchant may be owed a message for, assembled
@@ -211,6 +216,9 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 				}
 			}
 		}
+		// A courier attached after the parcel went in progress is never reported
+		// by the carrier, so a retry must not wait for a name that will not come.
+		in.DriverName, in.DriverPhone = driverWithDefaults(in.DriverName, in.DriverPhone)
 
 		res.Attempted++
 		outcome, sErr := p.send(ctx, in)
@@ -237,6 +245,11 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 			// the merchant checks against the history page.
 			res.Scheduled++
 			p.clearSuppression(ctx, automationID, pend.key)
+			continue
+		case outcomeRejected:
+			// The send rules refused it, which is not the same as this order
+			// being short of data. The row stays, so the event is not lost.
+			res.Rejected++
 			continue
 		}
 

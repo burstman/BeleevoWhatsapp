@@ -12,6 +12,7 @@ import (
 
 	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/database"
+	"whatsappconverty/internal/delivery"
 	"whatsappconverty/internal/whatsapp"
 )
 
@@ -167,5 +168,103 @@ func newTestProcessor(t *testing.T, db *scopedTemplateDB) *Processor {
 		pool:     db.Pool,
 		whatsapp: whatsapp.NewService(config.Config{}, db.Pool, log),
 		log:      log,
+	}
+}
+
+func TestDriverWithDefaults(t *testing.T) {
+	cases := []struct {
+		name, phone         string
+		wantName, wantPhone string
+	}{
+		{"", "", DefaultDriverName, DefaultDriverPhone},
+		{"Borhen edine ben khlifa", "", "Borhen edine ben khlifa", DefaultDriverPhone},
+		{"", "29656683", DefaultDriverName, "29656683"},
+		{"Borhen edine ben khlifa", "29656683", "Borhen edine ben khlifa", "29656683"},
+	}
+	for _, c := range cases {
+		gotName, gotPhone := driverWithDefaults(c.name, c.phone)
+		if gotName != c.wantName || gotPhone != c.wantPhone {
+			t.Errorf("driverWithDefaults(%q, %q) = %q, %q; want %q, %q",
+				c.name, c.phone, gotName, gotPhone, c.wantName, c.wantPhone)
+		}
+	}
+}
+
+// A courier the carrier never reports must not cost the customer the message.
+// The template is marketing-flagged so the send gate refuses it: the point is
+// that the send gets past variable resolution without a Meta call.
+func TestDriverlessParcelIsNotHeldBack(t *testing.T) {
+	ctx := context.Background()
+	db := sharedTemplateDB(t)
+
+	shop := db.shop(t)
+	customer := seedCustomer(t, db, shop, "Badri Mondher", "+21698162832")
+	barcode := "948758517362"
+
+	templateID := uuid.New()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO templates
+			(id, shop_id, meta_template_name, language, category, status,
+			 approval_status, marketing_flagged, components, variables_map, source)
+		VALUES ($1, $2, 'ordre_en_cours', 'fr', 'UTILITY', 'approved', 'approved', true,
+			'[{"type":"BODY","text":"Bonjour {{1}}, votre commande {{2}} est en route. Livreur: {{3}} Tel: {{4}}"}]'::jsonb,
+			'["customer_name","tracking_code","driver_name","driver_phone"]'::jsonb, 'delivery')`,
+		templateID, shop); err != nil {
+		t.Fatalf("insert template: %v", err)
+	}
+
+	automationID := uuid.New()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO automations (id, shop_id, order_status, name, event_source, template_id)
+		VALUES ($1, $2, 'in-progress', 'Out for delivery', 'delivery', $3)`,
+		automationID, shop, templateID); err != nil {
+		t.Fatalf("insert automation: %v", err)
+	}
+
+	// A parcel the carrier has moved to in-progress without naming anyone.
+	if _, err := db.Exec(ctx, `
+		INSERT INTO delivery_orders
+			(shop_id, barcode, order_id, customer_id, customer_name, customer_phone,
+			 last_status, status_label, driver_name, driver_phone)
+		VALUES ($1, $2, '6ab7cab7', $3, 'Badri Mondher', '+21698162832',
+			'in-progress', 'En cours', '', '')`,
+		shop, barcode, customer); err != nil {
+		t.Fatalf("insert parcel: %v", err)
+	}
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := &Processor{
+		pool:     db.Pool,
+		whatsapp: whatsapp.NewService(config.Config{}, db.Pool, log),
+		delivery: delivery.NewService(config.Config{}, db.Pool, log),
+		log:      log,
+	}
+
+	res, err := p.RetrySuppressions(ctx, automationID)
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if res.Attempted != 1 {
+		t.Fatalf("attempted = %d, want the driverless parcel to be tried", res.Attempted)
+	}
+	if res.StillHeld != 0 {
+		t.Errorf("still held = %d, want 0: a missing courier must not cost the customer the message", res.StillHeld)
+	}
+	// The marketing flag is why the send stops here, and it must be reported as
+	// a refusal rather than folded into "this order is missing data".
+	if res.Rejected != 1 {
+		t.Errorf("rejected = %d, want 1: a send the rules refuse is not the same as a held-back order", res.Rejected)
+	}
+	if res.TemplateMissing != 0 {
+		t.Errorf("template missing = %d, want 0", res.TemplateMissing)
+	}
+
+	// Nothing recorded as held back, and no Meta call: the gate refused.
+	rows, err := SuppressionsForAutomation(ctx, db.Pool, automationID, 50)
+	if err != nil {
+		t.Fatalf("read suppressions: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("suppressions = %d, want 0: the driver defaults should have satisfied the template", len(rows))
 	}
 }
