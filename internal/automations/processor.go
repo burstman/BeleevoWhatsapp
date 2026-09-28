@@ -144,6 +144,17 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		orderID = change.OrderID
 	}
 
+	// The poller does not carry the driver on the change, so the stored row is
+	// the source of truth: the Mescolis socket is what records it. Prefer the
+	// change when it does have one, so a future path stays authoritative.
+	driverName, driverPhone := tracked.DriverName, tracked.DriverPhone
+	if change.DriverName != "" {
+		driverName = change.DriverName
+	}
+	if change.DriverPhone != "" {
+		driverPhone = change.DriverPhone
+	}
+
 	sch := automation.Schedule()
 	return p.send(ctx, SendInput{
 		ShopID:         change.ShopID,
@@ -155,8 +166,8 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		OrderID:        orderID,
 		StatusLabel:    change.Label,
 		TrackingCode:   change.Barcode,
-		DriverName:     change.DriverName,
-		DriverPhone:    change.DriverPhone,
+		DriverName:     driverName,
+		DriverPhone:    driverPhone,
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
 		fire:           ruleFromSchedule(sch),
 	})
