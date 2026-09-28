@@ -121,11 +121,12 @@ func (a *App) handleAutomationRetryHeld(k *kit.Kit) error {
 	}
 	a.Log.Info("automation held-back sends retried",
 		"shop_id", automation.ShopID, "automation_id", id,
-		"attempted", res.Attempted, "sent", res.Sent, "still_held", res.StillHeld)
+		"attempted", res.Attempted, "sent", res.Sent, "scheduled", res.Scheduled,
+		"still_held", res.StillHeld, "template_missing", res.TemplateMissing)
 
 	return k.Redirect(http.StatusSeeOther, fmt.Sprintf(
-		"/automations/%s/history?attempted=%d&sent=%d&held=%d&already=%d",
-		id, res.Attempted, res.Sent, res.StillHeld, res.AlreadySent))
+		"/automations/%s/history?attempted=%d&sent=%d&held=%d&already=%d&late=%d&missing=%d",
+		id, res.Attempted, res.Sent, res.StillHeld, res.AlreadySent, res.Scheduled, res.TemplateMissing))
 }
 
 func (a *App) handleAutomationHistory(k *kit.Kit) error {
@@ -734,10 +735,12 @@ func retryOutcome(k *kit.Kit) automations.RetryResult {
 		return automations.RetryResult{}
 	}
 	res := automations.RetryResult{
-		Attempted:   atoiOr(q.Get("attempted"), 0),
-		Sent:        atoiOr(q.Get("sent"), 0),
-		StillHeld:   atoiOr(q.Get("held"), 0),
-		AlreadySent: atoiOr(q.Get("already"), 0),
+		Attempted:       atoiOr(q.Get("attempted"), 0),
+		Sent:            atoiOr(q.Get("sent"), 0),
+		StillHeld:       atoiOr(q.Get("held"), 0),
+		AlreadySent:     atoiOr(q.Get("already"), 0),
+		Scheduled:       atoiOr(q.Get("late"), 0),
+		TemplateMissing: atoiOr(q.Get("missing"), 0),
 	}
 	return res
 }

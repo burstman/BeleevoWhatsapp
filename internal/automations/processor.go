@@ -92,7 +92,7 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		return nil
 	}
 
-	return p.send(ctx, SendInput{
+	_, err = p.send(ctx, SendInput{
 		ShopID:         e.ShopID,
 		AutomationID:   automation.ID,
 		CustomerID:     cid,
@@ -105,6 +105,7 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 		IdempotencyKey: "conv:" + e.ShopID.String() + ":" + e.OrderStatus + ":" + e.OrderID,
 		fire:           ruleFromSchedule(automation.Schedule()),
 	})
+	return err
 }
 
 // OnDeliveryChange feeds one observed delivery status transition through the
@@ -156,7 +157,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 	}
 
 	sch := automation.Schedule()
-	return p.send(ctx, SendInput{
+	_, err = p.send(ctx, SendInput{
 		ShopID:         change.ShopID,
 		AutomationID:   automation.ID,
 		CustomerID:     cid,
@@ -171,6 +172,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 		IdempotencyKey: "msc:" + change.ShopID.String() + ":" + change.Status + ":" + change.Barcode,
 		fire:           ruleFromSchedule(sch),
 	})
+	return err
 }
 
 // ReconcileDelivery runs one sweep of the delivery poller. It is safe to call
@@ -304,23 +306,43 @@ func (r fireRule) nextAllowedDay(now time.Time, loc *time.Location) time.Time {
 	return time.Time{}
 }
 
+// sendOutcome is what one run of the pipeline actually did. Without it a
+// caller can only report "not sent", and the page then blames the order for
+// every failure — which is how a misconfigured template came to be reported to
+// the merchant as "the order is missing data".
+type sendOutcome string
+
+const (
+	outcomeSent            sendOutcome = "sent"
+	outcomeScheduled       sendOutcome = "scheduled"
+	outcomeHeldBack        sendOutcome = "held_back"
+	outcomeNoCustomer      sendOutcome = "no_customer"
+	outcomeTemplateMissing sendOutcome = "template_missing"
+	outcomeRejected        sendOutcome = "rejected"
+)
+
 // send executes one automation: it resolves the template (driving the variable
 // set and the declared purpose), ensures opt-in consent, and enqueues the send
 // — falling back to an inline send when no queue is available.
-func (p *Processor) send(ctx context.Context, in SendInput) error {
+func (p *Processor) send(ctx context.Context, in SendInput) (sendOutcome, error) {
 	if in.CustomerID == uuid.Nil {
 		p.log.Debug("automation send skipped: no customer", "shop_id", in.ShopID)
-		return nil
+		return outcomeNoCustomer, nil
 	}
 
-	t, err := p.whatsapp.Template(ctx, in.ShopID, in.TemplateID)
+	// The template is resolved by id, not by shop: templates are shared across
+	// the operator's shops, so an automation on one shop legitimately points at a
+	// template owned by another. Scoping the lookup to the automation's shop made
+	// every send from a shared template fail as "no longer exists", silently.
+	t, err := p.whatsapp.TemplateByID(ctx, in.TemplateID)
 	if err != nil {
 		p.log.Warn("automation: template lookup failed", "template_id", in.TemplateID, "error", err)
-		return err
+		return "", err
 	}
 	if t.ID == uuid.Nil {
-		p.log.Warn("automation: template no longer exists", "template_id", in.TemplateID)
-		return nil
+		p.log.Warn("automation: the template this automation points at is gone",
+			"shop_id", in.ShopID, "template_id", in.TemplateID)
+		return outcomeTemplateMissing, nil
 	}
 
 	purpose := t.Category
@@ -336,7 +358,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 			"shop_id", in.ShopID, "template_id", in.TemplateID,
 			"trigger", in.StatusLabel, "missing", missing)
 		p.RecordSuppression(ctx, in, missing)
-		return nil
+		return outcomeHeldBack, nil
 	}
 
 	job := whatsapp.SendWhatsAppTemplateJob{
@@ -361,12 +383,12 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 			p.log.Warn("automation: scheduling send failed",
 				"shop_id", in.ShopID, "template_id", in.TemplateID,
 				"trigger", in.StatusLabel, "fire_at", at, "error", err)
-			return err
+			return "", err
 		}
 		p.log.Info("automation send scheduled",
 			"shop_id", in.ShopID, "customer_id", in.CustomerID,
 			"template_id", in.TemplateID, "trigger", in.StatusLabel, "fire_at", at)
-		return nil
+		return outcomeScheduled, nil
 	}
 
 	if _, err := p.whatsapp.SendTemplateMessage(ctx, toSendRequest(job)); err != nil {
@@ -374,12 +396,12 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		if errors.As(err, &rej) {
 			p.log.Debug("automation inline send rejected",
 				"shop_id", in.ShopID, "code", rej.Code, "reason", rej.Reason)
-			return nil
+			return outcomeRejected, nil
 		}
 		p.log.Warn("automation inline send failed", "shop_id", in.ShopID, "error", err)
-		return err
+		return "", err
 	}
-	return nil
+	return outcomeSent, nil
 }
 
 // buildVariables fills every template placeholder. Semantic templates map each

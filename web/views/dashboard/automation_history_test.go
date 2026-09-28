@@ -332,6 +332,34 @@ func TestRetrySaysItLeftAlreadySentAlone(t *testing.T) {
 	}
 }
 
+// A retry that finds the automation's own template is gone has to say so. The
+// first version of this page reported every non-send as "this order is missing
+// data", which sent the merchant off to the carrier for a problem that was in
+// the automation they were looking at.
+func TestRetryNamesAGoneTemplateInsteadOfBlamingTheOrder(t *testing.T) {
+	rowID := uuid.New()
+	a := automations.Automation{ID: rowID, Name: "Out for delivery", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+
+	var sb strings.Builder
+	res := automations.RetryResult{Attempted: 3, TemplateMissing: 3}
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", nil, whatsapp.AutomationSendCounts{}, nil, res).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+	if !strings.Contains(html, "This automation cannot send at all right now") {
+		t.Error("a gone template is the automation's fault and must be named as the headline")
+	}
+	if !strings.Contains(html, "Choose another template on the automation") {
+		t.Error("the page must point at the fix a merchant can actually make")
+	}
+	if strings.Contains(html, "the template needs data this order does not have yet") {
+		t.Error("do not blame the order's data when the template itself is missing")
+	}
+	if !strings.Contains(html, retryBannerClass(3)) {
+		t.Error("nothing went out, so the outcome must not read as a clean one")
+	}
+}
+
 // "Waiting" read like a schedule, so a merchant thought a row meant "will send
 // later". A row only exists once the job ran, so a stuck one is a send that did
 // not complete and must not be dressed as pending.

@@ -114,10 +114,12 @@ func SuppressionsForAutomation(ctx context.Context, db database.Querier, automat
 
 // RetryResult reports what a "send the held-back ones now" attempt did.
 type RetryResult struct {
-	Attempted   int
-	Sent        int
-	StillHeld   int
-	AlreadySent int
+	Attempted       int
+	Sent            int
+	Scheduled       int
+	StillHeld       int
+	AlreadySent     int
+	TemplateMissing int
 }
 
 // pendingSend is one event the merchant may be owed a message for, assembled
@@ -211,27 +213,36 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 		}
 
 		res.Attempted++
-		if sErr := p.send(ctx, in); sErr != nil {
+		outcome, sErr := p.send(ctx, in)
+		if sErr != nil {
 			p.log.Warn("automation: retry of a held-back send failed",
 				"automation_id", automationID, "tracking_code", pend.tracking, "error", sErr)
 			res.StillHeld++
 			continue
 		}
 
-		// The send may still have been declined, in which case the row is
-		// refreshed in place and the next attempt sees the new reason.
-		landed, cErr := p.whatsapp.MessageExistsForIdempotencyKey(ctx, automation.ShopID, pend.key)
-		if cErr != nil {
-			p.log.Warn("automation: could not confirm retried send",
-				"automation_id", automationID, "error", cErr)
+		switch outcome {
+		case outcomeTemplateMissing:
+			// Not the order's fault, and retrying will not help: the automation
+			// points at a template that is gone. Reported on its own so the page
+			// does not tell the merchant their order is missing data.
+			res.TemplateMissing++
+			continue
+		case outcomeSent:
+			res.Sent++
+			p.clearSuppression(ctx, automationID, pend.key)
+			continue
+		case outcomeScheduled:
+			// On its way, but not sent yet: reporting it as sent would be a lie
+			// the merchant checks against the history page.
+			res.Scheduled++
+			p.clearSuppression(ctx, automationID, pend.key)
 			continue
 		}
-		if !landed {
-			res.StillHeld++
-			continue
-		}
-		res.Sent++
-		p.clearSuppression(ctx, automationID, pend.key)
+
+		// Held back again, or the send gate declined it. The row is refreshed in
+		// place with the current reason, so the next attempt sees new data.
+		res.StillHeld++
 	}
 
 	return res, nil
