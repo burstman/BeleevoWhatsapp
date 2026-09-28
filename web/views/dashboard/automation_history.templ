@@ -249,22 +249,22 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 
 			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
 
-			if retry.Attempted > 0 {
+			if retry.Attempted > 0 || retry.AlreadySent > 0 {
 				<div class={ "rounded-xl border px-4 py-3 text-sm", retryBannerClass(retry.StillHeld) }>
 					if retry.Sent > 0 {
-						<span class="font-medium">
-							{ strconv.Itoa(retry.Sent) } held-back message(s) sent.
-						</span>
+						<span class="font-medium">{ strconv.Itoa(retry.Sent) } message(s) sent now.</span>
 					} else {
-						<span class="font-medium">No held-back message could be sent yet.</span>
+						<span class="font-medium">Nothing new could be sent.</span>
 					}
 					if retry.StillHeld > 0 {
 						<span>
-							{ strconv.Itoa(retry.StillHeld) } of { strconv.Itoa(retry.Attempted) } still
-							{ " " }cannot go out — the data the template needs is still missing.
+							{ strconv.Itoa(retry.StillHeld) } still held back — the template needs data this order does not have yet.
 						</span>
-					} else if retry.Attempted > 0 {
-						<span>Everything that was held back has now been delivered.</span>
+					}
+					if retry.AlreadySent > 0 {
+						<span>
+							{ strconv.Itoa(retry.AlreadySent) } had already been sent and were left alone.
+						</span>
 					}
 				</div>
 			}

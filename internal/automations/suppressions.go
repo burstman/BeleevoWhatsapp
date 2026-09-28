@@ -3,6 +3,7 @@ package automations
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -113,23 +114,40 @@ func SuppressionsForAutomation(ctx context.Context, db database.Querier, automat
 
 // RetryResult reports what a "send the held-back ones now" attempt did.
 type RetryResult struct {
-	Attempted int
-	Sent      int
-	StillHeld int
+	Attempted   int
+	Sent        int
+	StillHeld   int
+	AlreadySent int
 }
 
-// RetrySuppressions re-runs the sends this automation held back, and is the
-// reason the suppression row carries the order, tracking code and label rather
-// than only the reason: a retry is self-contained, so it does not depend on
-// replaying a webhook that arrived days ago.
+// pendingSend is one event the merchant may be owed a message for, assembled
+// from whichever record survived to describe it.
+type pendingSend struct {
+	key         string
+	customerID  uuid.UUID
+	tracking    string
+	orderID     string
+	label       string
+	idempotency string
+}
+
+// RetrySuppressions re-runs the sends this automation did not deliver, and is
+// the reason the suppression row carries the order, tracking code and label
+// rather than only the reason: a retry is self-contained, so it does not depend
+// on replaying a webhook that arrived days ago.
+//
+// Two sources are merged, because neither is enough on its own. The suppression
+// rows know about events whose status has since moved on. The parcels currently
+// sitting in the automation's status know about events that were dropped before
+// the audit existed at all - including the ones that would now send cleanly, and
+// which would otherwise be stranded with nothing pointing at them. Both are keyed
+// by the idempotency key, which is also what stops a message that did go out from
+// being sent twice: an event that already has a message row is counted and
+// skipped, not re-sent.
 //
 // Everything that could have changed since is re-read rather than assumed. The
-// driver is the whole point — a carrier attaches it after the fact, which is
-// the usual reason a send was held back in the first place.
-//
-// The original idempotency key is reused, so an event that turns out to have
-// been sent already is recorded and skipped instead of double-messaging the
-// customer. A row that still cannot send stays on the list.
+// driver is the whole point - a carrier attaches it after the fact, which is the
+// usual reason a send was held back in the first place.
 func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUID) (RetryResult, error) {
 	var res RetryResult
 
@@ -141,33 +159,43 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 		return res, nil
 	}
 
-	held, err := SuppressionsForAutomation(ctx, p.pool, automationID, 500)
+	pending, err := p.pendingSends(ctx, automation)
 	if err != nil {
 		return res, err
 	}
-	res.Attempted = len(held)
 
 	// A merchant pressing this wants the messages out now, so the automation's
 	// own window is deliberately bypassed: the event's moment has long passed.
 	instant := fireRule{timezone: "UTC", days: AllDays()}
 
-	for _, s := range held {
+	for _, pend := range pending {
+		exists, xErr := p.whatsapp.MessageExistsForIdempotencyKey(ctx, automation.ShopID, pend.key)
+		if xErr != nil {
+			p.log.Warn("automation: could not check whether a retry was already sent",
+				"automation_id", automationID, "error", xErr)
+			continue
+		}
+		if exists {
+			res.AlreadySent++
+			continue
+		}
+
 		in := SendInput{
-			ShopID:         s.ShopID,
+			ShopID:         automation.ShopID,
 			AutomationID:   automationID,
-			CustomerID:     s.CustomerID,
+			CustomerID:     pend.customerID,
 			TemplateID:     automation.TemplateID,
-			OrderID:        s.OrderID,
-			StatusLabel:    s.TriggerLabel,
-			TrackingCode:   s.TrackingCode,
-			IdempotencyKey: s.IdempotencyKey,
+			OrderID:        pend.orderID,
+			StatusLabel:    pend.label,
+			TrackingCode:   pend.tracking,
+			IdempotencyKey: pend.key,
 			fire:           instant,
 		}
-		if c, cErr := p.whatsapp.Customer(ctx, s.ShopID, s.CustomerID); cErr == nil {
+		if c, cErr := p.whatsapp.Customer(ctx, automation.ShopID, pend.customerID); cErr == nil {
 			in.CustomerName, in.CustomerPhone = c.Name, c.Phone
 		}
-		if p.delivery != nil && s.TrackingCode != "" {
-			tracked, tErr := p.delivery.TrackedByBarcode(ctx, s.ShopID, s.TrackingCode)
+		if p.delivery != nil && pend.tracking != "" {
+			tracked, tErr := p.delivery.TrackedByBarcode(ctx, automation.ShopID, pend.tracking)
 			if tErr == nil && tracked.ID != uuid.Nil {
 				in.DriverName, in.DriverPhone = tracked.DriverName, tracked.DriverPhone
 				if in.CustomerName == "" {
@@ -182,16 +210,17 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 			}
 		}
 
+		res.Attempted++
 		if sErr := p.send(ctx, in); sErr != nil {
-			p.log.Warn("automation: retry of held-back send failed",
-				"automation_id", automationID, "tracking_code", s.TrackingCode, "error", sErr)
+			p.log.Warn("automation: retry of a held-back send failed",
+				"automation_id", automationID, "tracking_code", pend.tracking, "error", sErr)
 			res.StillHeld++
 			continue
 		}
 
 		// The send may still have been declined, in which case the row is
 		// refreshed in place and the next attempt sees the new reason.
-		landed, cErr := p.whatsapp.MessageExistsForIdempotencyKey(ctx, s.ShopID, s.IdempotencyKey)
+		landed, cErr := p.whatsapp.MessageExistsForIdempotencyKey(ctx, automation.ShopID, pend.key)
 		if cErr != nil {
 			p.log.Warn("automation: could not confirm retried send",
 				"automation_id", automationID, "error", cErr)
@@ -202,10 +231,69 @@ func (p *Processor) RetrySuppressions(ctx context.Context, automationID uuid.UUI
 			continue
 		}
 		res.Sent++
-		p.clearSuppression(ctx, automationID, s.IdempotencyKey)
+		p.clearSuppression(ctx, automationID, pend.key)
 	}
 
 	return res, nil
+}
+
+// pendingSends merges the two sources of an undelivered event into one list,
+// deduplicated on the idempotency key the sender also uses.
+func (p *Processor) pendingSends(ctx context.Context, automation *Automation) ([]pendingSend, error) {
+	byKey := map[string]pendingSend{}
+
+	held, err := SuppressionsForAutomation(ctx, p.pool, automation.ID, 500)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range held {
+		if s.IdempotencyKey == "" {
+			continue
+		}
+		byKey[s.IdempotencyKey] = pendingSend{
+			key:         s.IdempotencyKey,
+			customerID:  s.CustomerID,
+			tracking:    s.TrackingCode,
+			orderID:     s.OrderID,
+			label:       s.TriggerLabel,
+			idempotency: s.IdempotencyKey,
+		}
+	}
+
+	// A Converty order event leaves no queryable state behind - the customer
+	// lives inside the stored webhook payload - so only the recorded rows are
+	// available to retry there. Delivery keeps the parcel, so the live set is
+	// recoverable from it.
+	if p.delivery != nil && automation.EventSource == SourceDelivery {
+		tracked, tErr := p.delivery.Tracked(ctx, automation.ShopID)
+		if tErr != nil {
+			return nil, tErr
+		}
+		for _, t := range tracked {
+			if t.LastStatus != automation.OrderStatus {
+				continue
+			}
+			key := "msc:" + automation.ShopID.String() + ":" + t.LastStatus + ":" + t.Barcode
+			if _, seen := byKey[key]; seen {
+				continue
+			}
+			byKey[key] = pendingSend{
+				key:        key,
+				customerID: t.CustomerID,
+				tracking:   t.Barcode,
+				orderID:    t.OrderID,
+				label:      t.StatusLabel,
+			}
+		}
+	}
+
+	out := make([]pendingSend, 0, len(byKey))
+	for _, pend := range byKey {
+		out = append(out, pend)
+	}
+	// Deterministic order so a retry sends oldest event first.
+	sort.Slice(out, func(i, j int) bool { return out[i].key < out[j].key })
+	return out, nil
 }
 
 // clearSuppression drops a row once its message exists. Keeping it would leave

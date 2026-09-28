@@ -300,16 +300,35 @@ func TestHeldBackListOffersASendNowAction(t *testing.T) {
 		t.Fatalf("render: %v", err)
 	}
 	out := mixed.String()
-	for _, want := range []string{"2 held-back message(s) sent", "1 of 3 still"} {
+	for _, want := range []string{"2 message(s) sent now", "1 still held back"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("a partial retry must report both halves, missing %q", want)
 		}
 	}
-	if strings.Contains(out, "Everything that was held back has now been delivered") {
-		t.Error("claiming everything was delivered while one is still held back is the wrong story")
-	}
 	if !strings.Contains(out, retryBannerClass(1)) {
 		t.Error("a partial retry should be amber, not green")
+	}
+}
+
+// A retry now also covers parcels that are already in the automation's status,
+// so a click can find events that were sent long ago. Those must be reported as
+// left alone: a message re-sent because the merchant pressed a button is the one
+// failure this button exists to prevent.
+func TestRetrySaysItLeftAlreadySentAlone(t *testing.T) {
+	rowID := uuid.New()
+	a := automations.Automation{ID: rowID, Name: "Out for delivery", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+
+	var sb strings.Builder
+	res := automations.RetryResult{Attempted: 1, Sent: 1, AlreadySent: 2}
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", nil, whatsapp.AutomationSendCounts{}, nil, res).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+	if !strings.Contains(html, "2 had already been sent and were left alone") {
+		t.Error("a retry must say it did not re-send anything that already went out")
+	}
+	if !strings.Contains(html, retryBannerClass(0)) {
+		t.Error("with nothing still held back, the outcome is a clean one")
 	}
 }
 
