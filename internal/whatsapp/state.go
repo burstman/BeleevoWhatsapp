@@ -259,7 +259,7 @@ func (s *Service) createQueuedMessage(ctx context.Context, req SendRequest, t Te
 			template_variables, idempotency_key, automation_id, status, body_text
 		) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7,
 			NULLIF($8::uuid, '00000000-0000-0000-0000-000000000000'), 'queued',
-			NULLIF($10, ''))
+			NULLIF($9, ''))
 		RETURNING id`,
 		req.ShopID, req.CustomerID, t.ID, req.ConvertyOrderID,
 		customer_phone(ctx, s, req), varsJSON, req.IdempotencyKey, req.AutomationID,
