@@ -118,6 +118,11 @@ func (a *App) handleAutomationHistory(k *kit.Kit) error {
 		a.Log.Error("automation history counts failed", "automation_id", id, "error", err)
 		return err
 	}
+	suppressions, err := automations.SuppressionsForAutomation(ctx, a.Pool, id, 200)
+	if err != nil {
+		a.Log.Error("automation history suppressions failed", "automation_id", id, "error", err)
+		return err
+	}
 
 	templateName := ""
 	if automation.TemplateID != uuid.Nil {
@@ -127,7 +132,7 @@ func (a *App) handleAutomationHistory(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Send history", "automations", all)
-	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts))
+	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts, suppressions))
 }
 
 // operatorSeesShop reports whether the operator's shop list contains this shop.

@@ -121,6 +121,11 @@ func (k TokenKey) label() string {
 	return strings.TrimPrefix(string(k), "_")
 }
 
+// TokenLabel is the chip's human label for a token ("Driver name"). The send
+// history names the missing tokens this way, so a merchant reads what the
+// template was waiting for instead of a database key.
+func TokenLabel(k TokenKey) string { return k.label() }
+
 // TemplateVariableValues is the resolved per-send data the map draws from.
 type TemplateVariableValues struct {
 	CustomerName  string

@@ -335,6 +335,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 		p.log.Warn("automation send skipped: variable has no value for this event",
 			"shop_id", in.ShopID, "template_id", in.TemplateID,
 			"trigger", in.StatusLabel, "missing", missing)
+		p.RecordSuppression(ctx, in, missing)
 		return nil
 	}
 

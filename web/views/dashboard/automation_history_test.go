@@ -129,15 +129,15 @@ func TestAutomationHistoryPageRendersRowsAndEmptyState(t *testing.T) {
 	delivered := row.CreatedAt.Add(time.Minute)
 	row.DeliveredAt = &delivered
 
-	render := func(rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts) string {
+	render := func(rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts, held []automations.Suppression) string {
 		var sb strings.Builder
-		if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "order_confirmed", rows, counts).Render(ctx, &sb); err != nil {
+		if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "order_confirmed", rows, counts, held).Render(ctx, &sb); err != nil {
 			t.Fatalf("render history: %v", err)
 		}
 		return sb.String()
 	}
 
-	html := render([]whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Delivered: 1})
+	html := render([]whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Delivered: 1}, nil)
 	for _, want := range []string{
 		"Order confirmed",
 		"send history",
@@ -155,7 +155,7 @@ func TestAutomationHistoryPageRendersRowsAndEmptyState(t *testing.T) {
 		}
 	}
 
-	empty := render(nil, whatsapp.AutomationSendCounts{})
+	empty := render(nil, whatsapp.AutomationSendCounts{}, nil)
 	if !strings.Contains(empty, "Nothing sent yet") {
 		t.Error("an automation that has not fired must say so instead of showing an empty table")
 	}
@@ -164,9 +164,56 @@ func TestAutomationHistoryPageRendersRowsAndEmptyState(t *testing.T) {
 	failed := row
 	failed.Status = "failed"
 	failed.ErrorMessage = "message failed to send"
-	failHTML := render([]whatsapp.AutomationMessage{failed}, whatsapp.AutomationSendCounts{Total: 1, Failed: 1})
+	failHTML := render([]whatsapp.AutomationMessage{failed}, whatsapp.AutomationSendCounts{Total: 1, Failed: 1}, nil)
 	if !strings.Contains(failHTML, "message failed to send") {
 		t.Error("a failed send must show why it failed")
+	}
+}
+
+// A held-back send is the failure mode that looks most like success: the event
+// matched, the merchant is watching, and no message exists. The page has to say
+// so in words, naming what the template was waiting for, or this happens again
+// and the merchant assumes the automation is broken.
+func TestHeldBackSendsAreVisibleAndNamed(t *testing.T) {
+	rowID := uuid.New()
+	a := automations.Automation{ID: rowID, Name: "Out for delivery", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+	s := automations.Suppression{
+		ID:           uuid.New(),
+		ShopID:       uuid.New(),
+		AutomationID: rowID,
+		Reason:       "a variable the template places has no value for this order yet",
+		Missing:      []whatsapp.TokenKey{whatsapp.TokenDriverName, whatsapp.TokenDriverPhone},
+		TrackingCode: "922153764102",
+		CustomerName: "Radhwen Marayah",
+		CreatedAt:    time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC),
+	}
+
+	var sb strings.Builder
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "ordre_en_cours", nil, whatsapp.AutomationSendCounts{}, []automations.Suppression{s}).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+
+	for _, want := range []string{
+		"Held back",
+		"but not sent",
+		"922153764102",
+		"Radhwen Marayah",
+		"Driver name",
+		"Driver phone",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("held-back history is missing %q, so a suppressed send still looks like a silent no-op", want)
+		}
+	}
+	if !strings.Contains(html, "Nothing sent yet") {
+		t.Error("the empty ledger should still say nothing was sent")
+	}
+
+	// The count on the summary must not read as a failure: nothing went wrong,
+	// the send was withheld on purpose.
+	if !strings.Contains(html, "withheld on purpose") {
+		t.Error("held-back sends must be distinguished from failures in the explanation")
 	}
 }
 
@@ -191,7 +238,7 @@ func TestQueuedRowReadsAsAFailureNotAPendingSchedule(t *testing.T) {
 	a := automations.Automation{ID: rowID, Name: "Order confirmed", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
 
 	var sb strings.Builder
-	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", []whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Queued: 1}).Render(t.Context(), &sb); err != nil {
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", []whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Queued: 1}, nil).Render(t.Context(), &sb); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	html := sb.String()
@@ -240,7 +287,7 @@ func TestHistoryNoteExplainsWhenRowsAppear(t *testing.T) {
 
 	a := automations.Automation{ID: uuid.New(), Name: "Order confirmed", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
 	var sb strings.Builder
-	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", nil, whatsapp.AutomationSendCounts{}).Render(t.Context(), &sb); err != nil {
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", nil, whatsapp.AutomationSendCounts{}, nil).Render(t.Context(), &sb); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	html := sb.String()

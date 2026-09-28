@@ -66,6 +66,16 @@ func failureClass(n int) string {
 	return "text-slate-500"
 }
 
+// heldBackClass is the softer cousin of failureClass: a held-back send is not a
+// failure, it is a message the system correctly declined to send. Amber says
+// "look at this" without the alarm of a failed send.
+func heldBackClass(n int) string {
+	if n > 0 {
+		return "text-amber-700"
+	}
+	return "text-slate-500"
+}
+
 // historyTime formats a ledger timestamp in the dashboard's local time, or a
 // dash when the event has not happened yet.
 func historyTime(t *time.Time) string {
@@ -136,8 +146,21 @@ func historyVariables(m whatsapp.AutomationMessage) string {
 	return strings.Join(parts, " \u00b7 ")
 }
 
+// suppressionMissing names the variables a held-back send was waiting for, in
+// the merchant's own words ("Driver name") rather than token keys.
+func suppressionMissing(s automations.Suppression) string {
+	if len(s.Missing) == 0 {
+		return ""
+	}
+	labels := make([]string, 0, len(s.Missing))
+	for _, k := range s.Missing {
+		labels = append(labels, whatsapp.TokenLabel(k))
+	}
+	return strings.Join(labels, ", ")
+}
+
 // arrived, was anything sent, to whom, and what did Meta say?
-templ AutomationHistoryPage(page components.Page, a automations.Automation, templateName string, rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts) {
+templ AutomationHistoryPage(page components.Page, a automations.Automation, templateName string, rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts, suppressions []automations.Suppression) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div class="flex items-start justify-between gap-4">
@@ -158,7 +181,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 					class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Edit automation</a>
 			</div>
 
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
 					<div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Total) }>{ strconv.Itoa(counts.Total) }</div>
@@ -183,6 +206,10 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 					<div class="text-xs uppercase tracking-wide text-slate-500">Not sent</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Queued) }>{ strconv.Itoa(counts.Queued) }</div>
 				</div>
+				<div class="rounded-xl border border-slate-200 bg-white p-4">
+					<div class="text-xs uppercase tracking-wide text-slate-500">Held back</div>
+					<div class={ "mt-1 text-2xl font-bold", heldBackClass(len(suppressions)) }>{ strconv.Itoa(len(suppressions)) }</div>
+				</div>
 			</div>
 
 			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
@@ -191,11 +218,18 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 				if len(rows) == 0 {
 					<div class="px-5 py-12 text-center">
 						<p class="text-sm font-medium text-slate-700">Nothing sent yet</p>
-						<p class="mt-1 text-sm text-slate-500">
-							No event has triggered a message from this automation yet. A send is
-							recorded only when it actually goes out, so an empty list here means
-							"no matching event" — not a broken automation.
-						</p>
+						if len(suppressions) > 0 {
+							<p class="mt-1 text-sm text-slate-500">
+								{ strconv.Itoa(len(suppressions)) } event(s) matched this automation but were held
+								back rather than sent. They are listed below with what was missing.
+							</p>
+						} else {
+							<p class="mt-1 text-sm text-slate-500">
+								No event has triggered a message from this automation yet. A send is
+								recorded only when it actually goes out, so an empty list here means
+								"no matching event" — not a broken automation.
+							</p>
+						}
 					</div>
 				} else {
 					<div class="overflow-x-auto">
@@ -258,6 +292,65 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 							Showing the 200 most recent messages.
 						</div>
 					}
+				}
+				if len(suppressions) > 0 {
+					<div class="rounded-xl border border-amber-200 bg-white">
+						<div class="border-b border-amber-100 px-5 py-4">
+							<h3 class="text-sm font-semibold text-slate-900">Held back — matched, but not sent</h3>
+							<p class="mt-1 text-sm text-slate-600">
+								These events reached this automation, but the message was withheld on purpose:
+								the template places a variable that this order had no value for, and a blank
+								line in the customer's message is worse than no message. Nothing was sent to
+								anyone on this list.
+							</p>
+						</div>
+						<div class="overflow-x-auto">
+							<table class="w-full table-fixed text-left text-sm">
+								<thead class="bg-amber-50/60 text-xs uppercase tracking-wide text-slate-600">
+									<tr>
+										<th class="w-[14%] px-3 py-3 font-medium first:pl-5">When</th>
+										<th class="w-[22%] px-3 py-3 font-medium">Customer</th>
+										<th class="w-[16%] px-3 py-3 font-medium">Order</th>
+										<th class="w-[20%] px-3 py-3 font-medium">Waiting for</th>
+										<th class="w-[28%] px-3 py-3 font-medium last:pr-5">Why</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-slate-100">
+									for _, s := range suppressions {
+										<tr>
+											<td class="px-3 py-3 first:pl-5 text-slate-600">{ historyWhen(s.CreatedAt) }</td>
+											<td class="px-3 py-3 text-slate-900">
+												if s.CustomerName != "" {
+													<span class="block truncate" title={ s.CustomerName }>{ s.CustomerName }</span>
+												} else {
+													<span class="text-slate-500">—</span>
+												}
+											</td>
+											<td class="px-3 py-3 text-slate-600">
+												if s.TrackingCode != "" {
+													<span class="block truncate" title={ s.TrackingCode }>{ s.TrackingCode }</span>
+												} else {
+													<span class="text-slate-500">—</span>
+												}
+											</td>
+											<td class="px-3 py-3 text-slate-900">
+												if m := suppressionMissing(s); m != "" {
+													<span class="block truncate" title={ m }>{ m }</span>
+												} else {
+													<span class="text-slate-500">—</span>
+												}
+											</td>
+											<td class="px-3 py-3 text-xs last:pr-5 text-slate-600">{ s.Reason }</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+						<div class="border-t border-amber-100 px-5 py-3 text-xs text-slate-500">
+							A held-back send is not an error. Once the missing detail is available — a
+							driver attached by the carrier, for example — a new event will send normally.
+						</div>
+					</div>
 				}
 			</div>
 		</div>
