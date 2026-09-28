@@ -23,6 +23,38 @@ const (
 // exists (the unique constraint mirrors the UI rule "one template per trigger").
 var ErrDuplicate = errors.New("automation already exists for this trigger")
 
+// DefaultTimezone is the zone a scheduled send uses when the form does not say
+// otherwise. The platform serves Tunisian merchants, and a 10:00 send means 10:00
+// in Tunis — not 10:00 UTC, which is 11:00 on the wall in front of them. Defaulting
+// to UTC instead was how a "10 am" automation ended up firing an hour late.
+const DefaultTimezone = "Africa/Tunis"
+
+// Timezones are the zones offered in the automation form: the default first, then
+// the ones a merchant plausibly operates in. Anything else a merchant has already
+// saved stays selectable, so the list never silently rewrites a stored value.
+var Timezones = []string{
+	"Africa/Tunis",
+	"Africa/Cairo",
+	"Africa/Lagos",
+	"Africa/Algiers",
+	"Africa/Casablanca",
+	"Europe/Paris",
+	"Europe/London",
+	"Europe/Istanbul",
+	"Europe/Moscow",
+	"Asia/Dubai",
+	"Asia/Riyadh",
+	"Asia/Karachi",
+	"Asia/Kolkata",
+	"Asia/Singapore",
+	"Asia/Tokyo",
+	"America/New_York",
+	"America/Chicago",
+	"America/Los_Angeles",
+	"America/Sao_Paulo",
+	"UTC",
+}
+
 // Automation maps a trigger (an order or delivery event) to an approved message
 // template. EventSource disambiguates which origin the trigger key belongs to.
 // The delivery rule is stored split across SendTime/SendTimezone/SendDays (a
@@ -75,7 +107,7 @@ func ParseSchedule(mode, hm, tz string, days []string, delayMinutes int) (*Sched
 			return nil, errors.New("invalid send time")
 		}
 		if tz == "" {
-			tz = "UTC"
+			tz = DefaultTimezone
 		}
 		if _, err := time.LoadLocation(tz); err != nil {
 			return nil, errors.New("invalid timezone")
