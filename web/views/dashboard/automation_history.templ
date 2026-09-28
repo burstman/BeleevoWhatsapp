@@ -159,8 +159,18 @@ func suppressionMissing(s automations.Suppression) string {
 	return strings.Join(labels, ", ")
 }
 
+// retryBannerClass stays green only when everything held back actually went out.
+// A partial result is amber: something the merchant was told about still needs
+// attention, so it must not be dressed as a success.
+func retryBannerClass(stillHeld int) string {
+	if stillHeld == 0 {
+		return "border-emerald-200 bg-emerald-50 text-emerald-800"
+	}
+	return "border-amber-200 bg-amber-50 text-amber-800"
+}
+
 // arrived, was anything sent, to whom, and what did Meta say?
-templ AutomationHistoryPage(page components.Page, a automations.Automation, templateName string, rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts, suppressions []automations.Suppression) {
+templ AutomationHistoryPage(page components.Page, a automations.Automation, templateName string, rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts, suppressions []automations.Suppression, retry automations.RetryResult) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div class="flex items-start justify-between gap-4">
@@ -213,6 +223,26 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 			</div>
 
 			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
+
+			if retry.Attempted > 0 {
+				<div class={ "rounded-xl border px-4 py-3 text-sm", retryBannerClass(retry.StillHeld) }>
+					if retry.Sent > 0 {
+						<span class="font-medium">
+							{ strconv.Itoa(retry.Sent) } held-back message(s) sent.
+						</span>
+					} else {
+						<span class="font-medium">No held-back message could be sent yet.</span>
+					}
+					if retry.StillHeld > 0 {
+						<span>
+							{ strconv.Itoa(retry.StillHeld) } of { strconv.Itoa(retry.Attempted) } still
+							{ " " }cannot go out — the data the template needs is still missing.
+						</span>
+					} else if retry.Attempted > 0 {
+						<span>Everything that was held back has now been delivered.</span>
+					}
+				</div>
+			}
 
 			<div class="rounded-xl border border-slate-200 bg-white">
 				if len(rows) == 0 {
@@ -296,13 +326,23 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 				if len(suppressions) > 0 {
 					<div class="rounded-xl border border-amber-200 bg-white">
 						<div class="border-b border-amber-100 px-5 py-4">
-							<h3 class="text-sm font-semibold text-slate-900">Held back — matched, but not sent</h3>
-							<p class="mt-1 text-sm text-slate-600">
-								These events reached this automation, but the message was withheld on purpose:
-								the template places a variable that this order had no value for, and a blank
-								line in the customer's message is worse than no message. Nothing was sent to
-								anyone on this list.
-							</p>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<h3 class="text-sm font-semibold text-slate-900">Held back — matched, but not sent</h3>
+									<p class="mt-1 text-sm text-slate-600">
+										These events reached this automation, but the message was withheld on purpose:
+										the template places a variable that this order had no value for, and a blank
+										line in the customer's message is worse than no message. Nothing was sent to
+										anyone on this list.
+									</p>
+								</div>
+								<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/retry-held") } class="shrink-0">
+									<button type="submit"
+										class="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100">
+										Send held back now
+									</button>
+								</form>
+							</div>
 						</div>
 						<div class="overflow-x-auto">
 							<table class="w-full table-fixed text-left text-sm">
@@ -347,8 +387,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 							</table>
 						</div>
 						<div class="border-t border-amber-100 px-5 py-3 text-xs text-slate-500">
-							A held-back send is not an error. Once the missing detail is available — a
-							driver attached by the carrier, for example — a new event will send normally.
+							<span>A held-back send is not an error, and it waits for nothing: no new event will come for an order that has already changed status. Once the missing detail is available — a driver attached by the carrier, for example — use the button above and it goes out immediately.</span>
 						</div>
 					</div>
 				}

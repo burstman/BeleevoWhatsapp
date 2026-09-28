@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -88,6 +89,44 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 // are filtered by the automation id, so the automation lookup is what decides
 // the page: an id that does not resolve, or one belonging to a shop the
 // operator cannot see, redirects to the list rather than rendering.
+// handleAutomationRetryHeld re-runs the sends this automation held back. A
+// held-back event is not retried by the poller: the status transition it came
+// from has already passed, so without this the only way to deliver it is to wait
+// for a new event that may never come. Everything that could have arrived since
+// — the driver, above all — is re-read before sending.
+func (a *App) handleAutomationRetryHeld(k *kit.Kit) error {
+	all, err := a.shopsFor(k)
+	if err != nil {
+		return err
+	}
+
+	ctx := k.Request.Context()
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+	automation, err := a.Automations.AutomationByID(ctx, id)
+	if err != nil {
+		a.Log.Error("automation retry lookup failed", "id", id, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=error")
+	}
+	if automation == nil || !operatorSeesShop(all, automation.ShopID) {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+
+	res, err := a.Automations.RetrySuppressions(ctx, id)
+	if err != nil {
+		a.Log.Error("automation retry failed", "shop_id", automation.ShopID, "id", id, "error", err)
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=error")
+	}
+	a.Log.Info("automation held-back sends retried",
+		"shop_id", automation.ShopID, "automation_id", id,
+		"attempted", res.Attempted, "sent", res.Sent, "still_held", res.StillHeld)
+
+	return k.Redirect(http.StatusSeeOther, fmt.Sprintf(
+		"/automations/%s/history?attempted=%d&sent=%d&held=%d", id, res.Attempted, res.Sent, res.StillHeld))
+}
+
 func (a *App) handleAutomationHistory(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
 	if err != nil {
@@ -132,7 +171,8 @@ func (a *App) handleAutomationHistory(k *kit.Kit) error {
 	}
 
 	page := a.dashboardPage(k, "Send history", "automations", all)
-	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts, suppressions))
+	retry := retryOutcome(k)
+	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts, suppressions, retry))
 }
 
 // operatorSeesShop reports whether the operator's shop list contains this shop.
@@ -682,4 +722,31 @@ func catalogFromTemplates(templates []whatsapp.MerchantTemplate) (approved []wha
 		}
 	}
 	return approved, names, bodies
+}
+
+// retryOutcome reports what a "send the held-back ones now" click actually did,
+// so the merchant is told "2 sent, 1 still held back" instead of watching the
+// list for a change they cannot tell apart from the list not refreshing.
+func retryOutcome(k *kit.Kit) automations.RetryResult {
+	q := k.Request.URL.Query()
+	if !q.Has("attempted") {
+		return automations.RetryResult{}
+	}
+	res := automations.RetryResult{
+		Attempted: atoiOr(q.Get("attempted"), 0),
+		Sent:      atoiOr(q.Get("sent"), 0),
+		StillHeld: atoiOr(q.Get("held"), 0),
+	}
+	return res
+}
+
+func atoiOr(s string, fallback int) int {
+	if s == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fallback
+	}
+	return n
 }

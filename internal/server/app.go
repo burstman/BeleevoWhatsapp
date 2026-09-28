@@ -103,6 +103,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/automations/shops/{id}/templates", kit.Handler(a.handleShopTemplates))
 		pr.Get("/automations/{id}/edit", kit.Handler(a.handleAutomationEdit))
 		pr.Get("/automations/{id}/history", kit.Handler(a.handleAutomationHistory))
+		pr.Post("/automations/{id}/retry-held", kit.Handler(a.handleAutomationRetryHeld))
 		pr.Post("/automations/{id}/update", kit.Handler(a.handleAutomationUpdate))
 		pr.Post("/automations/{id}/toggle", kit.Handler(a.handleAutomationToggle))
 		pr.Post("/automations/{id}/test", kit.Handler(a.handleAutomationTest))

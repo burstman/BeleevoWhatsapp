@@ -15,6 +15,7 @@ CREATE TABLE automation_suppressions (
     missing_variables jsonb NOT NULL DEFAULT '[]'::jsonb,
     trigger_label     text,
     tracking_code     text,
+    order_id          text,
     idempotency_key   text,
     created_at        timestamptz NOT NULL DEFAULT now()
 );
@@ -23,9 +24,8 @@ CREATE TABLE automation_suppressions (
 CREATE INDEX automation_suppressions_automation_created_idx
     ON automation_suppressions (automation_id, created_at DESC);
 
--- One row per event, not per sighting. The poller only reports a genuine
--- transition, but a re-reported event (a retried write, a manual resweep) must
--- not inflate the merchant's count of what went unsent.
+-- One suppressed row per dropped event: a retry reuses this key, so a message
+-- that did go out earlier can never be sent twice.
 CREATE UNIQUE INDEX automation_suppressions_event_idx
     ON automation_suppressions (automation_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL;

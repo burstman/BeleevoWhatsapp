@@ -219,6 +219,22 @@ func automationSendCounts(ctx context.Context, db database.Querier, automationID
 	return c, nil
 }
 
+// MessageExistsForIdempotencyKey reports whether a send for this key has already
+// been recorded. A retry deliberately reuses the original key so a message that
+// did go out is never sent twice; this is how the caller learns the retry
+// actually landed rather than silently re-recording it.
+func (s *Service) MessageExistsForIdempotencyKey(ctx context.Context, shopID uuid.UUID, key string) (bool, error) {
+	if key == "" {
+		return false, nil
+	}
+	var exists bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM messages WHERE shop_id = $1 AND idempotency_key = $2
+		)`, shopID, key).Scan(&exists)
+	return exists, err
+}
+
 func scanMessage(row messageScanner) (Message, error) {
 	var m Message
 	var metaErrors []byte
