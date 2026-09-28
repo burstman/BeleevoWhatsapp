@@ -425,3 +425,51 @@ func TestSendRejectionErrorPrefix(t *testing.T) {
 		t.Fatalf("error should start with the code: %s", r.Error())
 	}
 }
+
+// The history has to show the text the customer received, not the template and
+// not the variables. This is the exact shape of a real stored template, so a
+// regression in placeholder substitution shows up as a wrong sentence here.
+func TestRenderTemplateBodySubstitutesEveryPosition(t *testing.T) {
+	raw := []byte(`[
+		{"type":"HEADER","format":"TEXT","text":"commande en cours"},
+		{"type":"BODY","text":"Bonjour {{1}} votre commande {{2}} est en cours de livraison.\r\n\r\nLivreur: {{3}} Tel : {{4}} Merci beacoup!!!"}
+	]`)
+	vars := map[string]string{
+		"1": "Radhwen Marayah",
+		"2": "922153764102",
+		"3": "Borhen edine ben khlifa",
+		"4": "29656683",
+	}
+
+	got := RenderTemplateBody(raw, vars)
+	want := "commande en cours\n\nBonjour Radhwen Marayah votre commande 922153764102 est en cours de livraison.\n\nLivreur: Borhen edine ben khlifa Tel : 29656683 Merci beacoup!!!"
+	if got != want {
+		t.Fatalf("RenderTemplateBody:\n got %q\nwant %q", got, want)
+	}
+	if strings.Contains(got, "{{") {
+		t.Error("no placeholder should survive into the snapshot; the customer never saw one")
+	}
+}
+
+// A legacy positional template pads an unresolvable value with a dash, and the
+// snapshot must read the same way rather than showing an empty gap that the
+// merchant would read as a bug.
+func TestRenderTemplateBodyPadsAnUnknownPlaceholder(t *testing.T) {
+	raw := []byte(`[{"type":"BODY","text":"Livreur: {{1}} Tel: {{2}}"}]`)
+	got := RenderTemplateBody(raw, map[string]string{"1": "Ali Mansour"})
+	if want := "Livreur: Ali Mansour Tel: —"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// A template with no variables still produces text, and the history must not
+// show an empty Detail cell for it.
+func TestRenderTemplateBodyHandlesNoVariables(t *testing.T) {
+	raw := []byte(`[{"type":"BODY","text":"Votre commande est livree."}]`)
+	if got := RenderTemplateBody(raw, nil); got != "Votre commande est livree." {
+		t.Fatalf("got %q, want the plain body", got)
+	}
+	if got := RenderTemplateBody(nil, nil); got != "" {
+		t.Fatalf("no components must render as empty, got %q", got)
+	}
+}

@@ -3,6 +3,7 @@ package whatsapp
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,5 +159,57 @@ func TestDBAutomationHistoryReturnsEventTimes(t *testing.T) {
 	}
 	if rows[0].TemplateVariables["1"] != "y" {
 		t.Fatalf("template variables did not survive the join: %+v", rows[0].TemplateVariables)
+	}
+}
+
+// The snapshot is the whole point of showing the message, so it has to survive
+// the template being deleted afterwards. If the history fell back to re-rendering
+// it would show nothing at that moment — exactly when a merchant checks what
+// went out.
+func TestDBHistoryKeepsTheMessageTextAfterTheTemplateIsDeleted(t *testing.T) {
+	ctx := context.Background()
+	db := testDB(t)
+
+	shop := seedShop(t, db)
+	automation := seedAutomation(t, db, shop, "en_cours")
+
+	tplID := uuid.New()
+	raw := []byte(`[{"type":"BODY","text":"Bonjour {{1}} votre commande {{2}} est en cours."}]`)
+	if _, err := db.Exec(ctx, `
+		INSERT INTO templates (id, shop_id, meta_template_name, language, category, approval_status, components)
+		VALUES ($1, $2, 'ordre_en_cours', 'fr', 'UTILITY', 'approved', $3::jsonb)`,
+		tplID, shop, string(raw)); err != nil {
+		t.Fatalf("insert template: %v", err)
+	}
+
+	body := RenderTemplateBody(raw, map[string]string{"1": "Radhwen Marayah", "2": "922153764102"})
+	if body == "" {
+		t.Fatal("RenderTemplateBody produced nothing for a real stored shape")
+	}
+
+	msgID := uuid.New()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO messages (id, shop_id, automation_id, template_id, recipient_phone, status, body_text)
+		VALUES ($1, $2, $3, $4, '+21693531118', 'delivered', $5)`,
+		msgID, shop, automation, tplID, body); err != nil {
+		t.Fatalf("insert message: %v", err)
+	}
+
+	if _, err := db.Exec(ctx, `DELETE FROM templates WHERE id = $1`, tplID); err != nil {
+		t.Fatalf("delete template: %v", err)
+	}
+
+	rows, err := messagesForAutomation(ctx, db, automation, 200)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	if rows[0].BodyText != body {
+		t.Fatalf("body text after the template was deleted:\n got %q\nwant %q", rows[0].BodyText, body)
+	}
+	if !strings.Contains(rows[0].BodyText, "Radhwen Marayah") {
+		t.Error("the snapshot must contain the substituted value, not the placeholder")
 	}
 }

@@ -169,6 +169,31 @@ func retryBannerClass(stillHeld int) string {
 	return "border-amber-200 bg-amber-50 text-amber-800"
 }
 
+// historyBody is the message as it was sent, snapshotted at send time. This is
+// the one thing a merchant opens the history to check and it used to be
+// missing: the page said a message went out, to whom, and nothing about what
+// it said.
+func historyBody(m whatsapp.AutomationMessage) string {
+	return strings.TrimSpace(m.BodyText)
+}
+
+// historyBodyClass keeps the message text readable on the light table without
+// letting a long template stretch the row.
+func historyBodyClass(n int) string {
+	return "block whitespace-pre-line break-words text-slate-700" + lineClamp(n)
+}
+
+func lineClamp(n int) string {
+	switch n {
+	case 1:
+		return " truncate"
+	case 3:
+		return " line-clamp-3"
+	default:
+		return " line-clamp-2"
+	}
+}
+
 // arrived, was anything sent, to whom, and what did Meta say?
 templ AutomationHistoryPage(page components.Page, a automations.Automation, templateName string, rows []whatsapp.AutomationMessage, counts whatsapp.AutomationSendCounts, suppressions []automations.Suppression, retry automations.RetryResult) {
 	@layouts.Shell(page) {
@@ -266,13 +291,13 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 						<table class="w-full table-fixed text-left text-sm">
 							<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
 								<tr>
-									<th class="w-[14%] px-3 py-3 font-medium first:pl-5">When</th>
+									<th class="w-[10%] px-3 py-3 font-medium first:pl-5">When</th>
 									<th class="w-[15%] px-3 py-3 font-medium">Customer</th>
-									<th class="w-[11%] px-3 py-3 font-medium">Phone</th>
-									<th class="w-[12%] px-3 py-3 font-medium">Order</th>
-									<th class="w-[9%] px-3 py-3 font-medium">Status</th>
-									<th class="w-[12%] px-3 py-3 font-medium">Delivered</th>
-									<th class="w-[18%] px-3 py-3 font-medium last:pr-5">Detail</th>
+									<th class="w-[10%] px-3 py-3 font-medium">Phone</th>
+									<th class="w-[11%] px-3 py-3 font-medium">Order</th>
+									<th class="w-[8%] px-3 py-3 font-medium">Status</th>
+									<th class="w-[10%] px-3 py-3 font-medium">Delivered</th>
+									<th class="w-[36%] px-3 py-3 font-medium last:pr-5">Message</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
@@ -305,7 +330,9 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 											if e := historyError(m); e != "" {
 												<span class="block text-rose-700" title={ e }>{ e }</span>
 											} else if m.Status == "queued" {
-												<span class="block text-amber-800">Recorded, but WhatsApp never confirmed it \u2014 this send did not complete.</span>
+												<span class="block text-amber-800">Recorded, but WhatsApp never confirmed it — this send did not complete.</span>
+											} else if b := historyBody(m); b != "" {
+												<span class={ historyBodyClass(len(b)) } title={ b }>{ b }</span>
 											} else if m.Status == "read" {
 												<span class="text-slate-500">Read by the customer</span>
 											} else {

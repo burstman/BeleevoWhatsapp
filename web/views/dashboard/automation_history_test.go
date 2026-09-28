@@ -217,6 +217,59 @@ func TestHeldBackSendsAreVisibleAndNamed(t *testing.T) {
 	}
 }
 
+// The page used to say a message was sent, to whom, and never what it said. The
+// merchant's question on this page is "what did my customer actually get", so the
+// rendered text has to be in the row, not just the variables behind it.
+func TestHistoryShowsTheMessageThatWasSent(t *testing.T) {
+	row := whatsapp.AutomationMessage{}
+	row.ID = uuid.New()
+	row.RecipientPhone = "+21693531118"
+	row.Status = "delivered"
+	row.BodyText = "Bonjour Radhwen Marayah votre commande 922153764102 est en cours de livraison.\n\nLivreur: Borhen edine ben khlifa Tel : 29656683 Merci beacoup!!!"
+	row.CreatedAt = time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	rowID := uuid.New()
+	row.AutomationID = &rowID
+	a := automations.Automation{ID: rowID, Name: "Out for delivery", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+
+	var sb strings.Builder
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "ordre_en_cours", []whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Delivered: 1}, nil, automations.RetryResult{}).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+
+	if !strings.Contains(html, "Livreur: Borhen edine ben khlifa Tel : 29656683") {
+		t.Error("the message text must be visible in the history row")
+	}
+	if strings.Contains(html, "Accepted by WhatsApp") {
+		t.Error("the message itself is the useful detail; the old placeholder text is not")
+	}
+	if !strings.Contains(html, "922153764102") {
+		t.Error("the tracking code appears in the message text and must survive rendering")
+	}
+}
+
+// A message sent before the snapshot existed must still render a row rather than
+// an empty column, since the live ledger has rows with no body text.
+func TestHistoryRowWithoutASnapshotStillRenders(t *testing.T) {
+	row := whatsapp.AutomationMessage{}
+	row.ID = uuid.New()
+	row.RecipientPhone = "+21693531118"
+	row.Status = "sent"
+	row.TemplateVariables = map[string]string{"1": "CVY-7"}
+	row.CreatedAt = time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	rowID := uuid.New()
+	row.AutomationID = &rowID
+	a := automations.Automation{ID: rowID, Name: "Order confirmed", EventSource: "converty", OrderStatus: "confirmed", Enabled: true}
+
+	var sb strings.Builder
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", []whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Sent: 1}, nil, automations.RetryResult{}).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !strings.Contains(sb.String(), "Accepted by WhatsApp") {
+		t.Error("a row with no snapshot should fall back rather than render a blank cell")
+	}
+}
+
 // The button is the only way a held-back event ever reaches the customer: the
 // status transition it came from has already passed, so no future event will
 // pick it up. Its absence would strand those messages permanently.

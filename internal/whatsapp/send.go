@@ -281,6 +281,59 @@ func countTemplateVariablesRaw(raw []byte) int {
 	return len(seen)
 }
 
+// RenderTemplateBody returns the message text a set of variables produces, for
+// the history page. The approved template body is fixed at send time, so a
+// snapshot of it is exactly what the customer received. The history shows the
+// stored copy rather than re-deriving it, because a template can be edited or
+// deleted afterwards and a re-derived history would then show a message nobody
+// was ever sent.
+func RenderTemplateBody(raw []byte, vars map[string]string) string {
+	var parts []string
+	for _, c := range decodeMetaComponents(raw) {
+		switch metaCompType(c) {
+		case "BODY", "HEADER":
+			text := metaCompText(c)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			parts = append(parts, fillPlaceholders(text, vars))
+		}
+	}
+	// Meta renders consecutive body components as separate paragraphs. Stored
+	// bodies keep whatever line ending Converty or the editor wrote, which is
+	// usually CRLF; normalising here keeps the snapshot readable in the page and
+	// in a copy-paste, and the customer sees a line break either way.
+	body := strings.Join(parts, "\n\n")
+	return strings.ReplaceAll(body, "\r\n", "\n")
+}
+
+// fillPlaceholders substitutes {{1}}-style placeholders from the resolved
+// variable map. A placeholder with no entry in that map becomes the same
+// neutral dash the automation builder pads a legacy template with, so the
+// snapshot reads like the message that went out rather than showing a gap.
+func fillPlaceholders(text string, vars map[string]string) string {
+	var b strings.Builder
+	for i := 0; i < len(text); {
+		if text[i] == '{' && i+1 < len(text) && text[i+1] == '{' {
+			if end := strings.Index(text[i:], "}}"); end > 0 {
+				key := text[i+2 : i+end]
+				if n, err := strconv.Atoi(strings.TrimSpace(key)); err == nil {
+					if v, ok := vars[strconv.Itoa(n)]; ok {
+						b.WriteString(v)
+					} else {
+						b.WriteString("—")
+					}
+					i += end + 2
+					continue
+				}
+			}
+		}
+		b.WriteByte(text[i])
+		i++
+	}
+	return b.String()
+}
+
 // buildComponents converts the stored template components into the Meta send
 // shape, substituting positional variables in body/header text. URL buttons
 // receive the trailing {{1}} parameter set Meta requires.
@@ -485,10 +538,11 @@ func (s *Service) SendTemplateTest(ctx context.Context, req TestTemplateRequest)
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO messages (
 			shop_id, customer_id, template_id, recipient_phone,
-			template_variables, status
-		) VALUES ($1, NULL, $2, $3, $4::jsonb, 'queued')
+			template_variables, status, body_text
+		) VALUES ($1, NULL, $2, $3, $4::jsonb, 'queued', NULLIF($5, ''))
 		RETURNING id`,
 		req.ShopID, req.TemplateID, to, varsJSON,
+		RenderTemplateBody(template.RawComponents, req.Variables),
 	).Scan(&msgID)
 	if err != nil {
 		return nil, err

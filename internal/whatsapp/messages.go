@@ -25,11 +25,15 @@ type Message struct {
 	ErrorMessage      string
 	MetaErrors        []MetaError
 	TemplateVariables map[string]string
-	SentAt            *time.Time
-	DeliveredAt       *time.Time
-	ReadAt            *time.Time
-	FailedAt          *time.Time
-	CreatedAt         time.Time
+	// BodyText is the rendered message as it was sent, snapshotted onto the row
+	// at send time. Empty on rows written before that snapshot existed, where
+	// the history falls back to the template's variable list.
+	BodyText    string
+	SentAt      *time.Time
+	DeliveredAt *time.Time
+	ReadAt      *time.Time
+	FailedAt    *time.Time
+	CreatedAt   time.Time
 }
 
 // AutomationMessage is one row of an automation's send history: the message
@@ -64,7 +68,8 @@ func (s *Service) MessagesAll(ctx context.Context) ([]Message, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, customer_id, template_id, converty_order_id,
 		       recipient_phone, meta_message_id, status, error_code, error_message,
-		       meta_errors, template_variables, sent_at, delivered_at, read_at, failed_at, created_at
+		       meta_errors, template_variables, COALESCE(body_text, ''),
+		       sent_at, delivered_at, read_at, failed_at, created_at
 		FROM messages
 		ORDER BY created_at DESC
 		LIMIT 500`,
@@ -90,7 +95,8 @@ func (s *Service) Messages(ctx context.Context, shopID uuid.UUID) ([]Message, er
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, shop_id, customer_id, template_id, converty_order_id,
 		       recipient_phone, meta_message_id, status, error_code, error_message,
-		       meta_errors, template_variables, sent_at, delivered_at, read_at, failed_at, created_at
+		       meta_errors, template_variables, COALESCE(body_text, ''),
+		       sent_at, delivered_at, read_at, failed_at, created_at
 		FROM messages
 		WHERE shop_id = $1
 		ORDER BY created_at DESC
@@ -118,7 +124,8 @@ func (s *Service) Message(ctx context.Context, shopID, messageID uuid.UUID) (Mes
 	row := s.pool.QueryRow(ctx, `
 		SELECT id, shop_id, customer_id, template_id, converty_order_id,
 		       recipient_phone, meta_message_id, status, error_code, error_message,
-		       meta_errors, template_variables, sent_at, delivered_at, read_at, failed_at, created_at
+		       meta_errors, template_variables, COALESCE(body_text, ''),
+		       sent_at, delivered_at, read_at, failed_at, created_at
 		FROM messages
 		WHERE id = $1 AND shop_id = $2`,
 		messageID, shopID,
@@ -149,8 +156,8 @@ func messagesForAutomation(ctx context.Context, db database.Querier, automationI
 	rows, err := db.Query(ctx, `
 		SELECT m.id, m.shop_id, m.customer_id, m.template_id, m.converty_order_id,
 		       m.recipient_phone, m.meta_message_id, m.status, m.error_code, m.error_message,
-		       m.meta_errors, m.template_variables, m.sent_at, m.delivered_at, m.read_at,
-		       m.failed_at, m.created_at,
+		       m.meta_errors, m.template_variables, COALESCE(m.body_text, ''),
+		       m.sent_at, m.delivered_at, m.read_at, m.failed_at, m.created_at,
 		       m.automation_id, COALESCE(t.meta_template_name, ''), COALESCE(c.name, '')
 		FROM messages m
 		LEFT JOIN templates t ON t.id = m.template_id
@@ -173,7 +180,7 @@ func messagesForAutomation(ctx context.Context, db database.Querier, automationI
 		if err := rows.Scan(
 			&row.ID, &row.ShopID, &row.CustomerID, &row.TemplateID, &row.ConvertyOrderID,
 			&row.RecipientPhone, &row.MetaMessageID, &row.Status, &row.ErrorCode, &row.ErrorMessage,
-			&metaErrors, &vars, &row.SentAt, &row.DeliveredAt, &row.ReadAt,
+			&metaErrors, &vars, &row.BodyText, &row.SentAt, &row.DeliveredAt, &row.ReadAt,
 			&row.FailedAt, &row.CreatedAt,
 			&row.AutomationID, &row.TemplateName, &row.CustomerName,
 		); err != nil {
@@ -242,7 +249,7 @@ func scanMessage(row messageScanner) (Message, error) {
 	err := row.Scan(
 		&m.ID, &m.ShopID, &m.CustomerID, &m.TemplateID, &m.ConvertyOrderID,
 		&m.RecipientPhone, &m.MetaMessageID, &m.Status, &m.ErrorCode, &m.ErrorMessage,
-		&metaErrors, &vars, &m.SentAt, &m.DeliveredAt, &m.ReadAt, &m.FailedAt, &m.CreatedAt,
+		&metaErrors, &vars, &m.BodyText, &m.SentAt, &m.DeliveredAt, &m.ReadAt, &m.FailedAt, &m.CreatedAt,
 	)
 	if err != nil {
 		return Message{}, err
