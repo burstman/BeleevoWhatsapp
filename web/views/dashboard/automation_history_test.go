@@ -169,3 +169,85 @@ func TestAutomationHistoryPageRendersRowsAndEmptyState(t *testing.T) {
 		t.Error("a failed send must show why it failed")
 	}
 }
+
+// "Waiting" read like a schedule, so a merchant thought a row meant "will send
+// later". A row only exists once the job ran, so a stuck one is a send that did
+// not complete and must not be dressed as pending.
+func TestQueuedRowReadsAsAFailureNotAPendingSchedule(t *testing.T) {
+	if got := statusLabel("queued"); got != "Not sent" {
+		t.Fatalf("queued label is %q, which still reads as a schedule", got)
+	}
+	if got := statusLabel("queued"); got == "Waiting" {
+		t.Fatal(`"Waiting" implies the send is still to come`)
+	}
+
+	row := whatsapp.AutomationMessage{}
+	row.ID = uuid.New()
+	row.RecipientPhone = "+21624118849"
+	row.Status = "queued"
+	row.CreatedAt = time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	rowID := uuid.New()
+	row.AutomationID = &rowID
+	a := automations.Automation{ID: rowID, Name: "Order confirmed", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+
+	var sb strings.Builder
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", []whatsapp.AutomationMessage{row}, whatsapp.AutomationSendCounts{Total: 1, Queued: 1}).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+	if !strings.Contains(html, "Not sent") {
+		t.Error("the row should be labelled as not sent")
+	}
+	if !strings.Contains(html, "WhatsApp never confirmed it") {
+		t.Error("the row should say the send did not complete")
+	}
+	if strings.Contains(html, "Waiting for its send time") {
+		t.Error("the old pending-schedule wording is back; it is what confused the merchant")
+	}
+}
+
+// The note tells the merchant when a row appears, so an empty list before the
+// first send reads as normal rather than broken.
+func TestHistoryNoteExplainsWhenRowsAppear(t *testing.T) {
+	day := 10
+	delay := 30
+	sendAt := time.Date(2026, 3, 4, day, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		auto automations.Automation
+		want string
+	}{
+		{"scheduled", automations.Automation{SendTime: &sendAt, SendTimezone: "Africa/Tunis"}, "10:00 Africa/Tunis"},
+		{"delayed", automations.Automation{DelayMinutes: &delay}, "30 minutes after the event"},
+		{"instant", automations.Automation{}, "as soon as the event happens"},
+	}
+	for _, c := range cases {
+		got := historyNote(c.auto)
+		if !strings.Contains(got, c.want) {
+			t.Errorf("%s note says %q, want it to mention %q", c.name, got, c.want)
+		}
+		if !strings.Contains(got, "only once they have been sent") {
+			t.Errorf("%s note must say a row appears only after the send: %q", c.name, got)
+		}
+	}
+
+	// A scheduled automation with a blank stored zone falls back to the default
+	// rather than printing an empty one.
+	blank := automations.Automation{SendTime: &sendAt}
+	if got := historyNote(blank); strings.Contains(got, "10:00 \u00b7") || !strings.Contains(got, "Africa/Tunis") {
+		t.Errorf("blank timezone should render the default, got %q", got)
+	}
+
+	a := automations.Automation{ID: uuid.New(), Name: "Order confirmed", EventSource: "delivery", OrderStatus: "in-progress", Enabled: true}
+	var sb strings.Builder
+	if err := AutomationHistoryPage(components.Page{Title: "Send history", Active: "automations"}, a, "tpl", nil, whatsapp.AutomationSendCounts{}).Render(t.Context(), &sb); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := sb.String()
+	if !strings.Contains(html, "not a broken automation") {
+		t.Error("the empty state must say an empty list is not a broken automation")
+	}
+	if !strings.Contains(html, "Messages appear here only once they have been sent") {
+		t.Error("the page must explain when messages appear")
+	}
+}

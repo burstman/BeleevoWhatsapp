@@ -27,7 +27,7 @@ func statusLabel(status string) string {
 	case "failed":
 		return "Failed"
 	case "queued":
-		return "Waiting"
+		return "Not sent"
 	default:
 		return status
 	}
@@ -97,6 +97,27 @@ func historyError(m whatsapp.AutomationMessage) string {
 	return ""
 }
 
+// historyNote explains when a row appears, using this automation's own rule. The
+// wording matters more than it looks: a scheduled send is parked in the queue with
+// no ledger row at all, so a merchant checking at 09:00 for a 10:00 automation
+// would otherwise read the empty list as a failure.
+func historyNote(a automations.Automation) string {
+	rule := "sends as soon as the event happens"
+	switch {
+	case a.DelayMinutes != nil:
+		rule = fmt.Sprintf("sends %d minutes after the event", *a.DelayMinutes)
+	case a.SendTime != nil:
+		zone := a.SendTimezone
+		if zone == "" {
+			zone = automations.DefaultTimezone
+		}
+		rule = fmt.Sprintf("sends at %02d:%02d %s",
+			a.SendTime.Hour(), a.SendTime.Minute(), zone)
+	}
+	return "This automation " + rule + ". Messages appear here only once they have " +
+		"been sent, so an empty list before the first one is normal."
+}
+
 // historyVariables renders the filled placeholders so a merchant can see what
 // the message actually carried, ordered by key so the column does not jitter.
 func historyVariables(m whatsapp.AutomationMessage) string {
@@ -159,19 +180,21 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 					<div class={ "mt-1 text-2xl font-bold", failureClass(counts.Failed) }>{ strconv.Itoa(counts.Failed) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Waiting</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">Not sent</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Queued) }>{ strconv.Itoa(counts.Queued) }</div>
 				</div>
 			</div>
+
+			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
 
 			<div class="rounded-xl border border-slate-200 bg-white">
 				if len(rows) == 0 {
 					<div class="px-5 py-12 text-center">
 						<p class="text-sm font-medium text-slate-700">Nothing sent yet</p>
 						<p class="mt-1 text-sm text-slate-500">
-							This automation has not produced a message. It only records a send once
-							the event fires, so a quiet history usually means no matching event has
-							occurred — check the trigger status above.
+							No event has triggered a message from this automation yet. A send is
+							recorded only when it actually goes out, so an empty list here means
+							"no matching event" — not a broken automation.
 						</p>
 					</div>
 				} else {
@@ -218,7 +241,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 											if e := historyError(m); e != "" {
 												<span class="block text-rose-700" title={ e }>{ e }</span>
 											} else if m.Status == "queued" {
-												<span class="text-slate-500">Waiting for its send time</span>
+												<span class="block text-amber-800">Recorded, but WhatsApp never confirmed it \u2014 this send did not complete.</span>
 											} else if m.Status == "read" {
 												<span class="text-slate-500">Read by the customer</span>
 											} else {
