@@ -109,7 +109,10 @@ func (s *Service) Tracked(ctx context.Context, shopID uuid.UUID) ([]TrackedOrder
 	return out, rows.Err()
 }
 
-// TrackedByBarcode returns one watched parcel scoped to a shop.
+// TrackedByBarcode returns one watched parcel scoped to a shop. The scan list has
+// to name every column selected: pgx refuses a mismatched count, and a caller
+// that reads a failed lookup as "no such parcel" turns that into a silently
+// dropped send rather than a visible error.
 func (s *Service) TrackedByBarcode(ctx context.Context, shopID uuid.UUID, barcode string) (TrackedOrder, error) {
 	var t TrackedOrder
 	err := s.pool.QueryRow(ctx, `
@@ -120,7 +123,8 @@ func (s *Service) TrackedByBarcode(ctx context.Context, shopID uuid.UUID, barcod
 		WHERE shop_id = $1 AND barcode = $2`,
 		shopID, barcode,
 	).Scan(&t.ID, &t.ShopID, &t.Barcode, &t.OrderID, &t.CustomerID, &t.CustomerName,
-		&t.CustomerPhone, &t.LastStatus, &t.StatusLabel, &t.LastSeenAt)
+		&t.CustomerPhone, &t.LastStatus, &t.StatusLabel, &t.DriverName, &t.DriverPhone,
+		&t.MissingCount, &t.LastMissingAt, &t.LastSeenAt)
 	if err == pgx.ErrNoRows {
 		return TrackedOrder{}, nil
 	}
