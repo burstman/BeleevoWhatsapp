@@ -253,11 +253,12 @@ func (s *Service) createQueuedMessage(ctx context.Context, req SendRequest, t Te
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO messages (
 			shop_id, customer_id, template_id, converty_order_id, recipient_phone,
-			template_variables, idempotency_key, status
-		) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, 'queued')
+			template_variables, idempotency_key, automation_id, status
+		) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7,
+			NULLIF($8::uuid, '00000000-0000-0000-0000-000000000000'), 'queued')
 		RETURNING id`,
 		req.ShopID, req.CustomerID, t.ID, req.ConvertyOrderID,
-		customer_phone(ctx, s, req), varsJSON, req.IdempotencyKey,
+		customer_phone(ctx, s, req), varsJSON, req.IdempotencyKey, req.AutomationID,
 	).Scan(&id)
 	return id, err
 }

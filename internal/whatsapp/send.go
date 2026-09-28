@@ -94,6 +94,10 @@ type SendRequest struct {
 	Purpose         string
 	Variables       map[string]string
 	IdempotencyKey  string
+	// AutomationID attributes the message to the automation that fired it, so
+	// the merchant can read one automation's send history. uuid.Nil means the
+	// send was not automation-driven (API, test), and stays unlinked.
+	AutomationID uuid.UUID
 }
 
 // SendResult reports the outcome of an accepted send.

@@ -74,6 +74,20 @@ func TestToSendRequestRoundTrip(t *testing.T) {
 	}
 }
 
+// The automation id must survive the job hop: it is what attributes a sent
+// message to the automation whose history the merchant is looking at.
+func TestToSendRequestKeepsAutomationID(t *testing.T) {
+	job := whatsapp.SendWhatsAppTemplateJob{
+		ShopID:       mustUUID(t),
+		AutomationID: mustUUID(t),
+		CustomerID:   mustUUID(t),
+		TemplateID:   mustUUID(t),
+	}
+	if got := toSendRequest(job).AutomationID; got != job.AutomationID {
+		t.Fatalf("automation id lost: got %v want %v", got, job.AutomationID)
+	}
+}
+
 func TestScheduledFireInstant(t *testing.T) {
 	r := ruleFromSchedule(nil)
 	if at := scheduledFire(r, time.Now()); !at.IsZero() {

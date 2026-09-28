@@ -74,6 +74,7 @@ func (s *Service) HandleSendWhatsAppTemplate(ctx context.Context, payload []byte
 		Purpose:         job.Purpose,
 		Variables:       job.Variables,
 		IdempotencyKey:  job.IdempotencyKey,
+		AutomationID:    job.AutomationID,
 	})
 	var rej *SendRejection
 	if errors.As(err, &rej) {

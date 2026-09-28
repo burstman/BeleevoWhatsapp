@@ -146,6 +146,8 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 							class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Enable</button>
 					}
 				</form>
+				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/history") }
+					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">History</a>
 				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/edit") }
 					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Edit</a>
 				if a.TemplateID != uuid.Nil {

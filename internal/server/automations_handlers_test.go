@@ -3,6 +3,9 @@ package server
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
+	"whatsappconverty/internal/shops"
 	"whatsappconverty/internal/whatsapp"
 )
 
@@ -57,5 +60,24 @@ func TestTestVariablesPadsUnknownSlots(t *testing.T) {
 		if got := vars[slot]; got != "—" {
 			t.Fatalf("slot %s = %q, want the em dash pad", slot, got)
 		}
+	}
+}
+
+// A guessed automation id must not reach another shop's send history. The
+// membership check is the only thing standing between a valid id and rows the
+// operator has no business seeing, so it is worth pinning.
+func TestOperatorSeesShop(t *testing.T) {
+	visible := []shops.Shop{
+		{ID: uuid.New()},
+		{ID: uuid.New()},
+	}
+	if !operatorSeesShop(visible, visible[1].ID) {
+		t.Fatal("a shop in the operator's list must be visible")
+	}
+	if operatorSeesShop(visible, uuid.New()) {
+		t.Fatal("a shop outside the operator's list must not be visible")
+	}
+	if operatorSeesShop(nil, uuid.New()) {
+		t.Fatal("an empty shop list must not authorise anything")
 	}
 }

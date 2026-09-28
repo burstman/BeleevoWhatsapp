@@ -94,6 +94,7 @@ func (p *Processor) OnConvertyEvent(ctx context.Context, e ConvertyEvent) error 
 
 	return p.send(ctx, SendInput{
 		ShopID:         e.ShopID,
+		AutomationID:   automation.ID,
 		CustomerID:     cid,
 		TemplateID:     automation.TemplateID,
 		CustomerName:   e.CustomerName,
@@ -146,6 +147,7 @@ func (p *Processor) OnDeliveryChange(ctx context.Context, change delivery.Status
 	sch := automation.Schedule()
 	return p.send(ctx, SendInput{
 		ShopID:         change.ShopID,
+		AutomationID:   automation.ID,
 		CustomerID:     cid,
 		TemplateID:     automation.TemplateID,
 		CustomerName:   tracked.CustomerName,
@@ -185,7 +187,11 @@ func (p *Processor) SweepDelivery(ctx context.Context) (int, error) {
 // SendInput is the resolved, ready-to-send automation input. fire decides when
 // the send may happen (see fireRule below).
 type SendInput struct {
-	ShopID         uuid.UUID
+	ShopID uuid.UUID
+	// AutomationID is the automation this send belongs to. It rides along so the
+	// message row can be attributed, which is what the merchant's per-automation
+	// send history is built from.
+	AutomationID   uuid.UUID
 	CustomerID     uuid.UUID
 	TemplateID     uuid.UUID
 	CustomerName   string
@@ -323,6 +329,7 @@ func (p *Processor) send(ctx context.Context, in SendInput) error {
 
 	job := whatsapp.SendWhatsAppTemplateJob{
 		ShopID:          in.ShopID,
+		AutomationID:    in.AutomationID,
 		CustomerID:      in.CustomerID,
 		TemplateID:      in.TemplateID,
 		ConvertyOrderID: in.OrderID,
@@ -408,6 +415,7 @@ func toSendRequest(job whatsapp.SendWhatsAppTemplateJob) whatsapp.SendRequest {
 	return whatsapp.SendRequest{
 		ShopID:          job.ShopID,
 		CustomerID:      job.CustomerID,
+		AutomationID:    job.AutomationID,
 		TemplateID:      job.TemplateID,
 		ConvertyOrderID: job.ConvertyOrderID,
 		Purpose:         job.Purpose,

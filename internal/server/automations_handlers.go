@@ -84,6 +84,64 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		automations.DeliveryStatuses(), flash))
 }
 
+// handleAutomationHistory shows the messages one automation produced. The rows
+// are filtered by the automation id, so the automation lookup is what decides
+// the page: an id that does not resolve, or one belonging to a shop the
+// operator cannot see, redirects to the list rather than rendering.
+func (a *App) handleAutomationHistory(k *kit.Kit) error {
+	all, err := a.shopsFor(k)
+	if err != nil {
+		return err
+	}
+
+	ctx := k.Request.Context()
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+	automation, err := a.Automations.AutomationByID(ctx, id)
+	if err != nil {
+		a.Log.Error("automation history lookup failed", "id", id, "error", err)
+		return err
+	}
+	if automation == nil || !operatorSeesShop(all, automation.ShopID) {
+		return k.Redirect(http.StatusSeeOther, "/automations?flash=notfound")
+	}
+
+	rows, err := a.WhatsApp.MessagesForAutomation(ctx, id, 200)
+	if err != nil {
+		a.Log.Error("automation history query failed", "automation_id", id, "error", err)
+		return err
+	}
+	counts, err := a.WhatsApp.AutomationSendCounts(ctx, id)
+	if err != nil {
+		a.Log.Error("automation history counts failed", "automation_id", id, "error", err)
+		return err
+	}
+
+	templateName := ""
+	if automation.TemplateID != uuid.Nil {
+		if t, tErr := a.WhatsApp.Template(ctx, automation.ShopID, automation.TemplateID); tErr == nil {
+			templateName = t.Name
+		}
+	}
+
+	page := a.dashboardPage(k, "Send history", "automations", all)
+	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts))
+}
+
+// operatorSeesShop reports whether the operator's shop list contains this shop.
+// Every shop is currently one operator's, but the check keeps a guessed id from
+// reaching another shop's history if that ever changes.
+func operatorSeesShop(all []shops.Shop, shopID uuid.UUID) bool {
+	for _, s := range all {
+		if s.ID == shopID {
+			return true
+		}
+	}
+	return false
+}
+
 // handleAutomationEdit renders the create form when no id is given, or the
 // prefilled edit form for one automation. The form lets the operator choose the
 // target shop, so the edited automation resolves to its own shop, not the
