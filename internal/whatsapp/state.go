@@ -304,13 +304,19 @@ func (s *Service) markMessageSent(ctx context.Context, messageID uuid.UUID, meta
 	return err
 }
 
-// markMessageFailed records a send-time failure.
-func (s *Service) markMessageFailed(ctx context.Context, messageID uuid.UUID, code, message string) error {
-	_, err := s.pool.Exec(ctx, `
+// markMessageFailed records a send-time failure. metaErrors, when provided,
+// is the JSON array of Meta error elements mirrored from the API response so
+// the failure reason stays machine-readable alongside the webhook path.
+func (s *Service) markMessageFailed(ctx context.Context, messageID uuid.UUID, code, message string, metaErrors ...[]byte) error {
+	sql := `
 		UPDATE messages
-		SET status = 'failed', error_code = $2, error_message = $3, failed_at = now(), updated_at = now()
-		WHERE id = $1`,
-		messageID, code, message,
-	)
+		SET status = 'failed', error_code = $2, error_message = $3, failed_at = now(), updated_at = now()`
+	args := []any{messageID, code, message}
+	if len(metaErrors) > 0 && len(metaErrors[0]) > 0 {
+		sql += `, meta_errors = $4::jsonb`
+		args = append(args, string(metaErrors[0]))
+	}
+	sql += ` WHERE id = $1`
+	_, err := s.pool.Exec(ctx, sql, args...)
 	return err
 }

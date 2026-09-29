@@ -452,7 +452,7 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		customer.Phone, template.Name, template.Language, components,
 		MessagingAccountParam(creds.MessagingAccountID))
 	if sendErr != nil {
-		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error())
+		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error(), metaErrorJSON(sendErr))
 		return nil, wrapMetaError(sendErr)
 	}
 
@@ -464,6 +464,22 @@ func (s *Service) SendTemplateMessage(ctx context.Context, req SendRequest) (*Se
 		"template", template.Name, "meta_message_id", metaID)
 
 	return &SendResult{MessageID: msgID, MetaMessageID: metaID, Status: "sent"}, nil
+}
+
+// metaErrorJSON mirrors a send-time Meta API error into the same meta_errors
+// JSONB shape the webhook path records, so failures from both paths are
+// countable by reason (e.g. "recipient not on WhatsApp", code 131047).
+func metaErrorJSON(err error) []byte {
+	if err == nil {
+		return nil
+	}
+	var me APIError
+	if errors.As(err, &me) && me.Code != 0 {
+		if raw, jerr := json.Marshal([]MetaError{{Code: me.Code, Title: me.Message}}); jerr == nil {
+			return raw
+		}
+	}
+	return nil
 }
 
 // TestTemplateRequest is an operator-initiated test send of one template to
@@ -558,7 +574,7 @@ func (s *Service) SendTemplateTest(ctx context.Context, req TestTemplateRequest)
 		to, template.Name, template.Language, components,
 		MessagingAccountParam(creds.MessagingAccountID))
 	if sendErr != nil {
-		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error())
+		_ = s.markMessageFailed(ctx, msgID, ErrCodeMetaAPIError, sendErr.Error(), metaErrorJSON(sendErr))
 		return nil, wrapMetaError(sendErr)
 	}
 

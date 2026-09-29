@@ -8,14 +8,21 @@ import (
 )
 
 type Stats struct {
-	WhatsappConnected bool
-	ConvertyConnected bool
-	ConvertyStoreName string
-	MessagesSent      int
-	MessagesDelivered int
-	MessagesFailed    int
-	ActiveAutomations int
+	WhatsappConnected     bool
+	ConvertyConnected     bool
+	ConvertyStoreName     string
+	MessagesSent          int
+	MessagesDelivered     int
+	MessagesFailed        int
+	MessagesNotOnWhatsapp int
+	ActiveAutomations     int
 }
+
+// notOnWhatsAppPredicate matches a failed message whose Meta error says the
+// recipient has no WhatsApp account. 131047 is "recipient phone number not in
+// WhatsApp"; 132001 is the delivery failure Meta returns for unregistered
+// numbers. Both are captured in the messages.meta_errors JSONB slot.
+const notOnWhatsAppPredicate = `(meta_errors @> '[{"code":131047}]'::jsonb OR meta_errors @> '[{"code":132001}]'::jsonb)`
 
 type Repository struct {
 	pool *pgxpool.Pool
@@ -32,11 +39,12 @@ func (r *Repository) Stats(ctx context.Context, shopID uuid.UUID) (Stats, error)
 		SELECT
 			COALESCE(SUM(CASE WHEN status IN ('sent','delivered','read') THEN 1 ELSE 0 END), 0) AS sent,
 			COALESCE(SUM(CASE WHEN status IN ('delivered','read') THEN 1 ELSE 0 END), 0) AS delivered,
-			COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed
+			COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed,
+			COALESCE(SUM(CASE WHEN status = 'failed' AND `+notOnWhatsAppPredicate+` THEN 1 ELSE 0 END), 0) AS not_on_wa
 		FROM messages
 		WHERE shop_id = $1`,
 		shopID,
-	).Scan(&s.MessagesSent, &s.MessagesDelivered, &s.MessagesFailed)
+	).Scan(&s.MessagesSent, &s.MessagesDelivered, &s.MessagesFailed, &s.MessagesNotOnWhatsapp)
 	if err != nil {
 		return Stats{}, err
 	}
@@ -86,9 +94,10 @@ func (r *Repository) StatsAll(ctx context.Context) (Stats, error) {
 		SELECT
 			COALESCE(SUM(CASE WHEN status IN ('sent','delivered','read') THEN 1 ELSE 0 END), 0) AS sent,
 			COALESCE(SUM(CASE WHEN status IN ('delivered','read') THEN 1 ELSE 0 END), 0) AS delivered,
-			COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed
+			COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed,
+			COALESCE(SUM(CASE WHEN status = 'failed' AND `+notOnWhatsAppPredicate+` THEN 1 ELSE 0 END), 0) AS not_on_wa
 		FROM messages`,
-	).Scan(&s.MessagesSent, &s.MessagesDelivered, &s.MessagesFailed)
+	).Scan(&s.MessagesSent, &s.MessagesDelivered, &s.MessagesFailed, &s.MessagesNotOnWhatsapp)
 	if err != nil {
 		return Stats{}, err
 	}

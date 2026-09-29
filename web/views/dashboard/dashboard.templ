@@ -27,10 +27,11 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 			}
 		</div>
 
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 			@components.StatCard("Messages sent", strconv.Itoa(stats.MessagesSent), "lifetime")
 			@components.StatCard("Messages delivered", strconv.Itoa(stats.MessagesDelivered), "lifetime")
 			@components.StatCard("Messages failed", strconv.Itoa(stats.MessagesFailed), "lifetime")
+			@components.StatCard("Not on WhatsApp", strconv.Itoa(stats.MessagesNotOnWhatsapp), "no WhatsApp account")
 			@components.StatCard("Active automations", strconv.Itoa(stats.ActiveAutomations), "status → template")
 		</div>
 
