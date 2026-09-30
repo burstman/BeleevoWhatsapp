@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -110,7 +111,13 @@ func decodeWebhook(body []byte) webhookDecoded {
 		return d
 	}
 	d.EventType = pick(root, "event", "eventType", "event_type", "webhookType", "type")
-	d.OrderID = pick(root, "orderId", "order_id", "_id", "id")
+	// Prefer the human order number Converty displays (reference) over the
+	// Mongo _id, so trackers and message attribution show the number the
+	// merchant reads in the dashboard.
+	d.OrderID = pickReference(root)
+	if d.OrderID == "" {
+		d.OrderID = pick(root, "orderId", "order_id", "_id", "id")
+	}
 	d.OrderStatus = pick(root, "status", "orderStatus", "order_status")
 	d.StoreID = pick(root, "store", "storeId", "store_id")
 	d.StoreSlug = pick(root, "storeSlug", "store_slug", "slug")
@@ -137,6 +144,45 @@ func pickCustomer(root any, keys ...string) string {
 				for _, k := range keys {
 					if v, ok := cm[k].(string); ok && v != "" {
 						return v
+					}
+				}
+			}
+		}
+		for _, envelope := range []string{"data", "order", "payload", "store", "result", "order_extra"} {
+			if nested, exists := m[envelope]; exists {
+				if res := walk(nested, depth+1); res != "" {
+					return res
+				}
+			}
+		}
+		return ""
+	}
+	return walk(root, 0)
+}
+
+// pickReference returns the order's human reference number when the payload
+// carries one (Converty sends it as a JSON number, which unmarshal into any
+// yields as float64), mirroring pick's envelope recursion.
+func pickReference(root any) string {
+	var walk func(any, int) string
+	walk = func(node any, depth int) string {
+		if depth > 4 {
+			return ""
+		}
+		m, ok := node.(map[string]any)
+		if !ok {
+			return ""
+		}
+		for _, k := range []string{"reference", "orderNumber", "order_number", "num_commande"} {
+			if v, exists := m[k]; exists {
+				switch val := v.(type) {
+				case string:
+					if val != "" {
+						return val
+					}
+				case float64:
+					if val != 0 {
+						return strconv.FormatInt(int64(val), 10)
 					}
 				}
 			}
