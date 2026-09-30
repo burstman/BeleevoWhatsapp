@@ -149,7 +149,12 @@ func TestNewMescolisClientUsesConfigBaseURL(t *testing.T) {
 }
 
 func TestStatusTerminal(t *testing.T) {
-	for _, terminal := range []string{"delivered", "delivered-and-paid", "return-sender", "final-return"} {
+	for _, terminal := range []string{
+		"delivered", "delivered-and-paid",
+		"exchanged", "refunded", "order-refund",
+		"return-agency", "return-inter-agency", "return-received",
+		"return-sender", "final-return",
+	} {
 		if !StatusTerminal(terminal) {
 			t.Fatalf("%q should be terminal", terminal)
 		}

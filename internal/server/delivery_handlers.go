@@ -49,7 +49,11 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		if tErr != nil {
 			return tErr
 		}
-		tracked = append(tracked, rows...)
+		for _, t := range rows {
+			if !delivery.StatusTerminal(t.LastStatus) {
+				tracked = append(tracked, t)
+			}
+		}
 	}
 
 	flash := vsettings.DeliveryFlash{}

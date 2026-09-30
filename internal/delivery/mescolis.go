@@ -224,10 +224,15 @@ const StatusRemovedUpstream = "removed-upstream"
 const MissesBeforeSettled = 3
 
 // StatusTerminal reports whether a Mes Colis status is terminal: no further
-// progress is expected, so the poller stops watching the parcel.
+// progress is expected, so the poller stops watching the parcel. All return
+// and post-delivery outcomes are terminal: the operator tracks a parcel only
+// until it is delivered (or stops being delivered at all).
 func StatusTerminal(status string) bool {
 	switch status {
-	case "delivered", "delivered-and-paid", "return-sender", "final-return", StatusRemovedUpstream:
+	case "delivered", "delivered-and-paid",
+		"exchanged", "refunded", "order-refund",
+		"return-agency", "return-inter-agency", "return-received",
+		"return-sender", "final-return", StatusRemovedUpstream:
 		return true
 	}
 	return false
@@ -244,7 +249,7 @@ func LabelFor(status string) string {
 	case "delivered":
 		return "Delivered"
 	case "delivered-and-paid":
-		return "Delivered and paid"
+		return "Delivered — shipping paid by sender"
 	case "return-sender":
 		return "Return to sender"
 	case "final-return":
@@ -259,29 +264,23 @@ func LabelFor(status string) string {
 }
 
 // KnownStatuses lists the delivery statuses the automation UI offers for
-// Mes Colis, exactly as documented in "Documentation Socket" (Statuts list).
+// Mes Colis. Return and post-delivery outcomes are deliberately excluded:
+// the platform tracks a parcel until it is delivered and that is where the
+// story ends for the merchant.
 func KnownStatuses() []string {
 	return []string{
 		"pending",
 		"to-be-picked-up",
 		"picked-up",
 		"at-agency",
-		"return-agency",
 		"in-progress",
 		"to-be-verified",
 		"delivered",
 		"delivered-and-paid",
-		"exchanged",
-		"refunded",
-		"final-return",
-		"return-inter-agency",
-		"return-sender",
-		"return-received",
 		"inter-depot",
 		"unavailable-1",
 		"unavailable-2",
 		"paiement-received",
-		"order-refund",
 		"saisie-douane",
 		"anomalie",
 	}
