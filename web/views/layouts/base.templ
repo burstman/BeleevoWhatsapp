@@ -5,15 +5,35 @@ import (
 )
 
 type NavItem struct {
-	Label   string
-	Href    string
-	Section string
+	Label    string
+	Href     string
+	Section  string
+	Locked   bool
 }
 
 templ navLink(item NavItem, page components.Page) {
-	<a href={ templ.SafeURL(item.Href) } class={ "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ", page.ActiveClass(item.Section) }>
-		{ item.Label }
-	</a>
+	if item.Locked && !page.StoreConnected {
+		<a aria-disabled="true" title="Connect your shop to unlock this" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-500 cursor-not-allowed select-none">
+			{ item.Label }
+		</a>
+	} else {
+		<a href={ templ.SafeURL(item.Href) } class={ "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ", page.ActiveClass(item.Section) }>
+			{ item.Label }
+		</a>
+	}
+}
+
+// connectNotice is shown on every dashboard page while no Converty store is
+// connected: the store-dependent features are locked, so we tell the operator
+// what to do instead of silently bouncing them.
+templ connectNotice() {
+	<div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+		<span>
+			<span class="font-semibold">No shop connected yet.</span>
+			Overview, Automations and Templates unlock once you connect a Converty store.
+		</span>
+		<a href="/integrations" class="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700">Connect a store</a>
+	</div>
 }
 
 // Shell is the authenticated dashboard layout: sidebar, topbar and content.
@@ -36,12 +56,12 @@ templ Shell(page components.Page) {
 						<span class="text-sm text-slate-400">WhatsApp</span>
 					</div>
 					<nav class="space-y-1 p-4">
-						@navLink(NavItem{"Overview", "/dashboard", "overview"}, page)
-						@navLink(NavItem{"Shop Integration", "/integrations", "integrations"}, page)
-						@navLink(NavItem{"Automations", "/automations", "automations"}, page)
-						@navLink(NavItem{"Templates", "/templates", "templates"}, page)
-						@navLink(NavItem{"Delivery", "/settings/delivery", "delivery"}, page)
-						@navLink(NavItem{"Settings", "/settings", "settings"}, page)
+						@navLink(NavItem{"Overview", "/dashboard", "overview", true}, page)
+						@navLink(NavItem{"Shop Integration", "/integrations", "integrations", false}, page)
+						@navLink(NavItem{"Automations", "/automations", "automations", true}, page)
+						@navLink(NavItem{"Templates", "/templates", "templates", true}, page)
+						@navLink(NavItem{"Delivery", "/settings/delivery", "delivery", false}, page)
+						@navLink(NavItem{"Settings", "/settings", "settings", false}, page)
 					</nav>
 				</aside>
 
@@ -60,6 +80,9 @@ templ Shell(page components.Page) {
 						</div>
 					</header>
 					<main class="flex-1 p-4 sm:p-6">
+						if !page.StoreConnected {
+							@connectNotice()
+						}
 						{ children... }
 					</main>
 				</div>

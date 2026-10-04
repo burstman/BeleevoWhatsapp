@@ -57,12 +57,21 @@ func (a *App) sharedOwnerShop(ctx context.Context) (shops.Shop, error) {
 }
 
 // dashboardPage builds the page scaffolding every dashboard page shares.
+// StoreConnected reflects the Converty integration state, not the raw shop
+// list: settings pages pass every shop (WhatsApp/delivery connections are
+// shared and standalone), so the sidebar flags Overview, Automations and
+// Templates as locked until an actual store is connected.
 func (a *App) dashboardPage(k *kit.Kit, title, activeSection string, all []shops.Shop) viewshared.Page {
 	principal := auth.FromKit(k)
+	storeConnected := len(all) > 0
+	if integrated, err := a.Shops.ListIntegrated(k.Request.Context()); err == nil {
+		storeConnected = len(integrated) > 0
+	}
 	return viewshared.Page{
-		Title:    title,
-		Active:   activeSection,
-		UserName: principal.User.Name,
-		Shops:    all,
+		Title:          title,
+		Active:         activeSection,
+		UserName:       principal.User.Name,
+		Shops:          all,
+		StoreConnected: storeConnected,
 	}
 }

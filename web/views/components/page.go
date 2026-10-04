@@ -6,10 +6,11 @@ import (
 
 // Page carries the common data rendered on every dashboard page.
 type Page struct {
-	Title    string
-	Active   string
-	UserName string
-	Shops    []shops.Shop
+	Title          string
+	Active         string
+	UserName       string
+	Shops          []shops.Shop
+	StoreConnected bool
 }
 
 func (p Page) ActiveClass(section string) string {
