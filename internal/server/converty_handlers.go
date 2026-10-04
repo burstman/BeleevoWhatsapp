@@ -86,9 +86,12 @@ func truncateBytes(b []byte, n int) string {
 }
 
 // handleIntegrations renders the Shop Integration page: every Converty store
-// connection across the operator's shops with its management actions.
+// connection across the operator's shops with its management actions. Unlike
+// other dashboard pages it tolerates zero integrations: this is the page a
+// merchant lands on before their first store is connected, so hopping back to
+// itself would make onboarding impossible.
 func (a *App) handleIntegrations(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	all, err := a.Shops.ListIntegrated(k.Request.Context())
 	if err != nil {
 		return err
 	}
