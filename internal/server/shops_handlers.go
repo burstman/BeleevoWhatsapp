@@ -26,6 +26,14 @@ func (a *App) shopsFor(k *kit.Kit) ([]shops.Shop, error) {
 	return all, nil
 }
 
+// pageShops lists every shop for settings pages that must render before any
+// Converty store is connected: the shared WhatsApp connection, delivery
+// tracking and onboarding all keep working regardless of a store's OAuth
+// status, because their connections sit on the shop row, not the integration.
+func (a *App) pageShops(k *kit.Kit) ([]shops.Shop, error) {
+	return a.Shops.List(k.Request.Context())
+}
+
 // sharedOwnerShop returns the shop that owns the operator's shared resources:
 // whichever shop holds the WhatsApp connection (the number and its approved
 // templates co-locate there, and sends resolve through that shop's creds).

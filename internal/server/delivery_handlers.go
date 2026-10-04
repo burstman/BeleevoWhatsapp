@@ -19,7 +19,7 @@ import (
 // Colis connection (where the access token is entered) plus every parcel
 // currently being watched across the operator's shops.
 func (a *App) handleDeliverySettings(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	all, err := a.pageShops(k)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 // shop that owns the shared resources (whichever shop already holds the
 // WhatsApp row, else the oldest).
 func (a *App) handleDeliveryConnect(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if _, err := a.pageShops(k); err != nil {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -137,7 +137,7 @@ func (a *App) handleDeliveryConnect(k *kit.Kit) error {
 
 // handleDeliveryDisconnect removes the shared delivery provider connection.
 func (a *App) handleDeliveryDisconnect(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if _, err := a.pageShops(k); err != nil {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())

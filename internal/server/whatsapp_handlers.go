@@ -16,7 +16,7 @@ import (
 // connected number (whatever shop holds it) and connecting/disconnecting
 // manages it in place.
 func (a *App) handleWhatsappSettings(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	all, err := a.pageShops(k)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (a *App) whatsappIntegrationAnyShop(ctx context.Context) (whatsapp.Integrat
 // already holds the WhatsApp row, else the oldest), which is also where the
 // client's templates are synced, so sends resolve both from that shop.
 func (a *App) handleWhatsappConnect(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if _, err := a.pageShops(k); err != nil {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -116,7 +116,7 @@ func (a *App) handleWhatsappConnect(k *kit.Kit) error {
 
 // handleWhatsappDisconnect removes the shared WhatsApp credentials.
 func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if _, err := a.pageShops(k); err != nil {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -137,7 +137,7 @@ func (a *App) handleWhatsappDisconnect(k *kit.Kit) error {
 // into the platform's shared number, records a contact phone, and accepts the
 // service terms (which include the customer opt-in obligation).
 func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
-	all, err := a.shopsFor(k)
+	all, err := a.pageShops(k)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 // service enabled, contact phone saved. No Meta credentials are handled here —
 // sending happens through the platform's centrally owned number.
 func (a *App) handleWhatsappOnboardPost(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if _, err := a.pageShops(k); err != nil {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
