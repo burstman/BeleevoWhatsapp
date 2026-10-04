@@ -15,7 +15,7 @@ import (
 
 // POST /api/whatsapp/customers — register a customer for the merchant.
 func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -45,7 +45,7 @@ func (a *App) handleAPICreateCustomer(k *kit.Kit) error {
 
 // GET /api/whatsapp/customers — list the merchant's customers.
 func (a *App) handleAPICustomers(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -63,7 +63,7 @@ func (a *App) handleAPICustomers(k *kit.Kit) error {
 
 // POST /api/whatsapp/consent — record a customer opt-in for the merchant.
 func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -98,7 +98,7 @@ func (a *App) handleAPIGrantConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/revoke — revoke a customer's opt-in.
 func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -130,7 +130,7 @@ func (a *App) handleAPIRevokeConsent(k *kit.Kit) error {
 
 // POST /api/whatsapp/templates — submit a new template for Meta review.
 func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -174,7 +174,7 @@ func (a *App) handleAPICreateTemplate(k *kit.Kit) error {
 
 // GET /api/whatsapp/templates — list the merchant's templates.
 func (a *App) handleAPITemplates(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -192,7 +192,7 @@ func (a *App) handleAPITemplates(k *kit.Kit) error {
 
 // POST /api/whatsapp/messages — send a message through the shared WABA.
 func (a *App) handleAPISendMessage(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -243,7 +243,7 @@ func (a *App) handleAPISendMessage(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages — list the merchant's messages.
 func (a *App) handleAPIMessages(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -261,7 +261,7 @@ func (a *App) handleAPIMessages(k *kit.Kit) error {
 
 // GET /api/whatsapp/messages/{id} — one message.
 func (a *App) handleAPIMessage(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())

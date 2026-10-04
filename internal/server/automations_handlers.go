@@ -23,7 +23,7 @@ import (
 // as a card (naming, trigger, template, delivery rule), plus the create button.
 func (a *App) handleAutomations(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -96,7 +96,7 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 // — the driver, above all — is re-read before sending.
 func (a *App) handleAutomationRetryHeld(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -132,7 +132,7 @@ func (a *App) handleAutomationRetryHeld(k *kit.Kit) error {
 
 func (a *App) handleAutomationHistory(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -196,7 +196,7 @@ func operatorSeesShop(all []shops.Shop, shopID uuid.UUID) bool {
 // operator's active one.
 func (a *App) handleAutomationEdit(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -643,7 +643,7 @@ func (a *App) handleAutomationDelete(k *kit.Kit) error {
 // request names an event source, the list is narrowed to templates written for
 // it (plus the neutral "both" ones) so a mismatched pairing is not offered.
 func (a *App) handleShopTemplates(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))

@@ -22,7 +22,7 @@ import (
 // A template still referenced by an automation is refused: the operator must
 // detach it first, so no automation is silently broken.
 func (a *App) handleTemplateDelete(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -68,7 +68,7 @@ func (a *App) handleTemplateDelete(k *kit.Kit) error {
 // handleTemplateRefresh re-syncs the merchant's template approval statuses
 // from Meta's review engine and returns to the templates page.
 func (a *App) handleTemplateRefresh(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())
@@ -97,7 +97,7 @@ func (a *App) handleTemplateRefresh(k *kit.Kit) error {
 // accepted here; marketing templates are outside this platform's scope. The
 // stored status (pending/rejected/approved) is always Meta's verdict.
 func (a *App) handleTemplateCreate(k *kit.Kit) error {
-	if _, err := a.shopsFor(k); err != nil {
+	if all, err := a.shopsFor(k); err != nil || len(all) == 0 {
 		return err
 	}
 	owner, err := a.sharedOwnerShop(k.Request.Context())

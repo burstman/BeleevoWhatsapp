@@ -49,7 +49,7 @@ func (a *App) handleDataDeletionPage(k *kit.Kit) error {
 
 func (a *App) handleOverview(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (a *App) handleOverview(k *kit.Kit) error {
 // approval status.
 func (a *App) handleTemplates(k *kit.Kit) error {
 	all, err := a.shopsFor(k)
-	if err != nil {
+	if err != nil || len(all) == 0 {
 		return err
 	}
 
@@ -136,7 +136,7 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 	return func(k *kit.Kit) error {
 		all, err := a.shopsFor(k)
-		if err != nil {
+		if err != nil || len(all) == 0 {
 			return err
 		}
 		page := a.dashboardPage(k, sectionTitle(section), section, all)
