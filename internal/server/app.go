@@ -113,6 +113,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/templates/refresh", kit.Handler(a.handleTemplateRefresh))
 		pr.Post("/templates/{id}/delete", kit.Handler(a.handleTemplateDelete))
 		pr.Get("/inbox", kit.Handler(a.handleInbox))
+		pr.Get("/inbox/sidebar", kit.Handler(a.handleInboxSidebar))
 		pr.Get("/inbox/{id}", kit.Handler(a.handleInboxThread))
 		pr.Get("/inbox/{id}/fragment", kit.Handler(a.handleInboxFragment))
 		pr.Post("/inbox/{id}/reply", kit.Handler(a.handleInboxReply))

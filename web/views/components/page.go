@@ -12,6 +12,7 @@ type Page struct {
 	Shops             []shops.Shop
 	StoreConnected    bool // at least one Converty store is connected
 	WhatsAppConnected bool // the operator's WhatsApp number is connected
+	UnreadInbox       int  // total unread inbox conversations (nav badge)
 }
 
 func (p Page) ActiveClass(section string) string {

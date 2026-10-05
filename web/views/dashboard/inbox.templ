@@ -17,6 +17,11 @@ func chatTimeLabel(t time.Time) string {
 	return t.Local().Format("02 Jan 15:04")
 }
 
+// chatClock renders the wall-clock time for a bubble.
+func chatClock(t time.Time) string {
+	return t.Local().Format("15:04")
+}
+
 // phoneDisplay formats a stored phone (digits only) for display.
 func phoneDisplay(phone string) string {
 	if phone == "" {
@@ -68,8 +73,35 @@ func unreadLabel(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// InboxPage is the operator's inbox: one row per customer conversation.
-templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames map[uuid.UUID]string, flash string) {
+// totalUnread sums the unread count across every conversation, for the nav
+// badge and the inbox sidebar.
+func totalUnread(threads []whatsapp.Conversation) int {
+	n := 0
+	for _, t := range threads {
+		n += t.UnreadCount
+	}
+	return n
+}
+
+// ActiveInboxThread bundles the open conversation for the two-pane inbox.
+type ActiveInboxThread struct {
+	Conv whatsapp.Conversation
+	Msgs []whatsapp.ChatMessage
+	Err  string
+	Ok   string
+}
+
+func activeID(active *ActiveInboxThread) uuid.UUID {
+	if active == nil {
+		return uuid.Nil
+	}
+	return active.Conv.ID
+}
+
+// InboxPage is the operator's two-pane inbox: the conversation list on the
+// left, the open thread (or a selector hint) on the right — the same shape as
+// the storefront's admin chat.
+templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames map[uuid.UUID]string, active *ActiveInboxThread, flash string) {
 	@layouts.Shell(page) {
 		<div class="space-y-6">
 			<div>
@@ -97,55 +129,105 @@ templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames
 				if flash != "" {
 					<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash }</div>
 				}
-				<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-					<ul class="divide-y divide-slate-200">
-						for _, t := range threads {
-							<li>
-								<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } class="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50">
-									<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{ avatarLetters(conversationName(t)) }</div>
-									<div class="min-w-0 flex-1">
-										<div class="flex items-baseline justify-between gap-2">
-											<span class="truncate text-sm font-semibold text-slate-900">{ conversationName(t) }</span>
-											<span class="shrink-0 text-xs text-slate-400">{ chatTimeLabel(t.LastMessageAt) }</span>
-										</div>
-										<div class="mt-0.5 flex items-baseline justify-between gap-2">
-											<span class="truncate text-sm text-slate-500">{ t.LastBody }</span>
-											if shopNames[t.ShopID] != "" {
-												<span class="shrink-0 text-xs text-slate-400">{ shopNames[t.ShopID] }</span>
-											}
-										</div>
-									</div>
-									if t.UnreadCount > 0 {
-										<span class="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-bold text-white">{ unreadLabel(t.UnreadCount) }</span>
-									}
-								</a>
-							</li>
+				<div class="grid min-h-0 gap-4 lg:h-[calc(100vh-13rem)] lg:grid-cols-[17rem_1fr]">
+					<div class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+						<div class="border-b border-slate-100 px-4 py-3">
+							<div class="text-sm font-semibold text-slate-900">Conversations</div>
+							<div class="text-xs text-slate-500">{ len(threads) } customers</div>
+						</div>
+						@ChatSidebar(threads, activeID(active), shopNames, false)
+					</div>
+
+					<div id="inbox-thread-pane" class="flex min-h-[26rem] min-w-0 flex-col lg:min-h-0">
+						if active != nil {
+							@ThreadCard(page, active.Conv, active.Msgs, active.Err, active.Ok)
+						} else {
+							<div class="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+								<div class="text-sm font-semibold text-slate-700">Select a conversation</div>
+								<div class="mt-1 text-sm text-slate-500">Choose a customer on the left to read and reply to their messages.</div>
+							</div>
 						}
-					</ul>
+					</div>
 				</div>
 			}
 		</div>
 	}
 }
 
-// InboxThreadPage is a single conversation with its messages and the reply box.
-templ InboxThreadPage(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string) {
-	@layouts.Shell(page) {
-		<div class="mx-auto max-w-3xl space-y-4">
-			<a href="/inbox" class="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-slate-700">
-				← Back to inbox
-			</a>
-			@ThreadCard(page, conv, msgs, err, ok)
+// ChatSidebar is the conversation list. It carries its own polling trigger so
+// a full-page render and each swap keep refreshing without a wrapper target.
+// When oob is true the whole sidebar is emitted as an out-of-band swap, which
+// is how a thread open keeps the list ordered and badges fresh in one request.
+templ ChatSidebar(threads []whatsapp.Conversation, activeID uuid.UUID, shopNames map[uuid.UUID]string, oob bool) {
+	if oob {
+		<div id="inbox-sidebar" hx-get="/inbox/sidebar" hx-trigger="every 20s" hx-swap="outerHTML" hx-swap-oob="outerHTML" class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+			@chatSidebarRows(threads, activeID, shopNames)
+		</div>
+	} else {
+		<div id="inbox-sidebar" hx-get="/inbox/sidebar" hx-trigger="every 20s" hx-swap="outerHTML" class="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+			@chatSidebarRows(threads, activeID, shopNames)
 		</div>
 	}
 }
 
-// ThreadCard is the whole conversation card: header, message bubbles (which
+// InboxSidebar is the polling response: the sidebar plus the nav badge update.
+templ InboxSidebar(threads []whatsapp.Conversation, activeID uuid.UUID, shopNames map[uuid.UUID]string) {
+	@ChatSidebar(threads, activeID, shopNames, false)
+	@NavBadgeOOB(totalUnread(threads))
+}
+
+// InboxThreadSwap is the htmx response for opening a thread: the thread card
+// plus out-of-band updates to the sidebar and the nav badge.
+templ InboxThreadSwap(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string, threads []whatsapp.Conversation, activeID uuid.UUID, shopNames map[uuid.UUID]string) {
+	@ThreadCard(page, conv, msgs, err, ok)
+	@ChatSidebar(threads, activeID, shopNames, true)
+	@NavBadgeOOB(totalUnread(threads))
+}
+
+// NavBadgeOOB rewrites the Inbox item's unread badge after an inbox request.
+templ NavBadgeOOB(count int) {
+	if count > 0 {
+		<span id="inbox-nav-badge" hx-swap-oob="outerHTML" class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{ unreadLabel(count) }</span>
+	} else {
+		<span id="inbox-nav-badge" hx-swap-oob="outerHTML" class="hidden"></span>
+	}
+}
+
+templ chatSidebarRows(threads []whatsapp.Conversation, activeID uuid.UUID, shopNames map[uuid.UUID]string) {
+	if len(threads) == 0 {
+		<p class="px-4 py-6 text-center text-sm text-slate-500">No conversations yet.</p>
+	} else {
+		for _, t := range threads {
+			<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-get={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-target="#inbox-thread-pane" hx-swap="innerHTML" hx-push-url="true" class={ "flex items-center gap-3 px-3 py-3 transition hover:bg-slate-50 ", templ.KV("bg-indigo-50/70", t.ID == activeID) }>
+				<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{ avatarLetters(conversationName(t)) }</div>
+				<div class="min-w-0 flex-1">
+					<div class="flex items-baseline justify-between gap-2">
+						<span class="truncate text-sm font-semibold text-slate-900">
+							if t.ID == activeID {
+								<span class="inline-block h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
+							}
+							{ conversationName(t) }
+						</span>
+						<span class="shrink-0 text-[11px] text-slate-400">{ chatTimeLabel(t.LastMessageAt) }</span>
+					</div>
+					<div class="mt-0.5 flex items-baseline justify-between gap-2">
+						<span class={ "truncate text-[13px] ", templ.KV("font-medium text-slate-700", t.UnreadCount > 0), templ.KV("text-slate-500", t.UnreadCount == 0) }>{ t.LastBody }</span>
+						if t.UnreadCount > 0 {
+							<span class="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{ unreadLabel(t.UnreadCount) }</span>
+						}
+					</div>
+				</div>
+			</a>
+		}
+	}
+}
+
+// ThreadCard is the whole open conversation: header, message bubbles (which
 // poll for new inbound on their own) and the reply box. The card is the htmx
 // swap target after a reply, so the outgoing bubble and the cleared textarea
 // land in one exchange.
 templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string) {
-	<div id="thread-card" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+	<div id="thread-card" class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 		<div class="border-b border-slate-200 px-4 py-3">
 			<div class="flex items-center justify-between gap-3">
 				<div class="min-w-0">
@@ -160,9 +242,11 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 			</div>
 		</div>
 
-		<div id="thread-bubbles" class="max-h-96 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"
+		<div id="thread-bubbles" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"
 			hx-get={ templ.SafeURL("/inbox/" + conv.ID.String() + "/fragment") }
-			hx-trigger="every 15s" hx-swap="innerHTML">
+			hx-trigger="every 15s" hx-swap="innerHTML"
+			x-data x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
+			hx-on::after-swap="const el=this; if (el.scrollTop + el.clientHeight >= el.scrollHeight - 260) { el.scrollTop = el.scrollHeight; }">
 			@BubblesList(msgs)
 		</div>
 
@@ -201,14 +285,14 @@ templ BubblesList(msgs []whatsapp.ChatMessage) {
 				<div class="flex">
 					<div class="max-w-[70%] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-sm text-slate-800 shadow-sm">
 						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
-						<div class="mt-0.5 text-right text-[10px] text-slate-400">{ chatTimeLabel(m.CreatedAt) }</div>
+						<div class="mt-0.5 text-right text-[10px] text-slate-400">{ chatClock(m.CreatedAt) }</div>
 					</div>
 				</div>
 			} else {
 				<div class="flex justify-end">
 					<div class="max-w-[70%] rounded-2xl rounded-br-sm bg-indigo-600 px-3 py-2 text-sm text-white shadow-sm">
 						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
-						<div class="mt-0.5 text-right text-[10px] text-indigo-200">{ chatTimeLabel(m.CreatedAt) } { chatStatusLabel(m.Status) }</div>
+						<div class="mt-0.5 text-right text-[10px] text-indigo-200">{ chatClock(m.CreatedAt) } { chatStatusLabel(m.Status) }</div>
 					</div>
 				</div>
 			}
