@@ -48,7 +48,7 @@ func TestInboxTwoPaneRender(t *testing.T) {
 	if !strings.Contains(out, "Select a conversation") {
 		t.Error("no-thread placeholder missing")
 	}
-	if !strings.Contains(out, "Ahmed") || !strings.Contains(out, "Bonjour") {
+	if !strings.Contains(out, "Ahmed") || !strings.Contains(out, "+21654116584") {
 		t.Error("conversation identity missing from sidebar")
 	}
 	if !strings.Contains(out, `hx-get="/inbox/sidebar"`) {
