@@ -163,6 +163,52 @@ func TestChatInbox(t *testing.T) {
 	}
 }
 
+// The delivery trail (settings page "Recent webhook deliveries") must round-trip
+// a receipt exactly, including a shop-scoped inbound, newest first.
+func TestWebhookReceipts(t *testing.T) {
+	ctx := context.Background()
+	pool := chatTestDB(t)
+	svc := NewService(config.Config{}, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	if _, err := pool.Exec(ctx, `TRUNCATE webhook_receipts`); err != nil {
+		t.Fatalf("truncate receipts: %v", err)
+	}
+	shop := uuid.New()
+	if _, err := pool.Exec(ctx, `INSERT INTO shops (id, name) VALUES ($1, 'receipts test')`, shop); err != nil {
+		t.Fatalf("insert shop: %v", err)
+	}
+
+	svc.RecordWebhookReceipt(ctx, WebhookReceipt{Kind: "config_missing", Detail: "no secret"})
+	svc.RecordWebhookReceipt(ctx, WebhookReceipt{
+		Kind:          "inbound",
+		MetaMessageID: "wamid.R1",
+		FromPhone:     "21654116584",
+		PhoneNumberID: "pn-1",
+		ShopID:        &shop,
+	})
+
+	rs, err := svc.RecentWebhookReceipts(ctx, 10)
+	if err != nil {
+		t.Fatalf("RecentWebhookReceipts: %v", err)
+	}
+	if len(rs) != 2 {
+		t.Fatalf("len(rs) = %d, want 2", len(rs))
+	}
+	if rs[0].Kind != "inbound" || rs[0].MetaMessageID != "wamid.R1" || rs[0].FromPhone != "21654116584" {
+		t.Errorf("newest receipt wrong: %+v", rs[0])
+	}
+	if rs[0].ShopID == nil || *rs[0].ShopID != shop {
+		t.Errorf("inbound shop_id = %v, want %v", rs[0].ShopID, shop)
+	}
+	fresh := rs[0].ReceivedAt.Sub(time.Now())
+	if fresh > 2*time.Minute || fresh < -2*time.Minute {
+		t.Errorf("received_at %v is not now", rs[0].ReceivedAt)
+	}
+	if rs[1].Kind != "config_missing" {
+		t.Errorf("oldest receipt wrong: %+v", rs[1])
+	}
+}
+
 // The chat status advance must skip messages that are not chat replies; the
 // template ledger owns those ids.
 func TestChatStatusSkipsTemplateLedger(t *testing.T) {

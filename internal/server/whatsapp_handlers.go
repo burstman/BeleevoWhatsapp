@@ -23,14 +23,19 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 
 	page := a.dashboardPage(k, "Settings", "settings", all)
 
+	receipts, receiptsErr := a.WhatsApp.RecentWebhookReceipts(k.Request.Context(), 8)
+	if receiptsErr != nil {
+		a.Log.Warn("settings: webhook receipts query failed", "error", receiptsErr.Error())
+	}
+
 	integ, err := a.whatsappIntegrationAnyShop(k.Request.Context())
 	if err == pgx.ErrNoRows {
-		return k.Render(vsettings.Settings(page, nil, nil))
+		return k.Render(vsettings.Settings(page, nil, nil, receipts))
 	}
 	if err != nil {
 		return err
 	}
-	return k.Render(vsettings.Settings(page, &integ, nil))
+	return k.Render(vsettings.Settings(page, &integ, nil, receipts))
 }
 
 // whatsappIntegrationAnyShop finds the operator's WhatsApp connection wherever

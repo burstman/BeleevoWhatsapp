@@ -6,7 +6,7 @@ import (
 	"whatsappconverty/web/views/layouts"
 )
 
-templ Settings(page components.Page, integ *whatsapp.Integration, templates []whatsapp.Template) {
+templ Settings(page components.Page, integ *whatsapp.Integration, templates []whatsapp.Template, receipts []whatsapp.WebhookReceipt) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-3xl">
 			<h1 class="text-2xl font-bold text-slate-900">WhatsApp settings</h1>
@@ -96,7 +96,48 @@ templ Settings(page components.Page, integ *whatsapp.Integration, templates []wh
 					</div>
 				</div>
 			}
+
+			<div class="mt-8">
+				<h2 class="text-base font-semibold text-slate-900">Recent webhook deliveries</h2>
+				<p class="mt-1 text-sm text-slate-500">
+					Every Meta webhook POST is recorded here before processing, so a delivery that is
+					rejected or fails to map to a number is visible instead of silently vanishing.
+				</p>
+				<div class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+					if len(receipts) == 0 {
+						<p class="px-4 py-6 text-center text-sm text-slate-500">No webhook deliveries yet.</p>
+					} else {
+						<ul class="divide-y divide-slate-100">
+							for _, r := range receipts {
+								<li class="flex items-center justify-between gap-4 px-4 py-3 text-sm"><span class={ "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ", receiptBadge(r.Kind) }>{ r.Kind }</span><span class="shrink-0 text-xs text-slate-400">{ r.ReceivedAt.Format("2006-01-02 15:04:05") }</span><span class="truncate text-slate-600">{ receiptText(r) }</span></li>
+							}
+						</ul>
+					}
+				</div>
+			</div>
 		</div>
+	}
+}
+
+func receiptText(r whatsapp.WebhookReceipt) string {
+	if r.FromPhone != "" {
+		return r.FromPhone
+	}
+	return r.Detail
+}
+
+func receiptBadge(kind string) string {
+	switch kind {
+	case "inbound":
+		return "bg-emerald-100 text-emerald-700"
+	case "status":
+		return "bg-indigo-100 text-indigo-700"
+	case "dropped":
+		return "bg-amber-100 text-amber-700"
+	case "config_missing", "auth_failed":
+		return "bg-rose-100 text-rose-700"
+	default:
+		return "bg-slate-100 text-slate-600"
 	}
 }
 

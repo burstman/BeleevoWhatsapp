@@ -40,25 +40,43 @@ func (a *App) handleMetaWebhook(k *kit.Kit) error {
 		return err
 	}
 
+	ctx := k.Request.Context()
+
 	if a.Cfg.MetaAppSecret == "" {
+		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+			Kind:   "config_missing",
+			Detail: "META_APP_SECRET empty: every Meta delivery is rejected here",
+		})
 		a.Log.Error("meta webhook: META_APP_SECRET not configured")
 		return k.Text(http.StatusInternalServerError, "not configured")
 	}
 	sig := k.Request.Header.Get("X-Hub-Signature-256")
 	if !whatsapp.VerifyWebhookSignature(a.Cfg.MetaAppSecret, sig, body) {
 		a.exposeRemoteIP(k)
+		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+			Kind:   "auth_failed",
+			Detail: "X-Hub-Signature-256 rejected",
+		})
 		a.Log.Warn("meta webhook signature verification failed")
 		return k.Text(http.StatusForbidden, "forbidden")
 	}
 
 	delivery, err := whatsapp.ParseWebhook(body)
 	if err != nil {
+		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+			Kind:   "parse_error",
+			Detail: err.Error(),
+		})
 		a.Log.Warn("meta webhook parse failed", "error", err.Error())
 		return k.Text(http.StatusOK, "ok") // acknowledge; nothing actionable here
 	}
 
-	ctx := k.Request.Context()
 	for _, u := range delivery.Statuses {
+		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+			Kind:          "status",
+			MetaMessageID: u.MetaMessageID,
+			Detail:        u.Status,
+		})
 		applyErr := a.WhatsApp.ApplyStatusUpdate(ctx, u)
 		if applyErr != nil && !errors.Is(applyErr, pgx.ErrNoRows) {
 			a.Log.Warn("meta webhook status apply failed",
@@ -82,10 +100,24 @@ func (a *App) handleMetaWebhook(k *kit.Kit) error {
 		}
 		shopID, err := a.WhatsApp.ShopByPhoneNumberID(ctx, m.PhoneNumberID)
 		if err != nil {
+			a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+				Kind:          "dropped",
+				MetaMessageID: m.MetaMessageID,
+				FromPhone:     m.From,
+				PhoneNumberID: m.PhoneNumberID,
+				Detail:        "phone_number_id not mapped to a shop: " + err.Error(),
+			})
 			a.Log.Warn("meta webhook inbound: number not mapped to a shop",
 				"phone_number_id", m.PhoneNumberID, "error", err.Error())
 			continue
 		}
+		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
+			Kind:          "inbound",
+			MetaMessageID: m.MetaMessageID,
+			FromPhone:     m.From,
+			PhoneNumberID: m.PhoneNumberID,
+			ShopID:        &shopID,
+		})
 		if ingestErr := a.WhatsApp.UpsertInbound(ctx, shopID, m); ingestErr != nil {
 			a.Log.Warn("meta webhook inbound ingest failed",
 				"meta_message_id", m.MetaMessageID, "from", m.From, "error", ingestErr.Error())
