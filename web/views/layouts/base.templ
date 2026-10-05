@@ -9,11 +9,16 @@ type NavItem struct {
 	Href     string
 	Section  string
 	Locked   bool
+	NeedsWA  bool
 }
 
 templ navLink(item NavItem, page components.Page) {
 	if item.Locked && !page.StoreConnected {
 		<a aria-disabled="true" title="Connect your shop to unlock this" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-500 cursor-not-allowed select-none">
+			{ item.Label }
+		</a>
+	} else if item.NeedsWA && !page.WhatsAppConnected {
+		<a aria-disabled="true" title="Connect your WhatsApp number to unlock this" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-500 cursor-not-allowed select-none">
 			{ item.Label }
 		</a>
 	} else {
@@ -56,12 +61,13 @@ templ Shell(page components.Page) {
 						<span class="text-sm text-slate-400">WhatsApp</span>
 					</div>
 					<nav class="space-y-1 p-4">
-						@navLink(NavItem{"Overview", "/dashboard", "overview", true}, page)
-						@navLink(NavItem{"Shop Integration", "/integrations", "integrations", false}, page)
-						@navLink(NavItem{"Automations", "/automations", "automations", true}, page)
-						@navLink(NavItem{"Templates", "/templates", "templates", true}, page)
-						@navLink(NavItem{"Delivery", "/settings/delivery", "delivery", false}, page)
-						@navLink(NavItem{"Settings", "/settings", "settings", false}, page)
+						@navLink(NavItem{"Overview", "/dashboard", "overview", true, false}, page)
+						@navLink(NavItem{"Shop Integration", "/integrations", "integrations", false, false}, page)
+						@navLink(NavItem{"Automations", "/automations", "automations", true, false}, page)
+						@navLink(NavItem{"Templates", "/templates", "templates", true, false}, page)
+						@navLink(NavItem{"Inbox", "/inbox", "inbox", false, true}, page)
+						@navLink(NavItem{"Delivery", "/settings/delivery", "delivery", false, false}, page)
+						@navLink(NavItem{"Settings", "/settings", "settings", false, false}, page)
 					</nav>
 				</aside>
 

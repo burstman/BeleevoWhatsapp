@@ -1,0 +1,217 @@
+package viewsdashboard
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
+	"whatsappconverty/internal/whatsapp"
+	"whatsappconverty/web/views/components"
+	"whatsappconverty/web/views/layouts"
+)
+
+// chatTimeLabel renders a compact local time for a chat bubble or list row.
+func chatTimeLabel(t time.Time) string {
+	return t.Local().Format("02 Jan 15:04")
+}
+
+// phoneDisplay formats a stored phone (digits only) for display.
+func phoneDisplay(phone string) string {
+	if phone == "" {
+		return "…"
+	}
+	return "+" + phone
+}
+
+func chatStatusLabel(s string) string {
+	switch s {
+	case "queued", "sent", "delivered", "read", "failed":
+		return s
+	}
+	return ""
+}
+
+// conversationName prefers the profile name WhatsApp attached to the customer,
+// falling back to the display number.
+func conversationName(c whatsapp.Conversation) string {
+	if c.CustomerName != "" {
+		return c.CustomerName
+	}
+	return phoneDisplay(c.CustomerPhone)
+}
+
+// avatarLetters derives a short initial badge from the conversation's name.
+func avatarLetters(name string) string {
+	fields := strings.Fields(name)
+	var b strings.Builder
+	for _, f := range fields {
+		if f != "" {
+			b.WriteRune(rune(f[0]))
+		}
+		if b.Len() >= 2 {
+			break
+		}
+	}
+	out := strings.ToUpper(b.String())
+	if out == "" {
+		return "#"
+	}
+	return out
+}
+
+func unreadLabel(n int) string {
+	if n > 9 {
+		return "9+"
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+// InboxPage is the operator's inbox: one row per customer conversation.
+templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames map[uuid.UUID]string, flash string) {
+	@layouts.Shell(page) {
+		<div class="space-y-6">
+			<div>
+				<h2 class="text-2xl font-bold text-slate-900">Inbox</h2>
+				<p class="mt-1 text-sm text-slate-500">
+					Messages customers send to your WhatsApp number. Replies are free-form
+					inside the 24h customer service window; after that, only approved templates can reach them.
+				</p>
+			</div>
+
+			if !page.WhatsAppConnected {
+				<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-8 text-center text-sm text-amber-800">
+					<div class="font-semibold">No WhatsApp number connected yet.</div>
+					<div class="mt-1">The Inbox unlocks once you connect the number your customers message.</div>
+					<a href="/settings" class="mt-4 inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-700">Connect your WhatsApp number</a>
+				</div>
+			} else if len(threads) == 0 {
+				<div class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+					<div class="text-sm font-semibold text-slate-700">No conversations yet</div>
+					<div class="mt-1 text-sm text-slate-500">
+						When a customer messages your WhatsApp number, the conversation appears here.
+					</div>
+				</div>
+			} else {
+				if flash != "" {
+					<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash }</div>
+				}
+				<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+					<ul class="divide-y divide-slate-200">
+						for _, t := range threads {
+							<li>
+								<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } class="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50">
+									<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{ avatarLetters(conversationName(t)) }</div>
+									<div class="min-w-0 flex-1">
+										<div class="flex items-baseline justify-between gap-2">
+											<span class="truncate text-sm font-semibold text-slate-900">{ conversationName(t) }</span>
+											<span class="shrink-0 text-xs text-slate-400">{ chatTimeLabel(t.LastMessageAt) }</span>
+										</div>
+										<div class="mt-0.5 flex items-baseline justify-between gap-2">
+											<span class="truncate text-sm text-slate-500">{ t.LastBody }</span>
+											if shopNames[t.ShopID] != "" {
+												<span class="shrink-0 text-xs text-slate-400">{ shopNames[t.ShopID] }</span>
+											}
+										</div>
+									</div>
+									if t.UnreadCount > 0 {
+										<span class="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-bold text-white">{ unreadLabel(t.UnreadCount) }</span>
+									}
+								</a>
+							</li>
+						}
+					</ul>
+				</div>
+			}
+		</div>
+	}
+}
+
+// InboxThreadPage is a single conversation with its messages and the reply box.
+templ InboxThreadPage(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string) {
+	@layouts.Shell(page) {
+		<div class="mx-auto max-w-3xl space-y-4">
+			<a href="/inbox" class="inline-flex items-center gap-1 text-sm font-medium text-slate-500 transition hover:text-slate-700">
+				← Back to inbox
+			</a>
+			@ThreadCard(page, conv, msgs, err, ok)
+		</div>
+	}
+}
+
+// ThreadCard is the whole conversation card: header, message bubbles (which
+// poll for new inbound on their own) and the reply box. The card is the htmx
+// swap target after a reply, so the outgoing bubble and the cleared textarea
+// land in one exchange.
+templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string) {
+	<div id="thread-card" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+		<div class="border-b border-slate-200 px-4 py-3">
+			<div class="flex items-center justify-between gap-3">
+				<div class="min-w-0">
+					<div class="truncate text-sm font-semibold text-slate-900">{ conversationName(conv) }</div>
+					<div class="text-xs text-slate-500">{ phoneDisplay(conv.CustomerPhone) }</div>
+				</div>
+				if conv.WindowOpen {
+					<span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Service window open</span>
+				} else {
+					<span class="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">Window closed · template only</span>
+				}
+			</div>
+		</div>
+
+		<div id="thread-bubbles" class="max-h-96 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"
+			hx-get={ templ.SafeURL("/inbox/" + conv.ID.String() + "/fragment") }
+			hx-trigger="every 15s" hx-swap="innerHTML">
+			@BubblesList(msgs)
+		</div>
+
+		if err != "" {
+			<div class="border-t border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{ err }</div>
+		}
+		if ok != "" {
+			<div class="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ ok }</div>
+		}
+
+		if conv.WindowOpen {
+			<form class="flex items-end gap-2 border-t border-slate-200 px-4 py-3"
+				hx-post={ templ.SafeURL("/inbox/" + conv.ID.String() + "/reply") }
+				hx-target="#thread-card" hx-swap="outerHTML" hx-disabled-elt="find button">
+				<textarea name="body" rows="2" required placeholder="Type your reply…"
+					class="min-w-0 flex-1 resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"></textarea>
+				<button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Send</button>
+			</form>
+		} else {
+			<div class="flex items-center gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3">
+				<span class="text-sm text-slate-500">Free-form replies are unavailable outside the 24h window.</span>
+				<a href="/templates" class="shrink-0 text-sm font-medium text-indigo-600 hover:underline">Use an approved template</a>
+			</div>
+		}
+	</div>
+}
+
+// BubblesList is the message area of a thread. It is rendered standalone so the
+// thread fragment can re-render just the bubbles on the poll.
+templ BubblesList(msgs []whatsapp.ChatMessage) {
+	if len(msgs) == 0 {
+		<div class="py-2 text-center text-sm text-slate-400">No messages yet</div>
+	} else {
+		for _, m := range msgs {
+			if m.Direction == "inbound" {
+				<div class="flex">
+					<div class="max-w-[70%] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-sm text-slate-800 shadow-sm">
+						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
+						<div class="mt-0.5 text-right text-[10px] text-slate-400">{ chatTimeLabel(m.CreatedAt) }</div>
+					</div>
+				</div>
+			} else {
+				<div class="flex justify-end">
+					<div class="max-w-[70%] rounded-2xl rounded-br-sm bg-indigo-600 px-3 py-2 text-sm text-white shadow-sm">
+						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
+						<div class="mt-0.5 text-right text-[10px] text-indigo-200">{ chatTimeLabel(m.CreatedAt) } { chatStatusLabel(m.Status) }</div>
+					</div>
+				</div>
+			}
+		}
+	}
+}

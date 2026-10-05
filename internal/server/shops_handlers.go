@@ -67,11 +67,16 @@ func (a *App) dashboardPage(k *kit.Kit, title, activeSection string, all []shops
 	if integrated, err := a.Shops.ListIntegrated(k.Request.Context()); err == nil {
 		storeConnected = len(integrated) > 0
 	}
+	waConnected := false
+	if _, err := a.whatsappIntegrationAnyShop(k.Request.Context()); err == nil {
+		waConnected = true
+	}
 	return viewshared.Page{
-		Title:          title,
-		Active:         activeSection,
-		UserName:       principal.User.Name,
-		Shops:          all,
-		StoreConnected: storeConnected,
+		Title:             title,
+		Active:            activeSection,
+		UserName:          principal.User.Name,
+		Shops:             all,
+		StoreConnected:    storeConnected,
+		WhatsAppConnected: waConnected,
 	}
 }

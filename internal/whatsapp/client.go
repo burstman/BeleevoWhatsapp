@@ -130,6 +130,38 @@ func (s *Service) SendTemplate(ctx context.Context, token, phoneNumberID, to, na
 	return resp.Messages[0].ID, nil
 }
 
+// SendText delivers a free-form message inside the customer service window
+// (24h after the customer's last inbound message). Business Policy forbids
+// free-form text outside that window; the UI enforces it before calling.
+func (s *Service) SendText(ctx context.Context, token, phoneNumberID, to, text string, opts ...Option) (string, error) {
+	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"recipient_type":    "individual",
+		"to":                to,
+		"type":              "text",
+		"text": map[string]any{
+			"preview_url": false,
+			"body":        text,
+		},
+	}
+	for _, opt := range opts {
+		opt(payload)
+	}
+
+	var resp struct {
+		Messages []struct {
+			ID string `json:"id"`
+		} `json:"messages"`
+	}
+	if err := s.postJSON(ctx, token, fmt.Sprintf("%s/%s/%s/messages", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID), payload, &resp); err != nil {
+		return "", err
+	}
+	if len(resp.Messages) == 0 {
+		return "", fmt.Errorf("whatsapp send accepted without a message id")
+	}
+	return resp.Messages[0].ID, nil
+}
+
 // ListTemplates returns all templates on the messaging account. Categories
 // (utility/marketing/authentication) and status are included for UI use.
 func (s *Service) ListTemplates(ctx context.Context, token, messagingAccountID string) ([]Template, error) {

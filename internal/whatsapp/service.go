@@ -86,6 +86,11 @@ func (s *Service) Credentials(ctx context.Context, shopID uuid.UUID) (Credential
 		}
 		return Credentials{}, err
 	}
+	if integ.AccessTokenEncrypted == "" {
+		// A stored row with no token is a half-finished connect; treat it as
+		// not configured rather than failing decryption.
+		return Credentials{}, ErrNotConfigured
+	}
 	token, err := s.DecryptToken(integ.AccessTokenEncrypted)
 	if err != nil {
 		return Credentials{}, err
