@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"strings"
 )
@@ -266,7 +268,11 @@ const maxOutboundMediaBytes = 16 << 20
 // UploadMedia uploads a file to the account's media library and returns the
 // media id to reference in a message. The caller must pass a Cloud-API audio
 // mime (AAC/AMR/MP3/M4A/OGG-opus); WebM and anything else is rejected.
-func (s *Service) UploadMedia(ctx context.Context, token, phoneNumberID, mime string, data []byte, filename string) (string, error) {
+//
+// The file part must carry the real Content-Type: Meta inspects that header
+// and ignores the multipart "type" field, and Go's CreateFormFile would stamp
+// application/octet-stream (rejected with "Param file must be a file with...").
+func (s *Service) UploadMedia(ctx context.Context, token, phoneNumberID, contentType string, data []byte, filename string) (string, error) {
 	if len(data) == 0 {
 		return "", errors.New("empty media upload")
 	}
@@ -278,10 +284,14 @@ func (s *Service) UploadMedia(ctx context.Context, token, phoneNumberID, mime st
 	if err := mw.WriteField("messaging_product", "whatsapp"); err != nil {
 		return "", fmt.Errorf("upload field: %w", err)
 	}
-	if err := mw.WriteField("type", mime); err != nil {
+	if err := mw.WriteField("type", contentType); err != nil {
 		return "", fmt.Errorf("upload type: %w", err)
 	}
-	fw, err := mw.CreateFormFile("file", filename)
+	disposition := mime.FormatMediaType("form-data", map[string]string{"name": "file", "filename": filename})
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", disposition)
+	header.Set("Content-Type", contentType)
+	fw, err := mw.CreatePart(header)
 	if err != nil {
 		return "", fmt.Errorf("upload file part: %w", err)
 	}
