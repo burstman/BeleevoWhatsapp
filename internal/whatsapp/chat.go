@@ -103,9 +103,17 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 	mediaBytes := []byte(nil)
 	durationMS := m.MediaDurationMS
 	filename := m.MediaFilename
-	if m.Type == "audio" || m.Type == "voice" {
+	if m.Type == "audio" || m.Type == "voice" || m.Type == "image" {
 		mediaKind = "audio"
 		body = "🎤 Voice message"
+		if m.Type == "image" {
+			mediaKind = "image"
+			body = m.Caption
+			if body == "" {
+				body = "🖼️ Image"
+			}
+			mediaMime = m.MediaMime
+		}
 		if m.MediaID == "" {
 			s.RecordWebhookReceipt(ctx, WebhookReceipt{
 				Kind:          "media_missing_id",
@@ -113,11 +121,11 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 				FromPhone:     m.From,
 				PhoneNumberID: s.phoneNumberID(ctx, shopID),
 				ShopID:        &shopID,
-				Detail:        "audio message carried no media id",
+				Detail:        mediaKind + " message carried no media id",
 			})
 		} else if downloaded, mimeT, derr := s.downloadInboundMedia(ctx, shopID, m.MediaID); derr != nil {
-			s.log.Warn("inbound voice note: media download failed; storing label only",
-				"media_id", m.MediaID, "error", derr.Error())
+			s.log.Warn("inbound media download failed; storing label only",
+				"kind", mediaKind, "media_id", m.MediaID, "error", derr.Error())
 			s.RecordWebhookReceipt(ctx, WebhookReceipt{
 				Kind:          "media_download_failed",
 				MetaMessageID: m.MetaMessageID,

@@ -462,7 +462,7 @@ templ messageContent(convID uuid.UUID, m whatsapp.ChatMessage) {
 		<img class="block max-h-72 max-w-[240px] rounded-md object-cover" aria-label="Image"
 			src={ templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()) } />
 		<div class="mt-1 flex items-center justify-between gap-2">
-			<span class="text-[10px] text-[#667781]">🖼️ Photo</span>
+			<span class="break-words text-[10px] text-[#667781]">{ imageMetaLabel(m) }</span>
 			<span class="text-[10px] text-[#728078]">{ chatClock(m.CreatedAt) }</span>
 		</div>
 	} else if m.MediaKind == "image" {
@@ -490,11 +490,17 @@ templ messageContent(convID uuid.UUID, m whatsapp.ChatMessage) {
 
 // voiceDurationSuffix renders " · 0:42" next to the voice-note label.
 func voiceDurationSuffix(ms int) string {
-	if ms <= 0 {
-		return ""
-	}
 	s := ms / 1000
 	return " · " + fmt.Sprintf("%d:%02d", s/60, s%60)
+}
+
+// imageMetaLabel shows the caption for an inbound image when present.
+func imageMetaLabel(m whatsapp.ChatMessage) string {
+	s := strings.TrimSpace(m.Body)
+	if s == "" || s == "🖼️ Image" {
+		return "🖼️ Photo"
+	}
+	return "🖼️ " + s
 }
 
 // dayLabel renders a compact date pill above the conversation, TODAY or

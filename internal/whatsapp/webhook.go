@@ -45,6 +45,7 @@ type InboundMessage struct {
 	MediaMime      string
 	MediaFilename  string
 	MediaDurationMS int
+	Caption        string
 }
 
 // WebhookDelivery is the combined decode of one Meta webhook POST: delivery
@@ -189,6 +190,7 @@ Messages []struct {
 				case "image":
 					im.MediaID = m.Image.ID
 					im.MediaMime = m.Image.MimeType
+					im.Caption = m.Image.Caption
 				case "document":
 					im.MediaID = m.Document.ID
 					im.MediaMime = m.Document.MimeType
