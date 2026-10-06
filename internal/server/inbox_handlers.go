@@ -2,8 +2,11 @@ package server
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/anthdm/superkit/kit"
 	"github.com/go-chi/chi/v5"
@@ -13,6 +16,10 @@ import (
 	"whatsappconverty/web/views/components"
 	vdashboard "whatsappconverty/web/views/dashboard"
 )
+
+// maxSendAudioBytes is the Cloud API ceiling for outbound audio (16 MB). The
+// parser is allowed one extra megabyte to fit the multipart overhead.
+const maxSendAudioBytes = 16 << 20
 
 // inboxFlash maps the ?flash= query value onto a user-facing line for the
 // inbox list page.
@@ -244,6 +251,113 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 		return k.Render(vdashboard.InboxPage(page, threads, shopNames, &vdashboard.ActiveInboxThread{Conv: conv, Msgs: msgs, Err: errMsg, Ok: okMsg}, ""))
 	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
+}
+
+// handleInboxReplyAudio sends an operator audio recording or file to the
+// customer. The web composer POSTs a multipart form; the thread card is
+// re-rendered so the new voice-note bubble appears instantly.
+func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+	}
+
+	all, err := a.pageShops(k)
+	if err != nil {
+		return err
+	}
+	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	if !page.WhatsAppConnected {
+		return k.Redirect(http.StatusSeeOther, "/inbox")
+	}
+
+	_, _, err = a.WhatsApp.Thread(k.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, whatsapp.ErrConversationNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=error")
+	}
+
+	k.Request.Body = http.MaxBytesReader(k.Response, k.Request.Body, maxSendAudioBytes+1<<20)
+	if err := k.Request.ParseMultipartForm(maxSendAudioBytes + 1<<20); err != nil {
+		return k.Text(http.StatusBadRequest, "Audio upload too large (max 16 MB).")
+	}
+
+	file, hdr, err := k.Request.FormFile("audio")
+	if err != nil {
+		return k.Text(http.StatusBadRequest, "Missing audio file.")
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return k.Text(http.StatusBadRequest, "Could not read audio file.")
+	}
+	if len(data) == 0 || len(data) > maxSendAudioBytes {
+		return k.Text(http.StatusBadRequest, "Audio file is empty or larger than 16 MB.")
+	}
+	mime := canonicalSendAudioMime(hdr.Header.Get("Content-Type"))
+	if mime == "" {
+		return k.Text(http.StatusBadRequest,
+			"WhatsApp does not accept this audio format (WebM is not supported). Use MP3, M4A, AAC, AMR or OGG.")
+	}
+
+	durationMS, _ := strconv.Atoi(k.Request.FormValue("duration_ms"))
+	if durationMS < 0 || durationMS > 24*60*60*1000 {
+		durationMS = 0
+	}
+
+	errMsg, okMsg := "", ""
+	switch _, serr := a.WhatsApp.SendAudioReply(k.Request.Context(), id, mime, audioFilename(hdr.Filename, mime), data, durationMS); {
+	case serr == nil:
+		okMsg = "Voice note sent."
+	case errors.Is(serr, whatsapp.ErrReplyWindowClosed):
+		errMsg = explanationForReply(serr)
+	case errors.Is(serr, whatsapp.ErrConversationNotFound):
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+	default:
+		errMsg = explanationForReply(serr)
+	}
+
+	conv, msgs, _ := a.WhatsApp.Thread(k.Request.Context(), id)
+	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
+}
+
+// canonicalSendAudioMime maps any upload content type onto the Cloud API's
+// supported audio set, or "" when the format cannot be sent to WhatsApp.
+func canonicalSendAudioMime(mime string) string {
+	base := strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0]))
+	switch base {
+	case "audio/ogg", "audio/opus":
+		return "audio/ogg"
+	case "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/m4b":
+		return "audio/mp4"
+	case "audio/mpeg", "audio/mp3", "audio/mpga":
+		return "audio/mpeg"
+	case "audio/aac":
+		return "audio/aac"
+	case "audio/amr", "audio/amr-nb", "audio/x-amr":
+		return "audio/amr"
+	default:
+		return ""
+	}
+}
+
+// audioFilename keeps a safe, correctly-extended upload name for Meta.
+func audioFilename(original, mime string) string {
+	exts := map[string]string{"audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/aac": "aac", "audio/amr": "amr"}
+	name := "voice." + exts[mime]
+	if original != "" {
+		orig := regexp.MustCompile(`[^A-Za-z0-9._-]`).ReplaceAllString(original, "_")
+		if len(orig) > 80 {
+			orig = orig[:80]
+		}
+		if orig != "" {
+			name = orig
+		}
+	}
+	return name
 }
 
 // handleInboxRead marks an open thread read.

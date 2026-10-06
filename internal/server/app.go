@@ -118,6 +118,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/inbox/{id}/fragment", kit.Handler(a.handleInboxFragment))
 		pr.Get("/inbox/{id}/media/{msg}", kit.Handler(a.handleChatMedia))
 		pr.Post("/inbox/{id}/reply", kit.Handler(a.handleInboxReply))
+		pr.Post("/inbox/{id}/reply-audio", kit.Handler(a.handleInboxReplyAudio))
 		pr.Post("/inbox/{id}/read", kit.Handler(a.handleInboxRead))
 		pr.Get("/settings", kit.Handler(a.handleWhatsappSettings))
 		pr.Get("/settings/delivery", kit.Handler(a.handleDeliverySettings))

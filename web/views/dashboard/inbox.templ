@@ -318,19 +318,45 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 		if conv.WindowOpen {
 			<div class="border-t border-[#e8eeeb] bg-[#f5f7f6] px-3 py-3 sm:px-4">
 				<p class="px-1 pb-1 text-[10px] text-amber-600">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</p>
-				<div class="relative" x-data="{ open: false }">
-					<div x-show="open" x-transition.opacity @click.outside="open = false"
-						class="absolute inset-x-0 bottom-full z-20 mb-2 rounded-md border border-[#e8eeeb] bg-white p-3 shadow-lg">
-						<div class="grid grid-cols-8 gap-0.5">
-							for _, e := range threadEmoji {
-								<button type="button"
-									class="grid h-8 w-8 place-items-center rounded-md text-[19px] leading-none transition hover:bg-[#f5f7f6]"
-									aria-label={ "Emoji " + e }
-									@click="const m=$refs.msg; m.value=m.value+$el.textContent.trim(); m.focus(); m.dispatchEvent(new Event('input', { bubbles: true }))">{ e }</button>
-							}
-						</div>
+<div class="relative" x-data="{ open: false }">
+				<div x-show="open" x-transition.opacity @click.outside="open = false"
+					class="absolute inset-x-0 bottom-full z-20 mb-2 rounded-md border border-[#e8eeeb] bg-white p-3 shadow-lg">
+					<div class="grid grid-cols-8 gap-0.5">
+						for _, e := range threadEmoji {
+							<button type="button"
+								class="grid h-8 w-8 place-items-center rounded-md text-[19px] leading-none transition hover:bg-[#f5f7f6]"
+								aria-label={ "Emoji " + e }
+								@click="const m=$refs.msg; m.value=m.value+$el.textContent.trim(); m.focus(); m.dispatchEvent(new Event('input', { bubbles: true }))">{ e }</button>
+						}
 					</div>
-					<form class="flex items-center gap-2"
+				</div>
+				<div x-data={ templ.SafeURL("voiceComposer('" + conv.ID.String() + "')") } x-init="init()" class="w-full">
+					<p x-show="errors" x-text="errors" class="px-1 pb-1 text-xs text-rose-600"></p>
+					<div class="flex items-center gap-2" x-show="state === 'recording'" x-cloak>
+						<span class="flex h-[44px] items-center gap-2 rounded-[6px] border border-[#e8eeeb] bg-white px-3">
+							<span class="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-rose-500"></span>
+							<span class="text-sm text-[#202c33]">Recording…</span>
+							<span class="text-sm tabular-nums text-[#667781]" x-text="fmt()"></span>
+						</span>
+						<span class="min-w-0 flex-1 text-[10px] text-[#728078]">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</span>
+						<button type="button" aria-label="Stop recording" title="Stop recording"
+							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-rose-600 text-white transition hover:bg-rose-700" @click="stop()">
+							<span class="block h-3.5 w-3.5 rounded-[2px] bg-white"></span>
+						</button>
+					</div>
+					<div class="flex items-center gap-2" x-show="state === 'ready'" x-cloak>
+						<audio controls preload="metadata" :src="url" class="h-9 min-w-0 flex-1 max-w-full"></audio>
+						<span class="shrink-0 text-sm tabular-nums text-[#667781]" x-text="fmt()"></span>
+						<button type="button" aria-label="Cancel audio" title="Discard"
+							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e8eeeb] hover:text-[#202c33]" @click="cancel()">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12" /></svg>
+						</button>
+						<button type="button" aria-label="Send audio" title="Send voice note"
+							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d]" @click="send()">
+							<svg class="h-[20px] w-[20px]" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></svg>
+						</button>
+					</div>
+					<form class="flex items-center gap-2" x-show="state === 'idle'"
 						hx-post={ templ.SafeURL("/inbox/" + conv.ID.String() + "/reply") }
 						hx-target="#thread-card" hx-swap="outerHTML" hx-disabled-elt="find button">
 						<button type="button" :title="open ? 'Close emoji picker' : 'Emoji'" aria-label="Emoji"
@@ -338,14 +364,27 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 							:class="open ? 'bg-[#e5f3ec] text-[#008069]' : ''" @click="open = !open">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.8 14.2a4.4 4.4 0 0 0 6.4 0"/><path stroke-linecap="round" d="M9.2 9.6h.01M14.8 9.6h.01"/></svg>
 						</button>
+						<button type="button" aria-label="Attach audio file" title="Attach an MP3, M4A, OGG, AAC or AMR audio file"
+							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069]"
+							@click="$refs.audioFile.click()">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 8H4a2 2 0 0 0 0 4h5"/></svg>
+						</button>
+						<input type="file" x-ref="audioFile" accept={ "audio/*,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
 						<textarea name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message" x-ref="msg"
 							class="h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069]"
 							@keydown.enter.prevent="$el.form.requestSubmit()"></textarea>
+						<button type="button" aria-label="Record voice note" title="Record a voice note"
+							:disabled="!canRecord"
+							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
+							@click="start()">
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path stroke-linecap="round" d="M12 17v5"/></svg>
+						</button>
 						<button type="submit" aria-label="Send message" title="Send message" class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d]">
 							<svg class="h-[20px] w-[20px]" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></svg>
 						</button>
 					</form>
 				</div>
+			</div>
 			</div>
 		} else {
 			<div class="flex items-center gap-2 border-t border-[#e8eeeb] bg-[#f5f7f6] px-4 py-3">

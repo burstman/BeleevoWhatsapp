@@ -18,6 +18,24 @@ func rejCode(err error) string {
 	return ""
 }
 
+func TestIsVoiceNote(t *testing.T) {
+	cases := map[string]bool{
+		"audio/ogg; codecs=opus": true,
+		"audio/ogg":              true,
+		"audio/OGG":              true,
+		"audio/opus":             false, // OPUS outside an OGG container is not a native voice note
+		"audio/mp4":              false,
+		"audio/mpeg":             false,
+		"audio/aac":              false,
+		"":                       false,
+	}
+	for in, want := range cases {
+		if got := isVoiceNote(in); got != want {
+			t.Errorf("isVoiceNote(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
 func activeMerchant() MerchantState {
 	ts := time.Now()
 	return MerchantState{

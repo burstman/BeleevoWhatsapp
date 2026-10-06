@@ -1,10 +1,13 @@
 package whatsapp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -256,6 +259,87 @@ func (s *Service) getJSON(ctx context.Context, token, endpoint string, out any) 
 // maxInboundMediaBytes caps how large a customer media download we are willing
 // to store. Voice notes are under ~1 MB; this leaves room for uploaded audio.
 const maxInboundMediaBytes = 25 << 20 // 25 MB
+
+// maxOutboundMediaBytes matches the Cloud API's audio upload ceiling (16 MB).
+const maxOutboundMediaBytes = 16 << 20
+
+// UploadMedia uploads a file to the account's media library and returns the
+// media id to reference in a message. The caller must pass a Cloud-API audio
+// mime (AAC/AMR/MP3/M4A/OGG-opus); WebM and anything else is rejected.
+func (s *Service) UploadMedia(ctx context.Context, token, phoneNumberID, mime string, data []byte, filename string) (string, error) {
+	if len(data) == 0 {
+		return "", errors.New("empty media upload")
+	}
+	if len(data) > maxOutboundMediaBytes {
+		return "", fmt.Errorf("media too large: %d bytes", len(data))
+	}
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	if err := mw.WriteField("messaging_product", "whatsapp"); err != nil {
+		return "", fmt.Errorf("upload field: %w", err)
+	}
+	if err := mw.WriteField("type", mime); err != nil {
+		return "", fmt.Errorf("upload type: %w", err)
+	}
+	fw, err := mw.CreateFormFile("file", filename)
+	if err != nil {
+		return "", fmt.Errorf("upload file part: %w", err)
+	}
+	if _, err := fw.Write(data); err != nil {
+		return "", fmt.Errorf("upload write: %w", err)
+	}
+	if err := mw.Close(); err != nil {
+		return "", fmt.Errorf("upload close: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		fmt.Sprintf("%s/%s/%s/media", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID), &buf)
+	if err != nil {
+		return "", fmt.Errorf("build upload request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+
+	var resp struct {
+		ID string `json:"id"`
+	}
+	if err := s.doJSON(req, &resp); err != nil {
+		return "", fmt.Errorf("upload media: %w", err)
+	}
+	if resp.ID == "" {
+		return "", errors.New("uploaded media returned no id")
+	}
+	return resp.ID, nil
+}
+
+// SendAudio delivers an uploaded media id as a WhatsApp audio message. voice
+// must only be true for OPUS-in-OGG (a true voice note); the other supported
+// containers go out as a basic audio message.
+func (s *Service) SendAudio(ctx context.Context, token, phoneNumberID, to, mediaID string, voice bool) (string, error) {
+	audio := map[string]any{"id": mediaID}
+	if voice {
+		audio["voice"] = true
+	}
+	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"to":                to,
+		"type":              "audio",
+		"audio":             audio,
+	}
+	var resp struct {
+		Messages []struct {
+			ID string `json:"id"`
+		} `json:"messages"`
+	}
+	if err := s.postJSON(ctx, token,
+		fmt.Sprintf("%s/%s/%s/messages", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID), payload, &resp); err != nil {
+		return "", err
+	}
+	if len(resp.Messages) == 0 || resp.Messages[0].ID == "" {
+		return "", errors.New("audio send returned no message id")
+	}
+	return resp.Messages[0].ID, nil
+}
 
 // DownloadMedia fetches a customer's media from Meta and returns the bytes plus
 // its declared MIME type. The Media API resolves the media id directly (the id

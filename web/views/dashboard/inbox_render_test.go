@@ -109,4 +109,20 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if strings.Contains(out, `hx-swap-oob="outerHTML"`) {
 		t.Error("full page must not emit OOB swaps (AJAX responses only)")
 	}
+	// templ HTML-escapes the attribute value, so ' comes out as &#39; which the
+	// browser decodes back for Alpine.
+	if !strings.Contains(out, `x-data="voiceComposer(&#39;`+conv.ID.String()+`&#39;)"`) {
+		t.Error("composer is not wired to the voice recorder component")
+	}
+	if !strings.Contains(out, `aria-label="Record voice note"`) {
+		t.Error("mic record button missing from composer")
+	}
+	if !strings.Contains(out, `aria-label="Attach audio file"`) {
+		t.Error("attach-audio button missing from composer")
+	}
+	// The recorder UI panels are hidden until Alpine boots; without this every
+	// panel flashes on the first paint.
+	if !strings.Contains(out, `x-cloak`) {
+		t.Error("recording/preview panels must use x-cloak")
+	}
 }
