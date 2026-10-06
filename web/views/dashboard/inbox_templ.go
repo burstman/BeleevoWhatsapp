@@ -615,6 +615,17 @@ func chatSidebarRows(threads []whatsapp.Conversation, activeID uuid.UUID, shopNa
 	})
 }
 
+// threadEmoji is the picker grid shown above the composer.
+var threadEmoji = []string{
+	"😀", "😄", "😂", "🤣", "😊", "😍", "🥰", "😘",
+	"😉", "😎", "🤩", "🥳", "😜", "🙃", "🤗", "😴",
+	"🤔", "🤯", "😭", "🙄", "👍", "👎", "👏", "🙌",
+	"🙏", "💪", "🤝", "👋", "❤️", "🧡", "💛", "💚",
+	"💙", "💜", "🤍", "🖤", "✨", "🔥", "💯", "🎉",
+	"🎊", "🎁", "🛒", "📦", "🚚", "🚀", "📞", "💬",
+	"⏰", "✅", "❌", "❗",
+}
+
 // avatarTone cycles a soft background/text palette for the initials circles,
 // exactly like the WhatsApp mock's per-contact avatars.
 func avatarTone(name string) string {
@@ -752,7 +763,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(avatarLetters(conversationName(conv)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 271, Col: 196}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 282, Col: 196}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -765,7 +776,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(conversationName(conv))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 274, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 285, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -786,7 +797,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(phoneDisplay(conv.CustomerPhone))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 277, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 288, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -819,7 +830,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + conv.ID.String() + "/fragment"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 291, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 302, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 		if templ_7745c5c3_Err != nil {
@@ -845,7 +856,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(err)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 301, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 312, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -864,7 +875,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(ok)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 304, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 315, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -876,30 +887,66 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			}
 		}
 		if conv.WindowOpen {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"border-t border-[#e8eeeb] bg-[#f5f7f6] px-3 py-3 sm:px-4\"><p class=\"px-1 pb-1 text-[10px] text-amber-600\">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</p><form class=\"flex items-center gap-2\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"border-t border-[#e8eeeb] bg-[#f5f7f6] px-3 py-3 sm:px-4\"><p class=\"px-1 pb-1 text-[10px] text-amber-600\">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</p><div class=\"relative\" x-data=\"{ open: false }\"><div x-show=\"open\" x-transition.opacity @click.outside=\"open = false\" class=\"absolute inset-x-0 bottom-full z-20 mb-2 rounded-md border border-[#e8eeeb] bg-white p-3 shadow-lg\"><div class=\"grid grid-cols-8 gap-0.5\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var37 string
-			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + conv.ID.String() + "/reply"))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 311, Col: 69}
+			for _, e := range threadEmoji {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<button type=\"button\" class=\"grid h-8 w-8 place-items-center rounded-md text-[19px] leading-none transition hover:bg-[#f5f7f6]\" aria-label=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var37 string
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue("Emoji " + e)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 328, Col: 34}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" @click=\"const m=$refs.msg; m.value=m.value+$el.textContent.trim(); m.focus(); m.dispatchEvent(new Event('input', { bubbles: true }))\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var38 string
+				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(e)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 329, Col: 146}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</button>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</div></div><form class=\"flex items-center gap-2\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" hx-target=\"#thread-card\" hx-swap=\"outerHTML\" hx-disabled-elt=\"find button\"><textarea name=\"body\" rows=\"1\" required maxlength=\"2000\" placeholder=\"Type a message\" aria-label=\"Message\" class=\"h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069]\" @keydown.enter.prevent=\"$el.form.requestSubmit()\"></textarea> <button type=\"submit\" aria-label=\"Send message\" title=\"Send message\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d]\"><svg class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg></button></form></div>")
+			var templ_7745c5c3_Var39 string
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + conv.ID.String() + "/reply"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 334, Col: 70}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" hx-target=\"#thread-card\" hx-swap=\"outerHTML\" hx-disabled-elt=\"find button\"><button type=\"button\" :title=\"open ? 'Close emoji picker' : 'Emoji'\" aria-label=\"Emoji\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069]\" :class=\"open ? 'bg-[#e5f3ec] text-[#008069]' : ''\" @click=\"open = !open\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.8 14.2a4.4 4.4 0 0 0 6.4 0\"></path><path stroke-linecap=\"round\" d=\"M9.2 9.6h.01M14.8 9.6h.01\"></path></svg></button> <textarea name=\"body\" rows=\"1\" required maxlength=\"2000\" placeholder=\"Type a message\" aria-label=\"Message\" x-ref=\"msg\" class=\"h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069]\" @keydown.enter.prevent=\"$el.form.requestSubmit()\"></textarea> <button type=\"submit\" aria-label=\"Send message\" title=\"Send message\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d]\"><svg class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg></button></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<div class=\"flex items-center gap-2 border-t border-[#e8eeeb] bg-[#f5f7f6] px-4 py-3\"><span class=\"text-sm text-[#667781]\">Free-form replies are unavailable outside the 24h window.</span> <a href=\"/templates\" class=\"shrink-0 text-sm font-medium text-[#008069] hover:underline\">Use an approved template</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<div class=\"flex items-center gap-2 border-t border-[#e8eeeb] bg-[#f5f7f6] px-4 py-3\"><span class=\"text-sm text-[#667781]\">Free-form replies are unavailable outside the 24h window.</span> <a href=\"/templates\" class=\"shrink-0 text-sm font-medium text-[#008069] hover:underline\">Use an approved template</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -925,123 +972,123 @@ func BubblesList(msgs []whatsapp.ChatMessage) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var38 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var38 == nil {
-			templ_7745c5c3_Var38 = templ.NopComponent
+		templ_7745c5c3_Var40 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var40 == nil {
+			templ_7745c5c3_Var40 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(msgs) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<div class=\"px-4 py-2 text-center text-sm text-[#728078]\">No messages yet</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div class=\"px-4 py-2 text-center text-sm text-[#728078]\">No messages yet</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<div class=\"mx-auto mb-2 w-fit rounded-md bg-white px-3 py-1 text-[10px] text-[#667781] shadow-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<div class=\"mx-auto mb-2 w-fit rounded-md bg-white px-3 py-1 text-[10px] text-[#667781] shadow-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(dayLabel(msgs[len(msgs)-1].CreatedAt))
+			var templ_7745c5c3_Var41 string
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(dayLabel(msgs[len(msgs)-1].CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 336, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 365, Col: 140}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</div><p class=\"mx-auto mb-4 max-w-[420px] text-center text-[11px] text-[#667781]\">Messages are delivered securely via the WhatsApp Business API.</p><div class=\"flex flex-col gap-2.5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div><p class=\"mx-auto mb-4 max-w-[420px] text-center text-[11px] text-[#667781]\">Messages are delivered securely via the WhatsApp Business API.</p><div class=\"flex flex-col gap-2.5\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, m := range msgs {
 				if m.Direction == "inbound" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<div class=\"flex\"><div class=\"max-w-[78%] rounded-[0_7px_7px_7px] bg-white px-3 py-2 shadow-sm sm:max-w-[78%]\"><p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var40 string
-					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 343, Col: 81}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[#728078]\"><span>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var41 string
-					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 344, Col: 120}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</span></div></div></div>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "<div class=\"flex justify-end\"><div class=\"max-w-[78%] rounded-[7px_0_7px_7px] bg-[#d9fdd3] px-3 py-2 shadow-sm\"><p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<div class=\"flex\"><div class=\"max-w-[78%] rounded-[0_7px_7px_7px] bg-white px-3 py-2 shadow-sm sm:max-w-[78%]\"><p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var42 string
 					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 350, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 372, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1.5 text-[10px] text-[#667781]\"><span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[#728078]\"><span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var43 string
 					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 352, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 373, Col: 120}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</span> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</span></div></div></div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<div class=\"flex justify-end\"><div class=\"max-w-[78%] rounded-[7px_0_7px_7px] bg-[#d9fdd3] px-3 py-2 shadow-sm\"><p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var44 string
+					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 379, Col: 81}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1.5 text-[10px] text-[#667781]\"><span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var45 string
+					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 381, Col: 38}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</span> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if chatStatusLabel(m.Status) != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<span class=\"text-[#008069]\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<span class=\"text-[#008069]\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var44 string
-						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(chatStatusLabel(m.Status))
+						var templ_7745c5c3_Var46 string
+						templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(chatStatusLabel(m.Status))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 354, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 383, Col: 65}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</div></div></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</div></div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
