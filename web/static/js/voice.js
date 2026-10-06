@@ -222,9 +222,19 @@ window.voiceComposer = (convID) => ({
 	loadFile(input) {
 		const f = input && input.files && input.files[0];
 		if (!f) return;
-		const mime = this.canonical(f.type) || this.canonicalImage(f.type);
+		const audioMime = this.canonical(f.type);
+		const imageMime = this.canonicalImage(f.type);
+		const mime = audioMime || imageMime;
 		if (!mime) {
 			this.errors = "WhatsApp does not accept this format (WebM is not supported). Use a JPG, PNG or WEBP image, or an MP3, M4A, OGG, AAC, AMR audio file.";
+			return;
+		}
+		if (imageMime && f.size > 5 * 1024 * 1024) {
+			this.errors = "This photo is larger than the 5 MB WhatsApp limit. Pick a smaller JPG, PNG or WEBP.";
+			return;
+		}
+		if (audioMime && f.size > 16 * 1024 * 1024) {
+			this.errors = "This audio file is larger than the 16 MB WhatsApp limit.";
 			return;
 		}
 		this.mime = mime;
@@ -292,6 +302,10 @@ window.voiceComposer = (convID) => ({
 		fetch(endpoint, { method: "POST", body: fd })
 			.then((res) => res.text())
 			.then((html) => {
+				if (html.indexOf("<") !== 0 && html.trim() !== "") {
+					this.errors = this.friendlyError(html);
+					return;
+				}
 				const frag = document.createElement("template");
 				frag.innerHTML = html;
 				const oob = frag.content.querySelector("[hx-swap-oob]");
@@ -309,5 +323,13 @@ window.voiceComposer = (convID) => ({
 			.finally(() => {
 				this.sending = false;
 			});
+	},
+
+	friendlyError(text) {
+		const t = String(text || "").trim();
+		if (!t) return "Could not send. Try again.";
+		if (t.indexOf("<!DOCTYPE") === 0 || t.indexOf("<html") === 0) return "Could not send. Try again.";
+		if (t.length > 200) return t.slice(0, 200) + "…";
+		return t;
 	},
 });
