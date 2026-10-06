@@ -132,8 +132,11 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if !strings.Contains(out, `aria-label="Attach a photo or audio"`) {
 		t.Error("attach button missing from composer")
 	}
-	if !strings.Contains(out, "image/jpeg,image/png,image/webp,image/gif") {
+	if !strings.Contains(out, "image/jpeg,image/png,image/webp") {
 		t.Error("attach input must accept photos as well as audio")
+	}
+	if strings.Contains(out, "image/gif") {
+		t.Error("GIF must not be offered: Meta rejects image/gif")
 	}
 	// The recorder UI panels are hidden until Alpine boots; without this every
 	// panel flashes on the first paint.

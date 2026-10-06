@@ -224,7 +224,7 @@ window.voiceComposer = (convID) => ({
 		if (!f) return;
 		const mime = this.canonical(f.type) || this.canonicalImage(f.type);
 		if (!mime) {
-			this.errors = "WhatsApp does not accept this format (WebM is not supported). Use a JPG, PNG, WEBP, GIF or an MP3, M4A, OGG, AAC, AMR file.";
+			this.errors = "WhatsApp does not accept this format (WebM is not supported). Use a JPG, PNG or WEBP image, or an MP3, M4A, OGG, AAC, AMR audio file.";
 			return;
 		}
 		this.mime = mime;
@@ -263,13 +263,12 @@ window.voiceComposer = (convID) => ({
 		if (["image/jpg", "image/jpeg", "image/pjpeg"].includes(base)) return "image/jpeg";
 		if (base === "image/png") return "image/png";
 		if (base === "image/webp") return "image/webp";
-		if (base === "image/gif") return "image/gif";
 		return "";
 	},
 
 	ext() {
 		if (this.isImage) {
-			const imgs = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+			const imgs = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 			return imgs[this.mime] || "jpg";
 		}
 		const exts = { "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/aac": "aac", "audio/amr": "amr" };

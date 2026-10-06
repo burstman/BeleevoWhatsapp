@@ -375,7 +375,7 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 							@click="$refs.audioFile.click()">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 8H4a2 2 0 0 0 0 4h5"/></svg>
 						</button>
-						<input type="file" x-ref="audioFile" accept={ "image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.gif,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
+						<input type="file" x-ref="audioFile" accept={ "image/jpeg,image/png,image/webp,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
 						<textarea id="composer-input" name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message" x-ref="msg"
 							class="composer-ctl h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50"></textarea>
 						<button type="button" aria-label="Record voice note" title="Record a voice note"

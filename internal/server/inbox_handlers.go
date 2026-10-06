@@ -382,7 +382,7 @@ func (a *App) handleInboxReplyImage(k *kit.Kit) error {
 	mime := canonicalSendImageMime(hdr.Header.Get("Content-Type"))
 	if mime == "" {
 		return k.Text(http.StatusBadRequest,
-			"WhatsApp does not accept this image format. Use JPG, PNG, WEBP or GIF.")
+			"WhatsApp does not accept this image format. Use JPG, PNG or WEBP.")
 	}
 
 	errMsg, okMsg := "", ""
@@ -405,7 +405,8 @@ func (a *App) handleInboxReplyImage(k *kit.Kit) error {
 }
 
 // canonicalSendImageMime maps any upload content type onto the Cloud API's
-// supported image set, or "" when the format cannot be sent to WhatsApp.
+// supported image set (GIF is NOT accepted), or "" when the format cannot be
+// sent to WhatsApp.
 func canonicalSendImageMime(mime string) string {
 	base := strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0]))
 	switch base {
@@ -415,8 +416,6 @@ func canonicalSendImageMime(mime string) string {
 		return "image/png"
 	case "image/webp":
 		return "image/webp"
-	case "image/gif":
-		return "image/gif"
 	default:
 		return ""
 	}
@@ -424,7 +423,7 @@ func canonicalSendImageMime(mime string) string {
 
 // imageFilename keeps a safe, correctly-extended upload name for Meta.
 func imageFilename(mime string) string {
-	exts := map[string]string{"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+	exts := map[string]string{"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 	return "photo." + exts[mime]
 }
 

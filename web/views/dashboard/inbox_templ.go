@@ -954,9 +954,9 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue("image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.gif,.mp3,.m4a,.ogg,.aac,.amr")
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue("image/jpeg,image/png,image/webp,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.mp3,.m4a,.ogg,.aac,.amr")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 378, Col: 192}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 378, Col: 177}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
