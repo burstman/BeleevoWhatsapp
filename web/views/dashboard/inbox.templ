@@ -2,6 +2,7 @@ package viewsdashboard
 
 import (
 	"fmt"
+	"hash/fnv"
 	"strings"
 	"time"
 
@@ -105,22 +106,33 @@ templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames
 				if flash != "" {
 					<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash }</div>
 				}
-				<div class="flex h-[62vh] min-h-[28rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100vh-10.5rem)] lg:flex-row" x-data="{ showDetail: false }">
-					<div :class="showDetail ? 'hidden lg:flex' : 'flex'" class="min-h-0 flex-col border-b border-slate-200 lg:w-[22rem] lg:shrink-0 lg:border-b-0 lg:border-r">
-						<div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-							<h3 class="text-sm font-bold text-slate-700">Conversations</h3>
-							<span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{ len(threads) }</span>
+				<div class="flex h-[62vh] min-h-[28rem] flex-col overflow-hidden rounded-xl border border-[#e8eeeb] bg-white shadow-sm lg:h-[calc(100vh-10.5rem)] lg:flex-row" x-data="{ showDetail: false, filter: 'all', q: '' }">
+					<div :class="showDetail ? 'hidden lg:flex' : 'flex'" class="min-h-0 flex-col border-b border-[#e8eeeb] bg-white lg:w-[330px] lg:shrink-0 lg:border-b-0 lg:border-r">
+						<header class="flex items-center justify-between px-5 pb-3 pt-4">
+							<h3 class="text-[17px] font-semibold text-[#202c33]">Chats</h3>
+							<span class="rounded-full bg-[#e5f3ec] px-2 py-0.5 text-[10px] font-semibold text-[#008069]">{ len(threads) }</span>
+						</header>
+						<label class="mx-5 mb-3 flex items-center gap-2.5 rounded-md bg-[#f5f7f6] px-3 py-2 text-[#728078]">
+							<svg class="h-[17px] w-[17px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+							<input type="search" x-model="q" placeholder="Search or start a new chat" aria-label="Search chats"
+								class="w-full min-w-0 bg-transparent text-xs text-[#202c33] outline-none placeholder:text-[#728078]" />
+						</label>
+						<div class="flex gap-2 border-b border-[#e8eeeb] px-5 pb-3">
+							<button type="button" class="rounded-full px-3.5 py-1.5 text-xs font-medium transition"
+								:class="filter === 'all' ? 'bg-[#e5f3ec] text-[#008069]' : 'bg-[#f5f7f6] text-[#728078] hover:text-[#202c33]'" @click="filter='all'">All</button>
+							<button type="button" class="rounded-full px-3.5 py-1.5 text-xs font-medium transition"
+								:class="filter === 'unread' ? 'bg-[#e5f3ec] text-[#008069]' : 'bg-[#f5f7f6] text-[#728078] hover:text-[#202c33]'" @click="filter='unread'">Unread</button>
 						</div>
 						@ChatSidebar(threads, activeID(active), shopNames, false)
 					</div>
 
-					<div id="inbox-thread-pane" :class="showDetail ? 'flex' : 'hidden lg:flex'" class="min-h-0 flex-1 flex-col bg-slate-50">
+					<div id="inbox-thread-pane" :class="showDetail ? 'flex' : 'hidden lg:flex'" class="min-h-0 flex-1 flex-col bg-[#efece5]">
 						if active != nil {
 							@ThreadCard(page, active.Conv, active.Msgs, active.Err, active.Ok)
 						} else {
 							<div class="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-								<div class="text-sm font-semibold text-slate-700">Select a conversation</div>
-								<div class="mt-1 text-sm text-slate-500">Choose a customer on the left to read and reply to their messages.</div>
+								<div class="text-sm font-semibold text-[#202c33]">Select a conversation</div>
+								<div class="mt-1 text-sm text-[#667781]">Choose a customer on the left to read and reply to their messages.</div>
 							</div>
 						}
 					</div>
@@ -171,29 +183,50 @@ templ NavBadgeOOB(count int) {
 
 templ chatSidebarRows(threads []whatsapp.Conversation, activeID uuid.UUID, shopNames map[uuid.UUID]string) {
 	if len(threads) == 0 {
-		<p class="px-4 py-6 text-center text-sm text-slate-500">No conversations yet.</p>
+		<p class="px-4 py-6 text-center text-sm text-[#728078]">No conversations yet.</p>
 	} else {
 		for _, t := range threads {
-			<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-get={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-target="#inbox-thread-pane" hx-swap="innerHTML" hx-push-url="true" class={ "flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-slate-50 focus:outline-none sm:px-4", templ.KV("bg-indigo-50/70", t.ID == activeID) }>
-				<div class={ "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold", templ.KV("bg-indigo-100 text-indigo-700", t.UnreadCount == 0), templ.KV("bg-indigo-600 text-white", t.UnreadCount > 0) }>{ avatarLetters(conversationName(t)) }</div>
-				<div class="min-w-0 flex-1">
-					<div class="flex items-center justify-between gap-2">
-						<span class="truncate text-sm font-semibold text-slate-900">{ conversationName(t) }</span>
-						<span class="shrink-0 text-[10px] text-slate-400">{ chatClock(t.LastMessageAt) }</span>
-					</div>
-					<div class="mt-0.5 flex items-center justify-between gap-2">
-						<span class={ "flex min-w-0 items-baseline gap-1.5 truncate text-[13px] ", templ.KV("font-medium text-slate-800", t.UnreadCount > 0), templ.KV("text-slate-500", t.UnreadCount == 0) }>
-							<span class="shrink-0 text-xs font-normal text-slate-400">{ phoneDisplay(t.CustomerPhone) }</span>
-							<span class="truncate">{ t.LastBody }</span>
+			<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-get={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-target="#inbox-thread-pane" hx-swap="innerHTML" hx-push-url="true"
+				data-q-unread={ fmt.Sprintf("%d", t.UnreadCount) }
+				data-q-name={ strings.ToLower(conversationName(t) + " " + t.CustomerPhone) }
+				x-show="(filter === 'all' || $el.dataset.qUnread !== '0') && (q === '' || ($el.dataset.qName || '').includes(q.toLowerCase()))"
+				class={ "flex w-full items-center gap-3 border-b border-[#e8eeeb] px-5 py-[17px] text-left transition hover:bg-[#f5f7f6] focus:outline-none", templ.KV("bg-[#e5f3ec]", t.ID == activeID) }>
+				<span class={ "flex h-[43px] w-[43px] shrink-0 items-center justify-center rounded-full text-[13px] font-semibold", avatarTone(conversationName(t)) }>{ avatarLetters(conversationName(t)) }</span>
+				<span class="min-w-0 flex-1">
+					<span class="flex items-center justify-between gap-2">
+						<span class="truncate text-sm font-semibold text-[#202c33]">{ conversationName(t) }</span>
+						<time class="shrink-0 text-[10px] whitespace-nowrap text-[#728078]">{ chatClock(t.LastMessageAt) }</time>
+					</span>
+					<span class="mt-[5px] flex items-center justify-between gap-2">
+						<span class="min-w-0 flex-1 truncate text-xs text-[#728078]">
+							<span class="text-[#667781]">{ phoneDisplay(t.CustomerPhone) }</span>
+							if t.LastBody != "" {
+								<span class="mx-1 text-[#bcc6c2]">·</span>
+								<span>{ t.LastBody }</span>
+							}
 						</span>
 						if t.UnreadCount > 0 {
-							<span class="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{ unreadLabel(t.UnreadCount) }</span>
+							<span class="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#008069] px-1.5 text-[10px] font-medium text-white">{ unreadLabel(t.UnreadCount) }</span>
 						}
-					</div>
-				</div>
+					</span>
+				</span>
 			</a>
 		}
 	}
+}
+
+// avatarTone cycles a soft background/text palette for the initials circles,
+// exactly like the WhatsApp mock's per-contact avatars.
+func avatarTone(name string) string {
+	tones := [...]string{
+		"bg-[#e5f3ec] text-[#008069]",
+		"bg-[#f9e8ee] text-[#a85473]",
+		"bg-[#e7eef9] text-[#5376a8]",
+		"bg-[#f8efd9] text-[#98742b]",
+	}
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	return tones[h.Sum32()%uint32(len(tones))]
 }
 
 // avatarLetters derives a short initial badge for the messenger-style list.
@@ -229,26 +262,31 @@ templ whatsappBadge(size string) {
 // land in one exchange. x-init flips the mobile sidebar/detail toggle so
 // opening a thread shows the detail area on small screens.
 templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsapp.ChatMessage, err string, ok string) {
-	<div id="thread-card" class="flex min-h-0 flex-1 flex-col overflow-hidden" x-init="showDetail = true">
-		<div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-3 shadow-sm sm:px-4">
-			<div class="flex min-w-0 items-center gap-2">
-				<button type="button" class="-ml-1 rounded-md p-1 text-slate-500 hover:text-slate-700 lg:hidden" @click="showDetail = false" aria-label="Back to conversations">
+	<div id="thread-card" class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efece5]" x-init="showDetail = true">
+		<div class="flex items-center justify-between gap-3 border-b border-[#e8eeeb] bg-white px-4 py-[15px] sm:px-6">
+			<div class="flex min-w-0 items-center gap-3">
+				<button type="button" class="-ml-1 rounded-md p-1 text-[#667781] hover:text-[#202c33] lg:hidden" @click="showDetail = false" aria-label="Back to conversations">
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
 				</button>
-				<span class="inline-flex shrink-0 items-center gap-1.5">
-					@whatsappBadge("h-5 w-5")
-					<span class="truncate text-sm font-bold text-slate-900">{ conversationName(conv) }</span>
-					<span class="shrink-0 text-xs font-normal text-slate-400">({ phoneDisplay(conv.CustomerPhone) })</span>
+				<span class={ "flex h-[43px] w-[43px] shrink-0 items-center justify-center rounded-full text-[13px] font-semibold", avatarTone(conversationName(conv)) }>{ avatarLetters(conversationName(conv)) }</span>
+				<span class="min-w-0">
+					<span class="inline-flex items-center gap-1.5">
+						<span class="truncate text-[15px] font-semibold text-[#202c33]">{ conversationName(conv) }</span>
+						@whatsappBadge("h-4 w-4")
+					</span>
+					<div class="mt-0.5 truncate text-[11px] text-[#667781]">{ phoneDisplay(conv.CustomerPhone) }
+						if conv.WindowOpen {
+							<span class="ml-1 text-[#008069]">· service window open</span>
+						}
+					</div>
 				</span>
 			</div>
-			if conv.WindowOpen {
-				<span class="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Service window open</span>
-			} else {
-				<span class="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">Window closed</span>
+			if !conv.WindowOpen {
+				<span class="shrink-0 rounded-full bg-[#fef1f1] px-2.5 py-1 text-[10px] font-medium text-[#b3423a]">Window closed</span>
 			}
 		</div>
 
-		<div id="thread-bubbles" class="min-h-0 flex-1 space-y-2 overflow-y-auto bg-slate-50 p-2 scroll-smooth sm:space-y-4 sm:p-6"
+		<div id="thread-bubbles" class="min-h-0 flex-1 overflow-y-auto bg-[#efece5] px-4 py-4 scroll-smooth sm:px-6"
 			style="overflow-anchor: none;"
 			hx-get={ templ.SafeURL("/inbox/" + conv.ID.String() + "/fragment") }
 			hx-trigger="every 15s" hx-swap="innerHTML"
@@ -257,7 +295,7 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 			@BubblesList(msgs)
 		</div>
 
-		<div id="thread-typing" class="h-5 border-t border-slate-100 bg-slate-50 px-4 text-[10px] italic text-slate-400"></div>
+		<div id="thread-typing" class="h-5 border-t border-[#e8eeeb] bg-[#efece5] px-4 text-[10px] italic text-[#728078]"></div>
 
 		if err != "" {
 			<div class="border-t border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{ err }</div>
@@ -267,20 +305,23 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 		}
 
 		if conv.WindowOpen {
-			<div class="border-t border-slate-200 bg-white p-2 sm:p-4">
+			<div class="border-t border-[#e8eeeb] bg-[#f5f7f6] px-3 py-3 sm:px-4">
 				<p class="px-1 pb-1 text-[10px] text-amber-600">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</p>
 				<form class="flex items-center gap-2"
 					hx-post={ templ.SafeURL("/inbox/" + conv.ID.String() + "/reply") }
 					hx-target="#thread-card" hx-swap="outerHTML" hx-disabled-elt="find button">
-					<input type="text" name="body" required maxlength="2000" autocomplete="off" placeholder="Reply…"
-						class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" />
-					<button type="submit" class="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Send</button>
+					<textarea name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message"
+						class="h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069]"
+						@keydown.enter.prevent="$el.form.requestSubmit()"></textarea>
+					<button type="submit" aria-label="Send message" title="Send message" class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d]">
+						<svg class="h-[20px] w-[20px]" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></svg>
+					</button>
 				</form>
 			</div>
 		} else {
-			<div class="flex items-center gap-2 border-t border-slate-200 bg-white p-3 sm:p-4">
-				<span class="text-sm text-slate-500">Free-form replies are unavailable outside the 24h window.</span>
-				<a href="/templates" class="shrink-0 text-sm font-medium text-indigo-600 hover:underline">Use an approved template</a>
+			<div class="flex items-center gap-2 border-t border-[#e8eeeb] bg-[#f5f7f6] px-4 py-3">
+				<span class="text-sm text-[#667781]">Free-form replies are unavailable outside the 24h window.</span>
+				<a href="/templates" class="shrink-0 text-sm font-medium text-[#008069] hover:underline">Use an approved template</a>
 			</div>
 		}
 	</div>
@@ -290,24 +331,48 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 // thread fragment can re-render just the bubbles on the poll.
 templ BubblesList(msgs []whatsapp.ChatMessage) {
 	if len(msgs) == 0 {
-		<div class="py-2 text-center text-sm text-slate-400">No messages yet</div>
+		<div class="px-4 py-2 text-center text-sm text-[#728078]">No messages yet</div>
 	} else {
-		for _, m := range msgs {
-			if m.Direction == "inbound" {
-				<div class="flex">
-					<div class="max-w-[70%] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-sm text-slate-800 shadow-sm">
-						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
-						<div class="mt-0.5 text-right text-[10px] text-slate-400">{ chatClock(m.CreatedAt) }</div>
+		<div class="mx-auto mb-2 w-fit rounded-md bg-white px-3 py-1 text-[10px] text-[#667781] shadow-sm">{ dayLabel(msgs[len(msgs)-1].CreatedAt) }</div>
+		<p class="mx-auto mb-4 max-w-[420px] text-center text-[11px] text-[#667781]">Messages are delivered securely via the WhatsApp Business API.</p>
+		<div class="flex flex-col gap-2.5">
+			for _, m := range msgs {
+				if m.Direction == "inbound" {
+					<div class="flex">
+						<div class="max-w-[78%] rounded-[0_7px_7px_7px] bg-white px-3 py-2 shadow-sm sm:max-w-[78%]">
+							<p class="whitespace-pre-wrap break-words text-sm text-[#202c33]">{ m.Body }</p>
+							<div class="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[#728078]"><span>{ chatClock(m.CreatedAt) }</span></div>
+						</div>
 					</div>
-				</div>
-			} else {
-				<div class="flex justify-end">
-					<div class="max-w-[70%] rounded-2xl rounded-br-sm bg-indigo-600 px-3 py-2 text-sm text-white shadow-sm">
-						<p class="whitespace-pre-wrap break-words">{ m.Body }</p>
-						<div class="mt-0.5 text-right text-[10px] text-indigo-200">{ chatClock(m.CreatedAt) } { chatStatusLabel(m.Status) }</div>
+				} else {
+					<div class="flex justify-end">
+						<div class="max-w-[78%] rounded-[7px_0_7px_7px] bg-[#d9fdd3] px-3 py-2 shadow-sm">
+							<p class="whitespace-pre-wrap break-words text-sm text-[#202c33]">{ m.Body }</p>
+							<div class="mt-0.5 flex items-center justify-end gap-1.5 text-[10px] text-[#667781]">
+								<span>{ chatClock(m.CreatedAt) }</span>
+								if chatStatusLabel(m.Status) != "" {
+									<span class="text-[#008069]">{ chatStatusLabel(m.Status) }</span>
+								}
+							</div>
+						</div>
 					</div>
-				</div>
+				}
 			}
-		}
+		</div>
 	}
+}
+
+// dayLabel renders a compact date pill above the conversation, TODAY or
+// YESTERDAY for recent messages, otherwise the full date.
+func dayLabel(t time.Time) string {
+	now := time.Now()
+	ty, tm, td := t.Local().Date()
+	ny, nm, nd := now.Date()
+	if ty == ny && tm == nm && td == nd {
+		return "TODAY"
+	}
+	if t.Local().Add(24 * time.Hour).Year() == ny && t.Local().Add(24*time.Hour).Month() == nm && t.Local().Add(24*time.Hour).Day() == nd {
+		return "YESTERDAY"
+	}
+	return t.Local().Format("02 Jan 2006")
 }
