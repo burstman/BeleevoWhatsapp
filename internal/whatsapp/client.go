@@ -258,14 +258,19 @@ func (s *Service) getJSON(ctx context.Context, token, endpoint string, out any) 
 const maxInboundMediaBytes = 25 << 20 // 25 MB
 
 // DownloadMedia fetches a customer's media from Meta and returns the bytes plus
-// its declared MIME type. The Graph endpoint first resolves the media id to a
-// temporary download URL, which is then streamed.
+// its declared MIME type. The Media API resolves the media id directly (the id
+// is a top-level Graph node) to a short-lived download URL, which is then
+// streamed — with the same business token on both calls.
 func (s *Service) DownloadMedia(ctx context.Context, token, phoneNumberID, mediaID string) ([]byte, string, error) {
 	var info struct {
 		URL      string `json:"url"`
 		MimeType string `json:"mime_type"`
 	}
-	resolveURL := fmt.Sprintf("%s/%s/%s/media/%s", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID, mediaID)
+	q := url.Values{}
+	if phoneNumberID != "" {
+		q.Set("phone_number_id", phoneNumberID)
+	}
+	resolveURL := fmt.Sprintf("%s/%s/%s?%s", s.cfg.MetaGraphURL, metaAPIVersion, mediaID, q.Encode())
 	if err := s.getJSON(ctx, token, resolveURL, &info); err != nil {
 		return nil, "", fmt.Errorf("resolve media %s: %w", mediaID, err)
 	}
@@ -277,6 +282,7 @@ func (s *Service) DownloadMedia(ctx context.Context, token, phoneNumberID, media
 	if err != nil {
 		return nil, "", fmt.Errorf("build media request: %w", err)
 	}
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := s.http.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("download media %s: %w", mediaID, err)
