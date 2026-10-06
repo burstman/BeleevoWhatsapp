@@ -345,8 +345,9 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 						</button>
 					</div>
 					<div class="flex items-center gap-2" x-show="state === 'ready'" x-cloak>
-						<audio controls preload="metadata" :src="url" class="h-9 min-w-0 flex-1 max-w-full"></audio>
-						<span class="shrink-0 text-sm tabular-nums text-[#667781]" x-text="fmt()"></span>
+						<audio controls preload="metadata" x-show="!isImage" :src="url" class="h-9 min-w-0 flex-1 max-w-full"></audio>
+						<img x-show="isImage" :src="url" class="block max-h-72 max-w-[240px] rounded-md object-cover" alt="Attachment preview" />
+						<span class="shrink-0 text-sm tabular-nums text-[#667781]" x-show="!isImage" x-text="fmt()"></span>
 						<button type="button" aria-label="Cancel audio" title="Discard"
 							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e8eeeb] hover:text-[#202c33]" @click="cancel()">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12" /></svg>
@@ -369,12 +370,12 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 							:class="open ? 'bg-[#e5f3ec] text-[#008069]' : ''" @click="open = !open">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.8 14.2a4.4 4.4 0 0 0 6.4 0"/><path stroke-linecap="round" d="M9.2 9.6h.01M14.8 9.6h.01"/></svg>
 						</button>
-						<button type="button" aria-label="Attach audio file" title="Attach an MP3, M4A, OGG, AAC or AMR audio file"
+						<button type="button" aria-label="Attach a photo or audio" title="Attach a photo or an audio file"
 							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
 							@click="$refs.audioFile.click()">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 8H4a2 2 0 0 0 0 4h5"/></svg>
 						</button>
-						<input type="file" x-ref="audioFile" accept={ "audio/*,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
+						<input type="file" x-ref="audioFile" accept={ "image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.gif,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
 						<textarea id="composer-input" name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message" x-ref="msg"
 							class="composer-ctl h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50"></textarea>
 						<button type="button" aria-label="Record voice note" title="Record a voice note"
@@ -455,6 +456,19 @@ templ messageContent(convID uuid.UUID, m whatsapp.ChatMessage) {
 			src={ templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()) }></audio>
 		<div class="mt-1 flex items-center justify-between gap-2">
 			<span class="text-[10px] text-[#667781]">🎤 Voice note{ voiceDurationSuffix(m.MediaDurationMS) }</span>
+			<span class="text-[10px] text-[#728078]">{ chatClock(m.CreatedAt) }</span>
+		</div>
+	} else if m.MediaKind == "image" && len(m.MediaBytes) > 0 {
+		<img class="block max-h-72 max-w-[240px] rounded-md object-cover" aria-label="Image"
+			src={ templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()) } />
+		<div class="mt-1 flex items-center justify-between gap-2">
+			<span class="text-[10px] text-[#667781]">🖼️ Photo</span>
+			<span class="text-[10px] text-[#728078]">{ chatClock(m.CreatedAt) }</span>
+		</div>
+	} else if m.MediaKind == "image" {
+		<p class="whitespace-pre-wrap break-words text-sm text-[#202c33]">{ m.Body }</p>
+		<div class="mt-1 flex items-center justify-between gap-2">
+			<span class="text-[10px] text-[#728078]">Photo removed after 30 days</span>
 			<span class="text-[10px] text-[#728078]">{ chatClock(m.CreatedAt) }</span>
 		</div>
 	} else if m.MediaKind == "audio" {

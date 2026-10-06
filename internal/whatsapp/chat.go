@@ -494,6 +494,86 @@ func (s *Service) SendAudioReply(ctx context.Context, conversationID uuid.UUID, 
 	return ReplyResult{MessageID: msgID, MetaMessageID: metaID}, nil
 }
 
+// SendImageReply records, uploads and delivers an attached image to the
+// customer, inside the 24h window. The sender's copy stores the bytes locally
+// so the web thread shows the picture.
+func (s *Service) SendImageReply(ctx context.Context, conversationID uuid.UUID, mime string, filename string, data []byte) (ReplyResult, error) {
+	if len(data) == 0 {
+		return ReplyResult{}, errors.New("empty image")
+	}
+	if len(data) > maxOutboundMediaBytes {
+		return ReplyResult{}, fmt.Errorf("image too large: %d bytes", len(data))
+	}
+
+	conv, _, err := s.Thread(ctx, conversationID)
+	if err != nil {
+		return ReplyResult{}, err
+	}
+	if !conv.WindowOpen {
+		return ReplyResult{}, ErrReplyWindowClosed
+	}
+
+	creds, err := s.Credentials(ctx, conv.ShopID)
+	if err != nil {
+		return ReplyResult{}, err
+	}
+	if s.rate != nil {
+		if err := s.rate.Allow(ctx, conv.ShopID); err != nil {
+			return ReplyResult{}, err
+		}
+	}
+
+	body := "🖼️ Image"
+	var msgID uuid.UUID
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO chat_messages (
+			conversation_id, direction, body, status,
+			media_kind, media_mime, media_bytes, media_filename
+		) VALUES ($1, 'outbound', $2, 'queued', 'image', $3, $4, $5) RETURNING id`,
+		conversationID, body, mime, data, filename,
+	).Scan(&msgID)
+	if err != nil {
+		return ReplyResult{}, err
+	}
+
+	mediaID, upErr := s.UploadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mime, data, filename)
+	if upErr != nil {
+		_, _ = s.pool.Exec(ctx, `
+			UPDATE chat_messages SET status = 'failed', error_message = $2 WHERE id = $1`,
+			msgID, upErr.Error())
+		return ReplyResult{}, upErr
+	}
+	metaID, sendErr := s.SendImage(ctx, creds.AccessToken, creds.PhoneNumberID,
+		conv.CustomerPhone, mediaID)
+	if sendErr != nil {
+		_, _ = s.pool.Exec(ctx, `
+			UPDATE chat_messages SET status = 'failed', error_message = $2 WHERE id = $1`,
+			msgID, sendErr.Error())
+		return ReplyResult{}, sendErr
+	}
+
+	_, err = s.pool.Exec(ctx, `
+		UPDATE chat_messages SET status = 'sent', meta_message_id = $2, sent_at = COALESCE(sent_at, now())
+		WHERE id = $1`, msgID, metaID)
+	if err != nil {
+		s.log.Error("chat: could not mark image response sent", "error", err)
+	}
+
+	_, err = s.pool.Exec(ctx, `
+		UPDATE conversations
+		SET last_message_direction = 'outbound', last_message_body = $2,
+		    last_message_at = now(), updated_at = now()
+		WHERE id = $1`, conversationID, body)
+	if err != nil {
+		return ReplyResult{}, err
+	}
+
+	s.log.Info("chat image reply sent", "conversation_id", conversationID,
+		"shop_id", conv.ShopID, "to", conv.CustomerPhone, "meta_message_id", metaID,
+		"mime", mime, "bytes", len(data))
+	return ReplyResult{MessageID: msgID, MetaMessageID: metaID}, nil
+}
+
 // isVoiceNote reports whether a mime is OPUS-in-OGG, i.e. a real WhatsApp
 // voice note. Anything else plays as a basic audio attachment.
 func isVoiceNote(mime string) bool {

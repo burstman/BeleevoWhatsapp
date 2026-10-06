@@ -73,6 +73,9 @@ func TestInboxThreadPageRender(t *testing.T) {
 		{Direction: "inbound", Body: "🎤 Voice message", MediaKind: "audio",
 			MediaMime: "audio/ogg", MediaBytes: []byte{0x4f, 0x67, 0x67}, MediaDurationMS: 48000,
 			CreatedAt: time.Now()},
+		{Direction: "inbound", Body: "🖼️ Image", MediaKind: "image",
+			MediaMime: "image/jpeg", MediaBytes: []byte{0xff, 0xd8, 0xff},
+			CreatedAt: time.Now()},
 	}
 	page := components.Page{Title: "Inbox", Active: "inbox", WhatsAppConnected: true}
 
@@ -106,6 +109,12 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if !strings.Contains(out, "Voice note · 0:48") {
 		t.Error("voice-note duration missing from bubble meta")
 	}
+	if !strings.Contains(out, "/inbox/"+conv.ID.String()+"/media/") {
+		t.Error("image bubble must stream from the media endpoint")
+	}
+	if !strings.Contains(out, "<img") || !strings.Contains(out, "🖼️ Photo") {
+		t.Error("image bubble missing photo rendering")
+	}
 	if strings.Contains(out, "hx-swap-oob") {
 		t.Error("full page must not emit OOB swaps (AJAX responses only)")
 	}
@@ -120,8 +129,11 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if !strings.Contains(out, `aria-label="Record voice note"`) {
 		t.Error("mic record button missing from composer")
 	}
-	if !strings.Contains(out, `aria-label="Attach audio file"`) {
-		t.Error("attach-audio button missing from composer")
+	if !strings.Contains(out, `aria-label="Attach a photo or audio"`) {
+		t.Error("attach button missing from composer")
+	}
+	if !strings.Contains(out, "image/jpeg,image/png,image/webp,image/gif") {
+		t.Error("attach input must accept photos as well as audio")
 	}
 	// The recorder UI panels are hidden until Alpine boots; without this every
 	// panel flashes on the first paint.

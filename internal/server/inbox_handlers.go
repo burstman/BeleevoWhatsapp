@@ -21,6 +21,9 @@ import (
 // parser is allowed one extra megabyte to fit the multipart overhead.
 const maxSendAudioBytes = 16 << 20
 
+// maxSendImageBytes is the Cloud API ceiling for outbound images (5 MB).
+const maxSendImageBytes = 5 << 20
+
 // inboxFlash maps the ?flash= query value onto a user-facing line for the
 // inbox list page.
 func inboxFlash(q string) string {
@@ -330,6 +333,99 @@ func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
 	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
+}
+
+// handleInboxReplyImage sends an attached photo to the customer. The web
+// composer POSTs a multipart form; the new image bubble is returned as an OOB
+// swap so the chat does not reload.
+func (a *App) handleInboxReplyImage(k *kit.Kit) error {
+	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+	}
+
+	all, err := a.pageShops(k)
+	if err != nil {
+		return err
+	}
+	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	if !page.WhatsAppConnected {
+		return k.Redirect(http.StatusSeeOther, "/inbox")
+	}
+
+	_, _, err = a.WhatsApp.Thread(k.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, whatsapp.ErrConversationNotFound) {
+			return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+		}
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=error")
+	}
+
+	k.Request.Body = http.MaxBytesReader(k.Response, k.Request.Body, maxSendImageBytes+1<<20)
+	if err := k.Request.ParseMultipartForm(maxSendImageBytes + 1<<20); err != nil {
+		return k.Text(http.StatusBadRequest, "Image upload too large (max 5 MB).")
+	}
+
+	file, hdr, err := k.Request.FormFile("image")
+	if err != nil {
+		return k.Text(http.StatusBadRequest, "Missing image file.")
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return k.Text(http.StatusBadRequest, "Could not read image file.")
+	}
+	if len(data) == 0 || len(data) > maxSendImageBytes {
+		return k.Text(http.StatusBadRequest, "Image file is empty or larger than 5 MB.")
+	}
+	mime := canonicalSendImageMime(hdr.Header.Get("Content-Type"))
+	if mime == "" {
+		return k.Text(http.StatusBadRequest,
+			"WhatsApp does not accept this image format. Use JPG, PNG, WEBP or GIF.")
+	}
+
+	errMsg, okMsg := "", ""
+	switch _, serr := a.WhatsApp.SendImageReply(k.Request.Context(), id, mime, imageFilename(mime), data); {
+	case serr == nil:
+		okMsg = "Image sent."
+	case errors.Is(serr, whatsapp.ErrReplyWindowClosed):
+		errMsg = explanationForReply(serr)
+	case errors.Is(serr, whatsapp.ErrConversationNotFound):
+		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
+	default:
+		errMsg = explanationForReply(serr)
+	}
+
+	conv, msgs, _ := a.WhatsApp.Thread(k.Request.Context(), id)
+	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
+		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+	}
+	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
+}
+
+// canonicalSendImageMime maps any upload content type onto the Cloud API's
+// supported image set, or "" when the format cannot be sent to WhatsApp.
+func canonicalSendImageMime(mime string) string {
+	base := strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0]))
+	switch base {
+	case "image/jpg", "image/jpeg", "image/pjpeg":
+		return "image/jpeg"
+	case "image/png":
+		return "image/png"
+	case "image/webp":
+		return "image/webp"
+	case "image/gif":
+		return "image/gif"
+	default:
+		return ""
+	}
+}
+
+// imageFilename keeps a safe, correctly-extended upload name for Meta.
+func imageFilename(mime string) string {
+	exts := map[string]string{"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+	return "photo." + exts[mime]
 }
 
 // canonicalSendAudioMime maps any upload content type onto the Cloud API's

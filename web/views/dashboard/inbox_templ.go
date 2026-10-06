@@ -936,27 +936,27 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" x-init=\"init()\" class=\"w-full\"><p x-show=\"errors\" x-text=\"errors\" class=\"px-1 pb-1 text-xs text-rose-600\"></p><div class=\"flex items-center gap-2\" x-show=\"state === 'recording'\" x-cloak><span class=\"flex h-[44px] items-center gap-2 rounded-[6px] border border-[#e8eeeb] bg-white px-3\"><span class=\"h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-rose-500\"></span> <span class=\"text-sm text-[#202c33]\">Recording…</span> <span class=\"text-sm tabular-nums text-[#667781]\" x-text=\"fmt()\"></span></span> <span class=\"min-w-0 flex-1 text-[10px] text-[#728078]\">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</span> <button type=\"button\" aria-label=\"Stop recording\" title=\"Stop recording\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-rose-600 text-white transition hover:bg-rose-700\" @click=\"stop()\"><span class=\"block h-3.5 w-3.5 rounded-[2px] bg-white\"></span></button></div><div class=\"flex items-center gap-2\" x-show=\"state === 'ready'\" x-cloak><audio controls preload=\"metadata\" :src=\"url\" class=\"h-9 min-w-0 flex-1 max-w-full\"></audio> <span class=\"shrink-0 text-sm tabular-nums text-[#667781]\" x-text=\"fmt()\"></span> <button type=\"button\" aria-label=\"Cancel audio\" title=\"Discard\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e8eeeb] hover:text-[#202c33]\" @click=\"cancel()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 6 6 18M6 6l12 12\"></path></svg></button> <button type=\"button\" aria-label=\"Send audio\" title=\"Send voice note\" :disabled=\"sending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60\" @click=\"send()\"><svg x-show=\"!sending\" class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg> <svg x-show=\"sending\" x-cloak class=\"h-[18px] w-[18px] animate-spin\" viewBox=\"0 0 24 24\" fill=\"none\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z\"></path></svg></button></div><form class=\"flex items-center gap-2\" x-show=\"state === 'idle'\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" x-init=\"init()\" class=\"w-full\"><p x-show=\"errors\" x-text=\"errors\" class=\"px-1 pb-1 text-xs text-rose-600\"></p><div class=\"flex items-center gap-2\" x-show=\"state === 'recording'\" x-cloak><span class=\"flex h-[44px] items-center gap-2 rounded-[6px] border border-[#e8eeeb] bg-white px-3\"><span class=\"h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-rose-500\"></span> <span class=\"text-sm text-[#202c33]\">Recording…</span> <span class=\"text-sm tabular-nums text-[#667781]\" x-text=\"fmt()\"></span></span> <span class=\"min-w-0 flex-1 text-[10px] text-[#728078]\">Reply goes via WhatsApp. Free-form replies only work within 24h of the customer's last message.</span> <button type=\"button\" aria-label=\"Stop recording\" title=\"Stop recording\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-rose-600 text-white transition hover:bg-rose-700\" @click=\"stop()\"><span class=\"block h-3.5 w-3.5 rounded-[2px] bg-white\"></span></button></div><div class=\"flex items-center gap-2\" x-show=\"state === 'ready'\" x-cloak><audio controls preload=\"metadata\" x-show=\"!isImage\" :src=\"url\" class=\"h-9 min-w-0 flex-1 max-w-full\"></audio> <img x-show=\"isImage\" :src=\"url\" class=\"block max-h-72 max-w-[240px] rounded-md object-cover\" alt=\"Attachment preview\"> <span class=\"shrink-0 text-sm tabular-nums text-[#667781]\" x-show=\"!isImage\" x-text=\"fmt()\"></span> <button type=\"button\" aria-label=\"Cancel audio\" title=\"Discard\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e8eeeb] hover:text-[#202c33]\" @click=\"cancel()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 6 6 18M6 6l12 12\"></path></svg></button> <button type=\"button\" aria-label=\"Send audio\" title=\"Send voice note\" :disabled=\"sending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60\" @click=\"send()\"><svg x-show=\"!sending\" class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg> <svg x-show=\"sending\" x-cloak class=\"h-[18px] w-[18px] animate-spin\" viewBox=\"0 0 24 24\" fill=\"none\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z\"></path></svg></button></div><form class=\"flex items-center gap-2\" x-show=\"state === 'idle'\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + conv.ID.String() + "/reply"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 365, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 366, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" hx-target=\"this\" hx-swap=\"none\"><button type=\"button\" :title=\"open ? 'Close emoji picker' : 'Emoji'\" aria-label=\"Emoji\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" :class=\"open ? 'bg-[#e5f3ec] text-[#008069]' : ''\" @click=\"open = !open\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.8 14.2a4.4 4.4 0 0 0 6.4 0\"></path><path stroke-linecap=\"round\" d=\"M9.2 9.6h.01M14.8 9.6h.01\"></path></svg></button> <button type=\"button\" aria-label=\"Attach audio file\" title=\"Attach an MP3, M4A, OGG, AAC or AMR audio file\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"$refs.audioFile.click()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 8H4a2 2 0 0 0 0 4h5\"></path></svg></button> <input type=\"file\" x-ref=\"audioFile\" accept=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" hx-target=\"this\" hx-swap=\"none\"><button type=\"button\" :title=\"open ? 'Close emoji picker' : 'Emoji'\" aria-label=\"Emoji\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" :class=\"open ? 'bg-[#e5f3ec] text-[#008069]' : ''\" @click=\"open = !open\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.8 14.2a4.4 4.4 0 0 0 6.4 0\"></path><path stroke-linecap=\"round\" d=\"M9.2 9.6h.01M14.8 9.6h.01\"></path></svg></button> <button type=\"button\" aria-label=\"Attach a photo or audio\" title=\"Attach a photo or an audio file\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"$refs.audioFile.click()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 8H4a2 2 0 0 0 0 4h5\"></path></svg></button> <input type=\"file\" x-ref=\"audioFile\" accept=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio/*,.mp3,.m4a,.ogg,.aac,.amr")
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue("image/jpeg,image/png,image/webp,image/gif,audio/mpeg,audio/mp4,audio/ogg,audio/aac,audio/amr,.jpg,.png,.webp,.gif,.mp3,.m4a,.ogg,.aac,.amr")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 377, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 378, Col: 192}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
@@ -1016,7 +1016,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 			var templ_7745c5c3_Var43 string
 			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(dayLabel(msgs[len(msgs)-1].CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 413, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 414, Col: 140}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
@@ -1072,7 +1072,7 @@ func bubbleRow(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.ID.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 427, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 428, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 			if templ_7745c5c3_Err != nil {
@@ -1085,7 +1085,7 @@ func bubbleRow(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.Status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 427, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 428, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 			if templ_7745c5c3_Err != nil {
@@ -1111,7 +1111,7 @@ func bubbleRow(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.ID.String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 433, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 434, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 			if templ_7745c5c3_Err != nil {
@@ -1124,7 +1124,7 @@ func bubbleRow(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.Status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 433, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 434, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 			if templ_7745c5c3_Err != nil {
@@ -1178,7 +1178,7 @@ func OOBNewBubble(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue("msg-" + m.ID.String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 445, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 446, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 		if templ_7745c5c3_Err != nil {
@@ -1231,7 +1231,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 455, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 456, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 			if templ_7745c5c3_Err != nil {
@@ -1244,7 +1244,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(voiceDurationSuffix(m.MediaDurationMS))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 457, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 458, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1257,7 +1257,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 458, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 459, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1267,28 +1267,28 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else if m.MediaKind == "audio" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "<p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
+		} else if m.MediaKind == "image" && len(m.MediaBytes) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "<img class=\"block max-h-72 max-w-[240px] rounded-md object-cover\" aria-label=\"Image\" src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var55 string
-			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
+			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 461, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 463, Col: 79}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var55)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</p><div class=\"mt-1 flex items-center justify-between gap-2\"><span class=\"text-[10px] text-[#728078]\">Voice note removed after 30 days</span> <span class=\"text-[10px] text-[#728078]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "\"><div class=\"mt-1 flex items-center justify-between gap-2\"><span class=\"text-[10px] text-[#667781]\">🖼️ Photo</span> <span class=\"text-[10px] text-[#728078]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var56 string
 			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 464, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 466, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
@@ -1298,7 +1298,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else {
+		} else if m.MediaKind == "image" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -1306,49 +1306,111 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var57 string
 			templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 467, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 469, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1.5 text-[10px] text-[#728078]\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "</p><div class=\"mt-1 flex items-center justify-between gap-2\"><span class=\"text-[10px] text-[#728078]\">Photo removed after 30 days</span> <span class=\"text-[10px] text-[#728078]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var58 string
 			templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 469, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 472, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</span></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else if m.MediaKind == "audio" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var59 string
+			templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 475, Col: 76}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</p><div class=\"mt-1 flex items-center justify-between gap-2\"><span class=\"text-[10px] text-[#728078]\">Voice note removed after 30 days</span> <span class=\"text-[10px] text-[#728078]\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var60 string
+			templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 478, Col: 68}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</span></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "<p class=\"whitespace-pre-wrap break-words text-sm text-[#202c33]\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var61 string
+			templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 481, Col: 76}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "</p><div class=\"mt-0.5 flex items-center justify-end gap-1.5 text-[10px] text-[#728078]\"><span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var62 string
+			templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 483, Col: 33}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 97, "</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if m.Direction != "inbound" && chatStatusLabel(m.Status) != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<span class=\"text-[#008069]\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<span class=\"text-[#008069]\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var59 string
-				templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(chatStatusLabel(m.Status))
+				var templ_7745c5c3_Var63 string
+				templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(chatStatusLabel(m.Status))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 471, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 485, Col: 60}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 100, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

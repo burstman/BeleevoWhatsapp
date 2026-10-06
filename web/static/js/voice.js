@@ -124,6 +124,7 @@ document.addEventListener("keydown", (e) => {
 window.voiceComposer = (convID) => ({
 	state: "idle", // idle | recording | ready
 	mime: "",
+	isImage: false,
 	canRecord: false,
 	recorder: null,
 	stream: null,
@@ -206,6 +207,7 @@ window.voiceComposer = (convID) => ({
 
 	reset() {
 		clearInterval(this.timer);
+		clearTimeout(this.durLoad);
 		if (this.url) URL.revokeObjectURL(this.url);
 		this.state = "idle";
 		this.recorder = null;
@@ -214,23 +216,27 @@ window.voiceComposer = (convID) => ({
 		this.blob = null;
 		this.url = null;
 		this.durationMs = 0;
-		clearTimeout(this.durLoad);
+		this.isImage = false;
 	},
 
 	loadFile(input) {
 		const f = input && input.files && input.files[0];
 		if (!f) return;
-		const mime = this.canonical(f.type);
+		const mime = this.canonical(f.type) || this.canonicalImage(f.type);
 		if (!mime) {
-			this.errors = "WhatsApp does not accept this format (WebM is not supported). Please attach an MP3, M4A, OGG, AAC or AMR file.";
+			this.errors = "WhatsApp does not accept this format (WebM is not supported). Use a JPG, PNG, WEBP, GIF or an MP3, M4A, OGG, AAC, AMR file.";
 			return;
 		}
 		this.mime = mime;
+		this.isImage = mime.indexOf("image/") === 0;
 		this.blob = f;
 		if (this.url) URL.revokeObjectURL(this.url);
 		this.url = URL.createObjectURL(f);
 		this.state = "ready";
 		this.errors = "";
+		this.durationMs = 0;
+		clearTimeout(this.durLoad);
+		if (this.isImage) return;
 		const probe = new Audio();
 		this.durLoad = setTimeout(() => {
 			probe.src = this.url;
@@ -252,7 +258,20 @@ window.voiceComposer = (convID) => ({
 		return "";
 	},
 
+	canonicalImage(mime) {
+		const base = String(mime || "").split(";")[0].trim().toLowerCase();
+		if (["image/jpg", "image/jpeg", "image/pjpeg"].includes(base)) return "image/jpeg";
+		if (base === "image/png") return "image/png";
+		if (base === "image/webp") return "image/webp";
+		if (base === "image/gif") return "image/gif";
+		return "";
+	},
+
 	ext() {
+		if (this.isImage) {
+			const imgs = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+			return imgs[this.mime] || "jpg";
+		}
 		const exts = { "audio/ogg": "ogg", "audio/mp4": "m4a", "audio/mpeg": "mp3", "audio/aac": "aac", "audio/amr": "amr" };
 		return exts[this.mime] || "mp3";
 	},
@@ -268,9 +287,10 @@ window.voiceComposer = (convID) => ({
 		this.sending = true;
 		this.errors = "";
 		const fd = new FormData();
-		fd.append("audio", this.blob, "voice." + this.ext());
-		fd.append("duration_ms", String(this.durationMs));
-		fetch("/inbox/" + convID + "/reply-audio", { method: "POST", body: fd })
+		const endpoint = this.isImage ? "/inbox/" + convID + "/reply-image" : "/inbox/" + convID + "/reply-audio";
+		fd.append(this.isImage ? "image" : "audio", this.blob, (this.isImage ? "photo." : "voice.") + this.ext());
+		if (!this.isImage) fd.append("duration_ms", String(this.durationMs));
+		fetch(endpoint, { method: "POST", body: fd })
 			.then((res) => res.text())
 			.then((html) => {
 				const frag = document.createElement("template");

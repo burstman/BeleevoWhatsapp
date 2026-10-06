@@ -266,8 +266,9 @@ const maxInboundMediaBytes = 25 << 20 // 25 MB
 const maxOutboundMediaBytes = 16 << 20
 
 // UploadMedia uploads a file to the account's media library and returns the
-// media id to reference in a message. The caller must pass a Cloud-API audio
-// mime (AAC/AMR/MP3/M4A/OGG-opus); WebM and anything else is rejected.
+// media id to reference in a message. The caller must pass a Cloud-API media
+// mime (audio: AAC/AMR/MP3/M4A/OGG-opus; image: JPEG/PNG/WEBP/GIF); anything
+// else is rejected.
 //
 // The file part must carry the real Content-Type: Meta inspects that header
 // and ignores the multipart "type" field, and Go's CreateFormFile would stamp
@@ -347,6 +348,29 @@ func (s *Service) SendAudio(ctx context.Context, token, phoneNumberID, to, media
 	}
 	if len(resp.Messages) == 0 || resp.Messages[0].ID == "" {
 		return "", errors.New("audio send returned no message id")
+	}
+	return resp.Messages[0].ID, nil
+}
+
+// SendImage delivers an uploaded media id as a WhatsApp image message.
+func (s *Service) SendImage(ctx context.Context, token, phoneNumberID, to, mediaID string) (string, error) {
+	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"to":                to,
+		"type":              "image",
+		"image":             map[string]any{"id": mediaID},
+	}
+	var resp struct {
+		Messages []struct {
+			ID string `json:"id"`
+		} `json:"messages"`
+	}
+	if err := s.postJSON(ctx, token,
+		fmt.Sprintf("%s/%s/%s/messages", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID), payload, &resp); err != nil {
+		return "", err
+	}
+	if len(resp.Messages) == 0 || resp.Messages[0].ID == "" {
+		return "", errors.New("image send returned no message id")
 	}
 	return resp.Messages[0].ID, nil
 }
