@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -72,10 +73,14 @@ func (a *App) handleMetaWebhook(k *kit.Kit) error {
 	}
 
 	for _, u := range delivery.Statuses {
+		detail := u.Status
+		if len(u.Errors) > 0 {
+			detail = fmt.Sprintf("%s (code %d): %s", u.Status, u.Errors[0].Code, u.Errors[0].Title)
+		}
 		a.WhatsApp.RecordWebhookReceipt(ctx, whatsapp.WebhookReceipt{
 			Kind:          "status",
 			MetaMessageID: u.MetaMessageID,
-			Detail:        u.Status,
+			Detail:        detail,
 		})
 		applyErr := a.WhatsApp.ApplyStatusUpdate(ctx, u)
 		if applyErr != nil && !errors.Is(applyErr, pgx.ErrNoRows) {

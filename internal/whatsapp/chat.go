@@ -438,6 +438,24 @@ func (s *Service) SendAudioReply(ctx context.Context, conversationID uuid.UUID, 
 		return ReplyResult{}, err
 	}
 
+	// Chrome records the mic as OPUS-in-MP4, which Meta uploads but refuses to
+	// deliver; remux it into OGG before uploading so the send actually lands.
+	mime, data, err = s.normalizeAudio(ctx, mime, data)
+	if err != nil {
+		_, _ = s.pool.Exec(ctx, `
+			UPDATE chat_messages SET status = 'failed', error_message = $2 WHERE id = $1`,
+			msgID, err.Error())
+		return ReplyResult{}, err
+	}
+	if mime != "" && len(data) > 0 {
+		_, _ = s.pool.Exec(ctx, `
+			UPDATE chat_messages SET media_mime = $2, media_bytes = $3 WHERE id = $1`,
+			msgID, mime, data)
+		if ext := audioExtForMime(mime); ext != "" {
+			filename = "voice." + ext
+		}
+	}
+
 	mediaID, upErr := s.UploadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mime, data, filename)
 	if upErr != nil {
 		_, _ = s.pool.Exec(ctx, `
@@ -482,6 +500,24 @@ func isVoiceNote(mime string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(mime)), "audio/ogg")
 }
 
+// audioExtForMime returns the extension Cloud API expects for a canonical
+// audio mime, or "" when unmapped.
+func audioExtForMime(mime string) string {
+	switch mime {
+	case "audio/ogg":
+		return "ogg"
+	case "audio/mp4":
+		return "m4a"
+	case "audio/mpeg":
+		return "mp3"
+	case "audio/aac":
+		return "aac"
+	case "audio/amr":
+		return "amr"
+	}
+	return ""
+}
+
 // updateChatMessageStatus advances a free-form reply's delivery status from a
 // Meta webhook status event, mirroring the template ledger updates. A nil
 // result with err == nil means the id does not belong to a chat reply (the
@@ -500,6 +536,14 @@ func (s *Service) updateChatMessageStatus(ctx context.Context, u StatusUpdate) e
 	}
 	if !ShouldAdvanceStatus(current, u.Status) {
 		return nil
+	}
+
+	if u.Status == "failed" && len(u.Errors) > 0 {
+		_, err = s.pool.Exec(ctx, `
+			UPDATE chat_messages SET status = 'failed', error_message = $2, updated_at = now()
+			WHERE meta_message_id = $1 AND direction = 'outbound'`,
+			u.MetaMessageID, u.Errors[0].Title)
+		return err
 	}
 
 	_, err = s.pool.Exec(ctx, `
