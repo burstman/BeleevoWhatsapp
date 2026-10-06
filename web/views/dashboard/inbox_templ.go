@@ -153,7 +153,7 @@ func InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames 
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <div class=\"flex h-[62vh] min-h-[28rem] flex-col overflow-hidden rounded-xl border border-[#e8eeeb] bg-white shadow-sm lg:h-[calc(100vh-10.5rem)] lg:flex-row\" x-data=\"{ showDetail: false, filter: 'all', q: '' }\"><div :class=\"showDetail ? 'hidden lg:flex' : 'flex'\" class=\"min-h-0 flex-col border-b border-[#e8eeeb] bg-white lg:w-[330px] lg:shrink-0 lg:border-b-0 lg:border-r\"><header class=\"flex items-center justify-between px-5 pb-3 pt-4\"><h3 class=\"text-[17px] font-semibold text-[#202c33]\">Chats</h3><span class=\"rounded-full bg-[#e5f3ec] px-2 py-0.5 text-[10px] font-semibold text-[#008069]\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <div class=\"flex h-[62vh] min-h-[28rem] flex-col overflow-hidden rounded-xl border border-[#e8eeeb] bg-white shadow-sm md:h-[calc(100vh-10.5rem)] md:flex-row\" x-data=\"{ showDetail: false, filter: 'all', q: '' }\"><div :class=\"showDetail ? 'hidden md:flex' : 'flex'\" class=\"min-h-0 flex-col border-b border-[#e8eeeb] bg-white md:w-[330px] md:shrink-0 md:border-b-0 md:border-r\"><header class=\"flex items-center justify-between px-5 pb-3 pt-4\"><h3 class=\"text-[17px] font-semibold text-[#202c33]\">Chats</h3><span class=\"rounded-full bg-[#e5f3ec] px-2 py-0.5 text-[10px] font-semibold text-[#008069]\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -174,7 +174,7 @@ func InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames 
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><div id=\"inbox-thread-pane\" :class=\"showDetail ? 'flex' : 'hidden lg:flex'\" class=\"min-h-0 flex-1 flex-col bg-[#efece5]\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><div id=\"inbox-thread-pane\" :class=\"showDetail ? 'flex' : 'hidden md:flex'\" class=\"min-h-0 flex-1 flex-col bg-[#efece5]\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -723,7 +723,7 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			templ_7745c5c3_Var28 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div id=\"thread-card\" class=\"flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efece5]\" x-init=\"showDetail = true\"><div class=\"flex items-center justify-between gap-3 border-b border-[#e8eeeb] bg-white px-4 py-[15px] sm:px-6\"><div class=\"flex min-w-0 items-center gap-3\"><button type=\"button\" class=\"-ml-1 rounded-md p-1 text-[#667781] hover:text-[#202c33] lg:hidden\" @click=\"showDetail = false\" aria-label=\"Back to conversations\"><svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15 19l-7-7 7-7\"></path></svg></button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div id=\"thread-card\" class=\"flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efece5]\" x-init=\"showDetail = true\"><div class=\"flex items-center justify-between gap-3 border-b border-[#e8eeeb] bg-white px-4 py-[15px] sm:px-6\"><div class=\"flex min-w-0 items-center gap-3\"><button type=\"button\" class=\"-ml-1 rounded-md p-1 text-[#667781] hover:text-[#202c33] md:hidden\" @click=\"showDetail = false\" aria-label=\"Back to conversations\"><svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15 19l-7-7 7-7\"></path></svg></button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
