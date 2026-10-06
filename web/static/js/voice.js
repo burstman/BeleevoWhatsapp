@@ -2,6 +2,65 @@
 // (OGG/Opus on Firefox, MP4/AAC on Chrome/Edge/Safari — the only formats
 // WhatsApp accepts) or attach an audio file, preview, then POST multipart to
 // /inbox/{conv}/reply-audio and swap in the re-rendered thread card.
+
+// The text-send spinner lives in an Alpine store (not a component) so its state
+// survives the thread-card outerHTML swap the reply triggers. It stays armed
+// until the sent bubble reports delivered/read/failed on a fragment refresh.
+document.addEventListener("alpine:init", () => {
+	Alpine.store("send", {
+		pending: false,
+		pendingMsgID: "",
+		timeout: null,
+
+		markSending() {
+			this.pending = true;
+			this.pendingMsgID = "";
+			clearTimeout(this.timeout);
+			this.timeout = setTimeout(() => this.finish(), 90000); // never stuck forever
+		},
+
+		capture(msgID) {
+			if (this.pending && !this.pendingMsgID && msgID) this.pendingMsgID = msgID;
+		},
+
+		seeStatus(status) {
+			if (!this.pending || !status) return;
+			if (status === "delivered" || status === "read" || status === "failed") this.finish();
+		},
+
+		finish() {
+			clearTimeout(this.timeout);
+			this.timeout = null;
+			this.pending = false;
+			this.pendingMsgID = "";
+		},
+	});
+});
+
+// The reply POST and the 15s bubble poll both swap DOM under these targets;
+// listen once on document, they survive every swap.
+document.addEventListener("htmx:beforeRequest", (e) => {
+	const form = e.target.closest && e.target.closest("form[hx-post]");
+	if (form && form.getAttribute("hx-post").endsWith("/reply")) {
+		Alpine.store("send").markSending();
+	}
+});
+
+document.addEventListener("htmx:afterSwap", (e) => {
+	const t = e.detail && e.detail.target;
+	if (!t || !t.id) return;
+	if (t.id === "thread-card") {
+		// The reply landed; the newest outbound bubble is our own message.
+		const last = t.querySelector("#thread-bubbles .flex[data-direction='outbound']:last-of-type");
+		if (!last) return;
+		Alpine.store("send").capture(last.getAttribute("data-msg-id"));
+		Alpine.store("send").seeStatus(last.getAttribute("data-status"));
+	} else if (t.id === "thread-bubbles" && Alpine.store("send").pending && Alpine.store("send").pendingMsgID) {
+		const want = Alpine.store("send").pendingMsgID;
+		const node = t.querySelector(`[data-msg-id="${want}"]`);
+		if (node) Alpine.store("send").seeStatus(node.getAttribute("data-status"));
+	}
+});
 window.voiceComposer = (convID) => ({
 	state: "idle", // idle | recording | ready
 	mime: "",
@@ -15,6 +74,7 @@ window.voiceComposer = (convID) => ({
 	blob: null,
 	url: null,
 	errors: "",
+	sending: false,
 
 	init() {
 		const wanted = ["audio/ogg;codecs=opus", "audio/ogg", "audio/mp4", "audio/mpeg"];
@@ -144,7 +204,8 @@ window.voiceComposer = (convID) => ({
 	},
 
 	send() {
-		if (!this.blob) return;
+		if (!this.blob || this.sending) return;
+		this.sending = true;
 		this.errors = "";
 		const fd = new FormData();
 		fd.append("audio", this.blob, "voice." + this.ext());
@@ -165,6 +226,9 @@ window.voiceComposer = (convID) => ({
 			})
 			.catch(() => {
 				this.errors = "Could not reach the server. Try again.";
+			})
+			.finally(() => {
+				this.sending = false;
 			});
 	},
 });

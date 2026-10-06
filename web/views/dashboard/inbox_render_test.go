@@ -125,4 +125,10 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if !strings.Contains(out, `x-cloak`) {
 		t.Error("recording/preview panels must use x-cloak")
 	}
+	if !strings.Contains(out, `data-direction="outbound" data-msg-id=`) {
+		t.Error("outbound bubbles must expose msg-id/direction for the send-spinner")
+	}
+	if !strings.Contains(out, "animate-spin") {
+		t.Error("send spinner missing from composer")
+	}
 }
