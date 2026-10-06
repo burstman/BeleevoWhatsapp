@@ -326,7 +326,7 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 							<button type="button"
 								class="grid h-8 w-8 place-items-center rounded-md text-[19px] leading-none transition hover:bg-[#f5f7f6]"
 								aria-label={ "Emoji " + e }
-								@click="const m=$refs.msg; m.value=m.value+$el.textContent.trim(); m.focus(); m.dispatchEvent(new Event('input', { bubbles: true }))">{ e }</button>
+								@click="const m=document.getElementById('composer-input'); if(m){m.value+=( $el.textContent||'').trim(); m.focus(); m.dispatchEvent(new Event('input',{bubbles:true}))}">{ e }</button>
 						}
 					</div>
 				</div>

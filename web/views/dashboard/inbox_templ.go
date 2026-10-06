@@ -905,14 +905,14 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" @click=\"const m=$refs.msg; m.value=m.value+$el.textContent.trim(); m.focus(); m.dispatchEvent(new Event('input', { bubbles: true }))\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" @click=\"const m=document.getElementById('composer-input'); if(m){m.value+=( $el.textContent||'').trim(); m.focus(); m.dispatchEvent(new Event('input',{bubbles:true}))}\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var38 string
 				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(e)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 329, Col: 145}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 329, Col: 180}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 				if templ_7745c5c3_Err != nil {
