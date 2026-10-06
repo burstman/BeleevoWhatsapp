@@ -2,6 +2,7 @@ package viewsdashboard
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -105,7 +106,7 @@ templ InboxPage(page components.Page, threads []whatsapp.Conversation, shopNames
 					<div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{ flash }</div>
 				}
 				<div class="flex h-[62vh] min-h-[28rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100vh-10.5rem)] lg:flex-row" x-data="{ showDetail: false }">
-					<div :class="showDetail ? 'hidden lg:flex' : 'flex'" class="min-h-0 flex-col border-b border-slate-200 lg:w-[20rem] lg:shrink-0 lg:border-b-0 lg:border-r">
+					<div :class="showDetail ? 'hidden lg:flex' : 'flex'" class="min-h-0 flex-col border-b border-slate-200 lg:w-[22rem] lg:shrink-0 lg:border-b-0 lg:border-r">
 						<div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
 							<h3 class="text-sm font-bold text-slate-700">Conversations</h3>
 							<span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{ len(threads) }</span>
@@ -174,19 +175,14 @@ templ chatSidebarRows(threads []whatsapp.Conversation, activeID uuid.UUID, shopN
 	} else {
 		for _, t := range threads {
 			<a href={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-get={ templ.SafeURL("/inbox/" + t.ID.String()) } hx-target="#inbox-thread-pane" hx-swap="innerHTML" hx-push-url="true" class={ "flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-slate-50 focus:outline-none sm:px-4", templ.KV("bg-indigo-50/70", t.ID == activeID) }>
-				@whatsappBadge("h-5 w-5")
+				<div class={ "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold", templ.KV("bg-indigo-100 text-indigo-700", t.UnreadCount == 0), templ.KV("bg-indigo-600 text-white", t.UnreadCount > 0) }>{ avatarLetters(conversationName(t)) }</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center justify-between gap-2">
-						<span class="truncate text-sm font-medium text-slate-900">
-							if t.ID == activeID {
-								<span class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
-							}
-							{ conversationName(t) }
-						</span>
+						<span class="truncate text-sm font-semibold text-slate-900">{ conversationName(t) }</span>
 						<span class="shrink-0 text-[10px] text-slate-400">{ chatClock(t.LastMessageAt) }</span>
 					</div>
 					<div class="mt-0.5 flex items-center justify-between gap-2">
-						<span class="truncate text-[10px] text-slate-500">{ phoneDisplay(t.CustomerPhone) }</span>
+						<span class={ "truncate text-[13px] ", templ.KV("font-medium text-slate-800", t.UnreadCount > 0), templ.KV("text-slate-500", t.UnreadCount == 0) }>{ t.LastBody }</span>
 						if t.UnreadCount > 0 {
 							<span class="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{ unreadLabel(t.UnreadCount) }</span>
 						}
@@ -195,6 +191,25 @@ templ chatSidebarRows(threads []whatsapp.Conversation, activeID uuid.UUID, shopN
 			</a>
 		}
 	}
+}
+
+// avatarLetters derives a short initial badge for the messenger-style list.
+func avatarLetters(name string) string {
+	fields := strings.Fields(name)
+	var b strings.Builder
+	for _, f := range fields {
+		if f != "" {
+			b.WriteRune(rune(f[0]))
+		}
+		if b.Len() >= 2 {
+			break
+		}
+	}
+	out := strings.ToUpper(b.String())
+	if out == "" {
+		return "#"
+	}
+	return out
 }
 
 // whatsappBadge is the familiar green WhatsApp glyph used on conversation rows
