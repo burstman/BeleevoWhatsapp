@@ -3,46 +3,63 @@
 // WhatsApp accepts) or attach an audio file, preview, then POST multipart to
 // /inbox/{conv}/reply-audio and swap in the re-rendered thread card.
 
-// The text-send spinner lives in an Alpine store (not a component) so its state
-// survives the thread-card outerHTML swap the reply triggers. It stays armed
-// until the sent bubble reports delivered/read/failed on a fragment refresh.
-document.addEventListener("alpine:init", () => {
-	Alpine.store("send", {
-		pending: false,
-		pendingMsgID: "",
-		timeout: null,
+// The text-send spinner is driven by a plain JS object (no Alpine store — the
+// vendored Alpine build has no store/$store support), toggling the composer
+// controls imperatively so the state survives the thread-card outerHTML swap.
+// It stays armed until the sent bubble reports delivered/read/failed on a
+// fragment refresh (90s safety timeout, and reset when switching conversations).
+const composerSend = {
+	pending: false,
+	pendingMsgID: "",
+	timeout: null,
 
-		markSending() {
-			this.pending = true;
-			this.pendingMsgID = "";
-			clearTimeout(this.timeout);
-			this.timeout = setTimeout(() => this.finish(), 90000); // never stuck forever
-		},
+	apply() {
+		const card = document.getElementById("thread-card");
+		if (!card) return;
+		card.querySelectorAll(".composer-ctl").forEach((el) => {
+			el.disabled = this.pending;
+		});
+		const arrow = card.querySelector("#composer-arrow");
+		const spin = card.querySelector("#composer-spinner");
+		const btn = card.querySelector("#composer-send-btn");
+		if (arrow) arrow.style.display = this.pending ? "none" : "";
+		if (spin) spin.style.display = this.pending ? "" : "none";
+		if (btn) btn.title = this.pending ? "Delivering…" : "Send message";
+	},
 
-		capture(msgID) {
-			if (this.pending && !this.pendingMsgID && msgID) this.pendingMsgID = msgID;
-		},
+	markSending() {
+		this.pending = true;
+		this.pendingMsgID = "";
+		clearTimeout(this.timeout);
+		this.timeout = setTimeout(() => this.release(), 90000); // never stuck forever
+		this.apply();
+	},
 
-		seeStatus(status) {
-			if (!this.pending || !status) return;
-			if (status === "delivered" || status === "read" || status === "failed") this.finish();
-		},
+	capture(msgID) {
+		if (this.pending && !this.pendingMsgID && msgID) this.pendingMsgID = msgID;
+	},
 
-		finish() {
-			clearTimeout(this.timeout);
-			this.timeout = null;
-			this.pending = false;
-			this.pendingMsgID = "";
-		},
-	});
-});
+	seeStatus(status) {
+		if (!this.pending || !status) return;
+		if (status === "delivered" || status === "read" || status === "failed") this.release();
+	},
 
-// The reply POST and the 15s bubble poll both swap DOM under these targets;
-// listen once on document, they survive every swap.
+	release() {
+		this.pending = false;
+		this.pendingMsgID = "";
+		clearTimeout(this.timeout);
+		this.timeout = null;
+		this.apply();
+	},
+};
+window.ComposerSend = composerSend;
+
+// The reply POST, the 15s bubble poll and conversation nav all swap DOM under
+// these targets; listen once on document, they survive every swap.
 document.addEventListener("htmx:beforeRequest", (e) => {
 	const form = e.target.closest && e.target.closest("form[hx-post]");
 	if (form && form.getAttribute("hx-post").endsWith("/reply")) {
-		Alpine.store("send").markSending();
+		composerSend.markSending();
 	}
 });
 
@@ -52,14 +69,28 @@ document.addEventListener("htmx:afterSwap", (e) => {
 	if (t.id === "thread-card") {
 		// The reply landed; the newest outbound bubble is our own message.
 		const last = t.querySelector("#thread-bubbles .flex[data-direction='outbound']:last-of-type");
-		if (!last) return;
-		Alpine.store("send").capture(last.getAttribute("data-msg-id"));
-		Alpine.store("send").seeStatus(last.getAttribute("data-status"));
-	} else if (t.id === "thread-bubbles" && Alpine.store("send").pending && Alpine.store("send").pendingMsgID) {
-		const want = Alpine.store("send").pendingMsgID;
-		const node = t.querySelector(`[data-msg-id="${want}"]`);
-		if (node) Alpine.store("send").seeStatus(node.getAttribute("data-status"));
+		if (last) {
+			composerSend.capture(last.getAttribute("data-msg-id"));
+			composerSend.seeStatus(last.getAttribute("data-status"));
+		}
+		composerSend.apply(); // the fresh card's controls inherit the pending state
+	} else if (t.id === "thread-bubbles" && composerSend.pending && composerSend.pendingMsgID) {
+		const want = composerSend.pendingMsgID;
+		const node = t.querySelector('[data-msg-id="' + want + '"]');
+		if (node) composerSend.seeStatus(node.getAttribute("data-status"));
+		composerSend.apply();
+	} else if (t.id === "inbox-thread-pane") {
+		// A different conversation was opened; drop any pending send state.
+		composerSend.release();
 	}
+});
+
+// Avoid a double submit while a send is pending (textarea sits outside the
+// form's htmx disabled logic, which lives on the DOM-adjacent controls).
+document.addEventListener("keydown", (e) => {
+	if (e.key !== "Enter" || e.shiftKey || !e.target || e.target.id !== "composer-input") return;
+	e.preventDefault();
+	if (!composerSend.pending && e.target.form) e.target.form.requestSubmit();
 });
 window.voiceComposer = (convID) => ({
 	state: "idle", // idle | recording | ready

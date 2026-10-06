@@ -949,20 +949,20 @@ func ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsap
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" hx-target=\"#thread-card\" hx-swap=\"outerHTML\"><button type=\"button\" :title=\"open ? 'Close emoji picker' : 'Emoji'\" aria-label=\"Emoji\" :disabled=\"$store.send.pending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" :class=\"open ? 'bg-[#e5f3ec] text-[#008069]' : ''\" @click=\"open = !open\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.8 14.2a4.4 4.4 0 0 0 6.4 0\"></path><path stroke-linecap=\"round\" d=\"M9.2 9.6h.01M14.8 9.6h.01\"></path></svg></button> <button type=\"button\" aria-label=\"Attach audio file\" title=\"Attach an MP3, M4A, OGG, AAC or AMR audio file\" :disabled=\"$store.send.pending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"$refs.audioFile.click()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 8H4a2 2 0 0 0 0 4h5\"></path></svg></button> <input type=\"file\" x-ref=\"audioFile\" accept=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" hx-target=\"#thread-card\" hx-swap=\"outerHTML\"><button type=\"button\" :title=\"open ? 'Close emoji picker' : 'Emoji'\" aria-label=\"Emoji\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" :class=\"open ? 'bg-[#e5f3ec] text-[#008069]' : ''\" @click=\"open = !open\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.8 14.2a4.4 4.4 0 0 0 6.4 0\"></path><path stroke-linecap=\"round\" d=\"M9.2 9.6h.01M14.8 9.6h.01\"></path></svg></button> <button type=\"button\" aria-label=\"Attach audio file\" title=\"Attach an MP3, M4A, OGG, AAC or AMR audio file\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"$refs.audioFile.click()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 8H4a2 2 0 0 0 0 4h5\"></path></svg></button> <input type=\"file\" x-ref=\"audioFile\" accept=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue("audio/*,.mp3,.m4a,.ogg,.aac,.amr")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 379, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 377, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" class=\"hidden\" @change=\"loadFile($el); $el.value=''\"> <textarea name=\"body\" rows=\"1\" required maxlength=\"2000\" placeholder=\"Type a message\" aria-label=\"Message\" x-ref=\"msg\" :disabled=\"$store.send.pending\" class=\"h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50\" @keydown.enter.prevent=\"$store.send.pending ? null : $el.form.requestSubmit()\"></textarea> <button type=\"button\" aria-label=\"Record voice note\" title=\"Record a voice note\" :disabled=\"!canRecord || $store.send.pending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"start()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><rect x=\"9\" y=\"2\" width=\"6\" height=\"12\" rx=\"3\"></rect><path d=\"M5 10a7 7 0 0 0 14 0\"></path><path stroke-linecap=\"round\" d=\"M12 17v5\"></path></svg></button> <button type=\"submit\" aria-label=\"Send message\" :title=\"$store.send.pending ? 'Delivering…' : 'Send message'\" :disabled=\"$store.send.pending\" class=\"grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60\"><svg x-show=\"!$store.send.pending\" class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg> <svg x-show=\"$store.send.pending\" x-cloak class=\"h-[18px] w-[18px] animate-spin\" viewBox=\"0 0 24 24\" fill=\"none\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z\"></path></svg></button></form></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" class=\"hidden\" @change=\"loadFile($el); $el.value=''\"> <textarea id=\"composer-input\" name=\"body\" rows=\"1\" required maxlength=\"2000\" placeholder=\"Type a message\" aria-label=\"Message\" x-ref=\"msg\" class=\"composer-ctl h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50\"></textarea> <button type=\"button\" aria-label=\"Record voice note\" title=\"Record a voice note\" :disabled=\"!canRecord\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40\" @click=\"start()\"><svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" viewBox=\"0 0 24 24\"><rect x=\"9\" y=\"2\" width=\"6\" height=\"12\" rx=\"3\"></rect><path d=\"M5 10a7 7 0 0 0 14 0\"></path><path stroke-linecap=\"round\" d=\"M12 17v5\"></path></svg></button> <button id=\"composer-send-btn\" type=\"submit\" aria-label=\"Send message\" title=\"Send message\" class=\"composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60\"><svg id=\"composer-arrow\" class=\"h-[20px] w-[20px]\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" viewBox=\"0 0 24 24\"><path d=\"m3 3 19 9-19 9 4-9-4-9ZM7 12h15\"></path></svg> <svg id=\"composer-spinner\" style=\"display:none\" class=\"h-[18px] w-[18px] animate-spin\" viewBox=\"0 0 24 24\" fill=\"none\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 0 1 8-8V0C5.373 0 5.373 0 12h4z\"></path></svg></button></form></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1016,7 +1016,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 			var templ_7745c5c3_Var43 string
 			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(dayLabel(msgs[len(msgs)-1].CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 418, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 413, Col: 140}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
@@ -1035,7 +1035,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 					var templ_7745c5c3_Var44 string
 					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.ID.String())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 423, Col: 75}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 418, Col: 75}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 					if templ_7745c5c3_Err != nil {
@@ -1048,7 +1048,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 					var templ_7745c5c3_Var45 string
 					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.Status)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 423, Col: 100}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 418, Col: 100}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 					if templ_7745c5c3_Err != nil {
@@ -1074,7 +1074,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 					var templ_7745c5c3_Var46 string
 					templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.ID.String())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 429, Col: 88}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 424, Col: 88}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 					if templ_7745c5c3_Err != nil {
@@ -1087,7 +1087,7 @@ func BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) templ.Component 
 					var templ_7745c5c3_Var47 string
 					templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.Status)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 429, Col: 113}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 424, Col: 113}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 					if templ_7745c5c3_Err != nil {
@@ -1147,7 +1147,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL("/inbox/" + convID.String() + "/media/" + m.ID.String()))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 445, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 440, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
 			if templ_7745c5c3_Err != nil {
@@ -1160,7 +1160,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(voiceDurationSuffix(m.MediaDurationMS))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 447, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 442, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 			if templ_7745c5c3_Err != nil {
@@ -1173,7 +1173,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 448, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 443, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -1191,7 +1191,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 451, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 446, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -1204,7 +1204,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 454, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 449, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1222,7 +1222,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(m.Body)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 457, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 452, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1235,7 +1235,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(chatClock(m.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 459, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 454, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
@@ -1253,7 +1253,7 @@ func messageContent(convID uuid.UUID, m whatsapp.ChatMessage) templ.Component {
 				var templ_7745c5c3_Var56 string
 				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(chatStatusLabel(m.Status))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 461, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/inbox.templ`, Line: 456, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 				if templ_7745c5c3_Err != nil {

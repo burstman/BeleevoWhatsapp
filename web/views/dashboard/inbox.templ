@@ -361,39 +361,34 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 							</svg>
 						</button>
 					</div>
-					<form class="flex items-center gap-2" x-show="state === 'idle'"
+<form class="flex items-center gap-2" x-show="state === 'idle'"
 						hx-post={ templ.SafeURL("/inbox/" + conv.ID.String() + "/reply") }
 						hx-target="#thread-card" hx-swap="outerHTML">
 						<button type="button" :title="open ? 'Close emoji picker' : 'Emoji'" aria-label="Emoji"
-							:disabled="$store.send.pending"
-							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
+							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
 							:class="open ? 'bg-[#e5f3ec] text-[#008069]' : ''" @click="open = !open">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.8 14.2a4.4 4.4 0 0 0 6.4 0"/><path stroke-linecap="round" d="M9.2 9.6h.01M14.8 9.6h.01"/></svg>
 						</button>
 						<button type="button" aria-label="Attach audio file" title="Attach an MP3, M4A, OGG, AAC or AMR audio file"
-							:disabled="$store.send.pending"
-							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
+							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
 							@click="$refs.audioFile.click()">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19a3 3 0 0 0 6 0V6a2 2 0 0 0-4 0v12a.5.5 0 0 0 1 0V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 8H4a2 2 0 0 0 0 4h5"/></svg>
 						</button>
 						<input type="file" x-ref="audioFile" accept={ "audio/*,.mp3,.m4a,.ogg,.aac,.amr" } class="hidden" @change="loadFile($el); $el.value=''" />
-						<textarea name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message" x-ref="msg"
-							:disabled="$store.send.pending"
-							class="h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50"
-							@keydown.enter.prevent="$store.send.pending ? null : $el.form.requestSubmit()"></textarea>
+						<textarea id="composer-input" name="body" rows="1" required maxlength="2000" placeholder="Type a message" aria-label="Message" x-ref="msg"
+							class="composer-ctl h-[44px] min-w-0 flex-1 resize-none rounded-[6px] border border-[#e8eeeb] bg-white px-3 py-2.5 text-sm text-[#202c33] outline-none focus:border-[#008069] disabled:cursor-not-allowed disabled:bg-slate-50"></textarea>
 						<button type="button" aria-label="Record voice note" title="Record a voice note"
-							:disabled="!canRecord || $store.send.pending"
-							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
+							:disabled="!canRecord"
+							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
 							@click="start()">
 							<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path stroke-linecap="round" d="M12 17v5"/></svg>
 						</button>
-						<button type="submit" aria-label="Send message" :title="$store.send.pending ? 'Delivering…' : 'Send message'"
-							:disabled="$store.send.pending"
-							class="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60">
-							<svg x-show="!$store.send.pending" class="h-[20px] w-[20px]" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></svg>
-							<svg x-show="$store.send.pending" x-cloak class="h-[18px] w-[18px] animate-spin" viewBox="0 0 24 24" fill="none">
+						<button id="composer-send-btn" type="submit" aria-label="Send message" title="Send message"
+							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] bg-[#008069] text-white transition hover:bg-[#00705d] disabled:cursor-wait disabled:opacity-60">
+							<svg id="composer-arrow" class="h-[20px] w-[20px]" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></svg>
+							<svg id="composer-spinner" style="display:none" class="h-[18px] w-[18px] animate-spin" viewBox="0 0 24 24" fill="none">
 								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 5.373 0 12h4z" />
 							</svg>
 						</button>
 					</form>
