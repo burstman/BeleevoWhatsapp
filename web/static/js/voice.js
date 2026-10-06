@@ -219,7 +219,7 @@ window.voiceComposer = (convID) => ({
 		this.isImage = false;
 	},
 
-	loadFile(input) {
+	async loadFile(input) {
 		const f = input && input.files && input.files[0];
 		if (!f) return;
 		const audioMime = this.canonical(f.type);
@@ -229,19 +229,27 @@ window.voiceComposer = (convID) => ({
 			this.errors = "WhatsApp does not accept this format (WebM is not supported). Use a JPG, PNG or WEBP image, or an MP3, M4A, OGG, AAC, AMR audio file.";
 			return;
 		}
-		if (imageMime && f.size > 5 * 1024 * 1024) {
-			this.errors = "This photo is larger than the 5 MB WhatsApp limit. Pick a smaller JPG, PNG or WEBP.";
-			return;
-		}
 		if (audioMime && f.size > 16 * 1024 * 1024) {
 			this.errors = "This audio file is larger than the 16 MB WhatsApp limit.";
 			return;
 		}
-		this.mime = mime;
-		this.isImage = mime.indexOf("image/") === 0;
-		this.blob = f;
+		let blob = f;
+		let outMime = mime;
+		if (imageMime && f.size > 5 * 1024 * 1024) {
+			this.errors = "Compressing photo…";
+			const compressed = await this.compressImage(f);
+			if (!compressed) {
+				this.errors = "Could not compress this photo below 5 MB. Pick a smaller JPG, PNG or WEBP.";
+				return;
+			}
+			blob = compressed;
+			outMime = "image/jpeg";
+		}
+		this.mime = outMime;
+		this.isImage = outMime.indexOf("image/") === 0;
+		this.blob = blob;
 		if (this.url) URL.revokeObjectURL(this.url);
-		this.url = URL.createObjectURL(f);
+		this.url = URL.createObjectURL(blob);
 		this.state = "ready";
 		this.errors = "";
 		this.durationMs = 0;
@@ -256,6 +264,57 @@ window.voiceComposer = (convID) => ({
 				}
 			};
 		}, 30);
+	},
+
+	// compressImage downsizes an oversized photo onto a canvas (max 2048px,
+	// WhatsApp-friendly) and re-encodes it as JPEG, stepping quality down until
+	// it fits under the 5 MB Cloud API limit.
+	compressImage(file) {
+		return new Promise((resolve) => {
+			const img = new Image();
+			const url = URL.createObjectURL(file);
+			img.onload = () => {
+				const maxSide = 2048;
+				let w = img.naturalWidth;
+				let h = img.naturalHeight;
+				const scale = Math.min(1, maxSide / Math.max(w, h));
+				w = Math.max(1, Math.round(w * scale));
+				h = Math.max(1, Math.round(h * scale));
+				const canvas = document.createElement("canvas");
+				canvas.width = w;
+				canvas.height = h;
+				const ctx = canvas.getContext("2d");
+				ctx.fillStyle = "#ffffff";
+				ctx.fillRect(0, 0, w, h);
+				ctx.drawImage(img, 0, 0, w, h);
+				URL.revokeObjectURL(url);
+				const qualities = [0.9, 0.82, 0.72, 0.62, 0.5, 0.38];
+				const step = () => {
+					if (qualities.length === 0) {
+						resolve(null);
+						return;
+					}
+					const q = qualities.shift();
+					canvas.toBlob((out) => {
+						if (!out) {
+							resolve(null);
+							return;
+						}
+						if (out.size <= 5 * 1024 * 1024) {
+							resolve(out);
+						} else {
+							step();
+						}
+					}, "image/jpeg", q);
+				};
+				step();
+			};
+			img.onerror = () => {
+				URL.revokeObjectURL(url);
+				resolve(null);
+			};
+			img.src = url;
+		});
 	},
 
 	canonical(mime) {
