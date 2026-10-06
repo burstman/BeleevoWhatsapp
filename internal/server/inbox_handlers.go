@@ -218,6 +218,9 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 	switch _, err := a.WhatsApp.SendReply(k.Request.Context(), id, body); {
 	case err == nil:
 		okMsg = "Reply sent."
+		// Re-fetch so the outgoing bubble shows up in the swapped card right away
+		// instead of waiting for the fragment poll.
+		conv, msgs, _ = a.WhatsApp.Thread(k.Request.Context(), id)
 	case errors.Is(err, whatsapp.ErrReplyWindowClosed):
 		errMsg = explanationForReply(err)
 		// Re-fetch so a recorded failed bubble (e.g. a meta rejection) shows.
