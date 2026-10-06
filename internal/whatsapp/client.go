@@ -253,6 +253,51 @@ func (s *Service) getJSON(ctx context.Context, token, endpoint string, out any) 
 	return s.doJSON(req, out)
 }
 
+// maxInboundMediaBytes caps how large a customer media download we are willing
+// to store. Voice notes are under ~1 MB; this leaves room for uploaded audio.
+const maxInboundMediaBytes = 25 << 20 // 25 MB
+
+// DownloadMedia fetches a customer's media from Meta and returns the bytes plus
+// its declared MIME type. The Graph endpoint first resolves the media id to a
+// temporary download URL, which is then streamed.
+func (s *Service) DownloadMedia(ctx context.Context, token, phoneNumberID, mediaID string) ([]byte, string, error) {
+	var info struct {
+		URL      string `json:"url"`
+		MimeType string `json:"mime_type"`
+	}
+	resolveURL := fmt.Sprintf("%s/%s/%s/media/%s", s.cfg.MetaGraphURL, metaAPIVersion, phoneNumberID, mediaID)
+	if err := s.getJSON(ctx, token, resolveURL, &info); err != nil {
+		return nil, "", fmt.Errorf("resolve media %s: %w", mediaID, err)
+	}
+	if info.URL == "" {
+		return nil, "", fmt.Errorf("media %s resolved to no download url", mediaID)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, info.URL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("build media request: %w", err)
+	}
+	resp, err := s.http.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("download media %s: %w", mediaID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var ge graphError
+		_ = json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&ge)
+		return nil, "", fmt.Errorf("download media %s: unexpected status %d", mediaID, resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxInboundMediaBytes))
+	if err != nil {
+		return nil, "", fmt.Errorf("read media %s: %w", mediaID, err)
+	}
+	mime := info.MimeType
+	if mime == "" {
+		mime = resp.Header.Get("Content-Type")
+	}
+	return data, mime, nil
+}
+
 func (s *Service) deleteJSON(ctx context.Context, token, endpoint string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {

@@ -442,6 +442,46 @@ func TestParseWebhookInbound(t *testing.T) {
 	}
 }
 
+func TestParseWebhookInboundAudio(t *testing.T) {
+	payload := `{
+		"object":"whatsapp_business_account",
+		"entry":[{
+			"id":"903255096273971",
+			"changes":[{
+				"value":{
+					"messaging_product":"whatsapp",
+					"metadata":{"display_phone_number":"+21624118849","phone_number_id":"1302152316314738"},
+					"contacts":[{"profile":{"name":"Ahmed Ben Ali"},"wa_id":"21655123456"}],
+					"messages":[{
+						"from":"21655123456",
+						"id":"wamid.AUDIO1",
+						"timestamp":"1780000100",
+						"type":"audio",
+						"audio":{"id":"1234567890123456","mime_type":"audio/ogg; codecs=opus","sha256":"abc","voice":true,"duration_ms":48000}
+					}]
+				}
+			}]
+		}]
+	}`
+	d, err := ParseWebhook([]byte(payload))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(d.Inbound) != 1 {
+		t.Fatalf("got %d inbound, want 1", len(d.Inbound))
+	}
+	m := d.Inbound[0]
+	if m.Type != "audio" || m.MediaID != "1234567890123456" {
+		t.Fatalf("audio media not parsed: %+v", m)
+	}
+	if m.MediaMime != "audio/ogg; codecs=opus" || m.MediaDurationMS != 48000 {
+		t.Fatalf("audio meta not parsed: %+v", m)
+	}
+	if m.TextBody != "" {
+		t.Fatalf("audio must have no text body, got %q", m.TextBody)
+	}
+}
+
 func TestNormalizeApproval(t *testing.T) {
 	for meta, want := range map[string]string{
 		"APPROVED": "approved", "PENDING": "pending", "IN_APPEAL": "pending",

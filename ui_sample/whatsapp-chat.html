@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Inbox</title>
+  <style>
+    :root {
+      --page: #e8eeeb;
+      --surface: #fff;
+      --subtle: #f5f7f6;
+      --conversation: #efece5;
+      --text: #202c33;
+      --muted: #728078;
+      --line: #e8eeeb;
+      --brand: #008069;
+      --brand-light: #e5f3ec;
+      --outgoing: #d9fdd3;
+      --read: #53bdeb;
+      --shadow: 0 16px 60px #202c3314;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 "Segoe UI", Arial, sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+    button { border: 0; background: none; color: inherit; }
+    svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .app { display: grid; grid-template-columns: 68px 330px minmax(0, 1fr); height: min(860px, calc(100dvh - 64px)); max-width: 1400px; margin: 32px auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+    .rail { display: flex; align-items: center; flex-direction: column; gap: 22px; padding: 24px 10px; background: var(--subtle); border-right: 1px solid var(--line); }
+    .logo { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--brand); color: var(--surface); }
+    .rail-button { width: 42px; height: 42px; display: grid; place-items: center; color: var(--muted); border-radius: 8px; }
+    .rail-button.active { background: var(--brand-light); color: var(--brand); }
+    .rail-bottom { margin-top: auto; }
+    .avatar { width: 43px; height: 43px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 600; background: var(--brand-light); color: var(--brand); }
+    .avatar.small { width: 34px; height: 34px; font-size: 11px; }
+    .avatar.pink { background: #f9e8ee; color: #a85473; }
+    .avatar.blue { background: #e7eef9; color: #5376a8; }
+    .avatar.gold { background: #f8efd9; color: #98742b; }
+    .inbox { border-right: 1px solid var(--line); min-height: 0; display: flex; flex-direction: column; }
+    .inbox-heading { display: flex; justify-content: space-between; align-items: center; padding: 25px 22px 16px; }
+    h1 { font-size: 23px; line-height: 1.3; margin: 0; font-weight: 650; }
+    .icon-button { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 6px; color: var(--muted); }
+    .icon-button:hover { background: var(--line); }
+    .search { display: flex; align-items: center; gap: 10px; margin: 0 20px 18px; padding: 10px 12px; background: var(--subtle); border-radius: 6px; color: var(--muted); }
+    .search svg { width: 17px; height: 17px; }
+    .search input { width: 100%; min-width: 0; border: 0; background: transparent; outline: none; color: var(--text); font-size: 12px; }
+    .filters { display: flex; gap: 8px; padding: 0 20px 19px; border-bottom: 1px solid var(--line); }
+    .filter { position: relative; }
+    .filter input { position: absolute; opacity: 0; }
+    .filter span { display: block; padding: 5px 12px; border-radius: 20px; background: var(--subtle); color: var(--muted); font-size: 12px; cursor: pointer; }
+    .filter input:checked + span { background: var(--brand-light); color: var(--brand); }
+    .filter input:focus-visible + span { outline: 2px solid var(--brand); }
+    .chat-list { overflow-y: auto; }
+    .chat { display: flex; width: 100%; align-items: center; gap: 12px; padding: 19px 20px; text-align: left; border-bottom: 1px solid var(--line); }
+    .chat.selected { background: var(--brand-light); }
+    .chat:hover { background: var(--subtle); }
+    .chat-details { flex: 1; min-width: 0; }
+    .chat-top, .chat-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .chat-name { font-weight: 600; }
+    .chat time { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .chat-preview { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; }
+    .unread { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 50%; background: var(--brand); color: var(--surface); font-size: 10px; }
+    .inbox-footer { margin-top: auto; padding: 16px; color: var(--muted); text-align: center; font-size: 11px; border-top: 1px solid var(--line); }
+    .conversation { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .conversation-heading { display: flex; align-items: center; gap: 12px; padding: 18px 25px; border-bottom: 1px solid var(--line); }
+    .contact-name { font-size: 15px; font-weight: 600; }
+    .status { font-size: 11px; color: var(--brand); }
+    .status::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; background: var(--brand); border-radius: 50%; }
+    .heading-actions { display: flex; gap: 9px; margin-left: auto; }
+    .messages { flex: 1; min-height: 0; overflow-y: auto; background: var(--conversation); padding: 28px clamp(18px, 4%, 54px); display: flex; flex-direction: column; gap: 16px; }
+    .date { align-self: center; background: var(--surface); color: var(--muted); padding: 5px 12px; border-radius: 6px; font-size: 10px; margin-bottom: 12px; }
+    .encryption { align-self: center; max-width: 420px; text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 18px; }
+    .bubble { position: relative; align-self: flex-start; max-width: 78%; padding: 10px 12px 7px; background: var(--surface); border-radius: 0 7px 7px; box-shadow: 0 1px 1px #202c3310; }
+    .bubble p { margin: 0; overflow-wrap: anywhere; }
+    .bubble.sent { align-self: flex-end; background: var(--outgoing); border-radius: 7px 0 7px 7px; }
+    .message-meta { display: flex; gap: 5px; justify-content: flex-end; align-items: center; color: var(--muted); font-size: 10px; margin-top: 5px; }
+    .message-meta svg { width: 16px; height: 16px; color: var(--read); }
+    .attachment { display: flex; align-items: center; gap: 10px; padding: 9px; border-radius: 5px; background: var(--brand-light); margin-bottom: 5px; }
+    .attachment small { display: block; color: var(--muted); font-size: 10px; }
+    .composer { display: flex; align-items: center; gap: 10px; padding: 17px 22px; background: var(--subtle); }
+    .composer textarea { flex: 1; min-width: 0; resize: none; height: 44px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 6px; padding: 11px 14px; }
+    .send { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; background: var(--brand); color: var(--surface); }
+    .send:hover { opacity: .9; }
+    @media (max-width: 1050px) { .app { margin: 0; height: 100dvh; border-radius: 0; grid-template-columns: 58px 280px minmax(0, 1fr); } .chat { padding: 17px 14px; } }
+    @media (max-width: 700px) { .app { grid-template-columns: minmax(0, 1fr); } .rail, .inbox { display: none; } .conversation-heading { padding: 14px 16px; } .messages { padding: 22px 16px; } .bubble { max-width: 88%; } .composer { padding: 12px 10px; gap: 4px; } .heading-actions { gap: 0; } }
+  </style>
+</head>
+<body>
+  <svg class="icons" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M7 9h10M7 13h7"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 5"/></symbol>
+    <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m9 3-1 3-3 1v3l-2 2 2 2v3l3 1 1 3h6l1-3 3-1v-3l2-2-2-2V7l-3-1-1-3Z"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="clip" viewBox="0 0 24 24"><path d="m8 13 7-7a3 3 0 0 1 4 4L9 20a5 5 0 0 1-7-7L13 2"/></symbol>
+    <symbol id="smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14a4 4 0 0 0 8 0M8 9h.01M16 9h.01"/></symbol>
+    <symbol id="send" viewBox="0 0 24 24"><path d="m3 3 19 9-19 9 4-9-4-9ZM7 12h15"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="m2 12 4 4L16 6M10 16 20 6"/></symbol>
+    <symbol id="file" viewBox="0 0 24 24"><path d="M14 2H5v20h14V7l-5-5ZM14 2v5h5M8 12h8M8 16h5"/></symbol>
+  </svg>
+  <main class="app" aria-label="WhatsApp inbox">
+    <nav class="rail" aria-label="Main navigation">
+      <div class="logo" aria-label="WhatsApp"><svg><use href="#chat"/></svg></div>
+      <button class="rail-button active" aria-label="Chats" title="Chats" aria-current="page"><svg><use href="#chat"/></svg></button>
+      <button class="rail-button" aria-label="Contacts" title="Contacts"><svg><use href="#users"/></svg></button>
+      <button class="rail-button rail-bottom" aria-label="Settings" title="Settings"><svg><use href="#settings"/></svg></button>
+      <div class="avatar small" aria-label="Your profile">FH</div>
+    </nav>
+    <aside class="inbox" aria-label="Conversations">
+      <header class="inbox-heading"><h1>Chats</h1><button class="icon-button" aria-label="New chat" title="New chat"><svg><use href="#plus"/></svg></button></header>
+      <label class="search"><svg aria-hidden="true"><use href="#search"/></svg><input type="search" placeholder="Search or start a new chat" aria-label="Search chats"></label>
+      <div class="filters" role="group" aria-label="Chat filters">
+        <label class="filter"><input type="radio" name="filter" checked><span>All</span></label>
+        <label class="filter"><input type="radio" name="filter"><span>Unread</span></label>
+        <label class="filter"><input type="radio" name="filter"><span>Groups</span></label>
+      </div>
+      <div class="chat-list">
+        <button class="chat selected" aria-current="true"><span class="avatar">SL</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Sarah Laurent</span><time>10:42 AM</time></span><span class="chat-bottom"><span class="chat-preview">Perfect, thank you so much! 🙌</span></span></span></button>
+        <button class="chat"><span class="avatar blue">AM</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Alex Morgan</span><time>10:28 AM</time></span><span class="chat-bottom"><span class="chat-preview">Is this still available?</span><span class="unread">2</span></span></span></button>
+        <button class="chat"><span class="avatar gold">DS</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Design Studio</span><time>9:54 AM</time></span><span class="chat-bottom"><span class="chat-preview">Maya: The new designs look great</span><span class="unread">3</span></span></span></button>
+        <button class="chat"><span class="avatar pink">JL</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Julia Lee</span><time>Yesterday</time></span><span class="chat-preview">Thanks! I'll take a look.</span></span></button>
+        <button class="chat"><span class="avatar blue">OB</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Omar Ben Ali</span><time>Yesterday</time></span><span class="chat-preview">See you tomorrow 👍</span></span></button>
+        <button class="chat"><span class="avatar gold">EC</span><span class="chat-details"><span class="chat-top"><span class="chat-name">Emma Chen</span><time>Monday</time></span><span class="chat-preview">You: Absolutely, happy to help!</span></span></button>
+      </div>
+      <footer class="inbox-footer">WhatsApp Business</footer>
+    </aside>
+    <section class="conversation" aria-label="Chat with Sarah Laurent">
+      <header class="conversation-heading">
+        <div class="avatar">SL</div><div><div class="contact-name">Sarah Laurent</div><div class="status">Online</div></div>
+        <div class="heading-actions"><button class="icon-button" aria-label="Search conversation" title="Search conversation"><svg><use href="#search"/></svg></button><button class="icon-button" aria-label="Conversation options" title="Conversation options"><svg><use href="#more"/></svg></button></div>
+      </header>
+      <div class="messages" role="log" aria-label="Message history">
+        <div class="date">TODAY</div>
+        <div class="encryption">Messages and calls are end-to-end encrypted.</div>
+        <article class="bubble"><p>Hi! I wanted to check on my order 😊</p><div class="message-meta"><time>10:30 AM</time></div></article>
+        <article class="bubble"><p>My order number is #1042.</p><div class="message-meta"><time>10:30 AM</time></div></article>
+        <article class="bubble sent"><p>Hi Sarah! Of course, let me check that for you.</p><div class="message-meta"><time>10:32 AM</time><svg aria-label="Read"><use href="#check"/></svg></div></article>
+        <article class="bubble sent"><p>Good news! Your order has been shipped and should arrive tomorrow. 📦</p><div class="message-meta"><time>10:34 AM</time><svg aria-label="Read"><use href="#check"/></svg></div></article>
+        <article class="bubble"><p>That's great! Could you send me the invoice too?</p><div class="message-meta"><time>10:36 AM</time></div></article>
+        <article class="bubble sent"><div class="attachment"><svg aria-hidden="true"><use href="#file"/></svg><div>Invoice_1042.pdf<small>1 page · PDF · 128 KB</small></div></div><p>Here you go! Let me know if you need anything else.</p><div class="message-meta"><time>10:40 AM</time><svg aria-label="Read"><use href="#check"/></svg></div></article>
+        <article class="bubble"><p>Perfect, thank you so much! 🙌</p><div class="message-meta"><time>10:42 AM</time></div></article>
+      </div>
+      <div class="composer" role="group" aria-label="Message composer">
+        <button class="icon-button" aria-label="Add emoji" title="Add emoji"><svg><use href="#smile"/></svg></button>
+        <button class="icon-button" aria-label="Attach a file" title="Attach a file"><svg><use href="#clip"/></svg></button>
+        <textarea rows="1" placeholder="Type a message" aria-label="Message"></textarea>
+        <button class="send" aria-label="Send message" title="Send message"><svg><use href="#send"/></svg></button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

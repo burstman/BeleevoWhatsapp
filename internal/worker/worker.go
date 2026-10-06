@@ -24,6 +24,14 @@ import (
 // poll so no update is ever missed while a socket is down.
 const reconcileInterval = 2 * time.Minute
 
+// mediaRetention is how long stored voice notes are kept on the server. The
+// operator asked for 30 days; after that the bytes are cleared (the message
+// row and its label stay in the history).
+const mediaRetention = 30 * 24 * time.Hour
+
+// mediaPurgeInterval is how often the retention job scans for expired media.
+const mediaPurgeInterval = 12 * time.Hour
+
 // Server runs the background job processor inside the web process so the deploy
 // needs only one service: Render free tier has no background-worker service
 // type. On paid plans this same package can still be run standalone via
@@ -59,6 +67,7 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	go del.RunSocketSupervisor(deliveryCtx, func(ctx context.Context, ch delivery.StatusChange) error {
 		return automations.OnDeliveryChange(ctx, ch)
 	})
+	go mediaPurgeLoop(deliveryCtx, logger, wa)
 
 	logger.Info("background worker started",
 		"queue", "postgres", "job_interval", queue.DefaultInterval,
@@ -136,6 +145,34 @@ func reconcileLoop(ctx context.Context, logger *slog.Logger, automations *automa
 	if allowed() {
 		run()
 	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
+}
+
+// mediaPurgeLoop clears stored chat media (voice notes) once it is older than
+// the 30-day retention window. The bytes are dropped, not the message rows, so
+// the conversation history keeps reading "[🎤 Voice message]" with no player.
+func mediaPurgeLoop(ctx context.Context, logger *slog.Logger, wa *whatsapp.Service) {
+	ticker := time.NewTicker(mediaPurgeInterval)
+	defer ticker.Stop()
+
+	run := func() {
+		n, err := wa.PurgeChatMedia(ctx, time.Now().Add(-mediaRetention))
+		if err != nil {
+			logger.Warn("chat media purge failed", "error", err)
+			return
+		}
+		if n > 0 {
+			logger.Info("chat media purge cleared media rows", "count", n)
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done():

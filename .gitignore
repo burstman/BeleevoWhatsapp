@@ -18,3 +18,9 @@ node_modules/
 .idea/
 .vscode/seednumbers
 app
+
+# Local build/dev artifacts (must not be committed)
+Documentation API.pdf
+logs/
+scripts/
+screeshots/

@@ -171,7 +171,7 @@ func (a *App) handleInboxFragment(k *kit.Kit) error {
 	if err != nil {
 		return k.Text(http.StatusOK, "")
 	}
-	return k.Render(vdashboard.BubblesList(msgs))
+	return k.Render(vdashboard.BubblesList(id, msgs))
 }
 
 // explanationForReply turns a failed reply into a line the operator can act
@@ -256,4 +256,31 @@ func (a *App) handleInboxRead(k *kit.Kit) error {
 		a.Log.Warn("inbox mark read failed", "id", id, "error", err.Error())
 	}
 	return k.Text(http.StatusOK, "")
+}
+
+// handleChatMedia streams a stored inbound voice note back to the inbox. The
+// message must belong to the conversation in the URL, and its 30-day retention
+// may have already cleared the bytes.
+func (a *App) handleChatMedia(k *kit.Kit) error {
+	convID, err := uuid.Parse(chi.URLParam(k.Request, "id"))
+	if err != nil {
+		return k.Text(http.StatusNotFound, "")
+	}
+	msgID, err := uuid.Parse(chi.URLParam(k.Request, "msg"))
+	if err != nil {
+		return k.Text(http.StatusNotFound, "")
+	}
+	data, mime, err := a.WhatsApp.MediaForMessage(k.Request.Context(), convID, msgID)
+	if err != nil || len(data) == 0 {
+		return k.Text(http.StatusNotFound, "")
+	}
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+	k.Response.Header().Set("Content-Type", mime)
+	k.Response.Header().Set("X-Content-Type-Options", "nosniff")
+	k.Response.Header().Set("Cache-Control", "private, no-store")
+	k.Response.WriteHeader(http.StatusOK)
+	_, err = k.Response.Write(data)
+	return err
 }

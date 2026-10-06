@@ -38,6 +38,13 @@ type InboundMessage struct {
 	Type          string // text | image | audio | video | document | location | ...
 	TextBody      string
 	PhoneNumberID string // the operator number that received it (metadata)
+	// MediaID/MIME/duration are present for media messages (audio/voice,
+	// image...); TextBody is empty for them. The media bytes are downloaded
+	// later via DownloadMedia and stored on the chat_messages row.
+	MediaID        string
+	MediaMime      string
+	MediaFilename  string
+	MediaDurationMS int
 }
 
 // WebhookDelivery is the combined decode of one Meta webhook POST: delivery
@@ -100,15 +107,33 @@ func ParseWebhook(body []byte) (WebhookDelivery, error) {
 							Title string `json:"title"`
 						} `json:"errors"`
 					} `json:"statuses"`
-					Messages []struct {
-						From      string `json:"from"`
-						ID        string `json:"id"`
-						Timestamp string `json:"timestamp"`
-						Type      string `json:"type"`
-						Text      struct {
-							Body string `json:"body"`
-						} `json:"text"`
-					} `json:"messages"`
+Messages []struct {
+					From      string `json:"from"`
+					ID        string `json:"id"`
+					Timestamp string `json:"timestamp"`
+					Type      string `json:"type"`
+					Text      struct {
+						Body string `json:"body"`
+					} `json:"text"`
+					Audio struct {
+						ID         string `json:"id"`
+						MimeType   string `json:"mime_type"`
+						SHA256     string `json:"sha256"`
+						Voice      bool   `json:"voice"`
+						DurationMS int    `json:"duration_ms"`
+					} `json:"audio"`
+					Image struct {
+						ID       string `json:"id"`
+						MimeType string `json:"mime_type"`
+						SHA256   string `json:"sha256"`
+						Caption  string `json:"caption"`
+					} `json:"image"`
+					Document struct {
+						ID       string `json:"id"`
+						MimeType string `json:"mime_type"`
+						Filename string `json:"filename"`
+					} `json:"document"`
+				} `json:"messages"`
 					Contacts []struct {
 						Profile struct {
 							Name string `json:"name"`
@@ -155,6 +180,19 @@ func ParseWebhook(body []byte) (WebhookDelivery, error) {
 					Type:          m.Type,
 					TextBody:      m.Text.Body,
 					PhoneNumberID: ch.Value.Metadata.PhoneNumberID,
+				}
+				switch m.Type {
+				case "audio", "voice":
+					im.MediaID = m.Audio.ID
+					im.MediaMime = m.Audio.MimeType
+					im.MediaDurationMS = m.Audio.DurationMS
+				case "image":
+					im.MediaID = m.Image.ID
+					im.MediaMime = m.Image.MimeType
+				case "document":
+					im.MediaID = m.Document.ID
+					im.MediaMime = m.Document.MimeType
+					im.MediaFilename = m.Document.Filename
 				}
 				if n, err := strconv.ParseInt(m.Timestamp, 10, 64); err == nil {
 					im.Timestamp = n

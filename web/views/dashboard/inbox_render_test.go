@@ -70,6 +70,9 @@ func TestInboxThreadPageRender(t *testing.T) {
 	msgs := []whatsapp.ChatMessage{
 		{Direction: "inbound", Body: "Bonjour", CreatedAt: time.Now().Add(-time.Minute)},
 		{Direction: "outbound", Body: "Oui ?", CreatedAt: time.Now()},
+		{Direction: "inbound", Body: "🎤 Voice message", MediaKind: "audio",
+			MediaMime: "audio/ogg", MediaBytes: []byte{0x4f, 0x67, 0x67}, MediaDurationMS: 48000,
+			CreatedAt: time.Now()},
 	}
 	page := components.Page{Title: "Inbox", Active: "inbox", WhatsAppConnected: true}
 
@@ -93,6 +96,15 @@ func TestInboxThreadPageRender(t *testing.T) {
 	}
 	if !strings.Contains(out, "+21654116584") {
 		t.Error("thread header phone missing")
+	}
+	if !strings.Contains(out, "<audio controls") {
+		t.Error("voice-note audio player missing")
+	}
+	if !strings.Contains(out, "/inbox/"+conv.ID.String()+"/media/") {
+		t.Error("voice-note player must stream from the media endpoint")
+	}
+	if !strings.Contains(out, "Voice note · 0:48") {
+		t.Error("voice-note duration missing from bubble meta")
 	}
 	if strings.Contains(out, `hx-swap-oob="outerHTML"`) {
 		t.Error("full page must not emit OOB swaps (AJAX responses only)")

@@ -30,12 +30,17 @@ type Conversation struct {
 
 // ChatMessage is one row of a conversation thread.
 type ChatMessage struct {
-	ID           uuid.UUID
-	Direction    string
-	Body         string
-	MetaMessageID string
-	Status       string
-	CreatedAt    time.Time
+	ID             uuid.UUID
+	Direction      string
+	Body           string
+	MetaMessageID  string
+	Status         string
+	CreatedAt      time.Time
+	MediaKind      string
+	MediaMime      string
+	MediaBytes     []byte
+	MediaDurationMS int
+	MediaFilename  string
 }
 
 // ErrReplyWindowClosed is returned when a free-form reply is attempted after
@@ -92,10 +97,25 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 	}
 
 	body := m.TextBody
-	if m.Type != "" && m.Type != "text" {
-		if body == "" {
-			body = "[" + m.Type + "]"
+	mediaKind := ""
+	mediaMime := ""
+	mediaBytes := []byte(nil)
+	durationMS := m.MediaDurationMS
+	filename := m.MediaFilename
+	if m.Type == "audio" || m.Type == "voice" {
+		mediaKind = "audio"
+		body = "🎤 Voice message"
+		if m.MediaID != "" {
+			// Pull the bytes from Meta so the inbox can play the note back.
+			if downloaded, mimeT, derr := s.downloadInboundMedia(ctx, shopID, m.MediaID); derr != nil {
+				s.log.Warn("inbound voice note: media download failed; storing label only",
+					"media_id", m.MediaID, "error", derr.Error())
+			} else {
+				mediaBytes, mediaMime = downloaded, mimeT
+			}
 		}
+	} else if m.Type != "" && m.Type != "text" && body == "" {
+		body = "[" + m.Type + "]"
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -129,14 +149,27 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 	_, err = tx.Exec(ctx, `
 		INSERT INTO chat_messages (
 			conversation_id, direction, body, meta_message_id, status,
+			media_kind, media_mime, media_bytes, media_duration_ms, media_filename,
 			sent_at, created_at
-		) VALUES ($1, 'inbound', $2, $3, 'delivered', $4, $4)`,
-		convID, body, m.MetaMessageID, ts,
+		) VALUES ($1, 'inbound', $2, $3, 'delivered', $4, $5, $6, $7, $8, $9, $9)`,
+		convID, body, m.MetaMessageID, mediaKind, mediaMime, mediaBytes, durationMS, filename, ts,
 	)
 	if err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// downloadInboundMedia fetches a customer's media with the shop's own Meta
+// credentials. ErrNotConfigured or a network failure falls back to storing the
+// message with its label only, so an isolated media hiccup never loses the
+// conversation itself.
+func (s *Service) downloadInboundMedia(ctx context.Context, shopID uuid.UUID, mediaID string) ([]byte, string, error) {
+	creds, err := s.Credentials(ctx, shopID)
+	if err != nil {
+		return nil, "", err
+	}
+	return s.DownloadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mediaID)
 }
 
 // Threads lists the operator's inbox: every conversation across their shops,
@@ -185,7 +218,8 @@ func (s *Service) Thread(ctx context.Context, conversationID uuid.UUID) (Convers
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, direction, body, meta_message_id, status, created_at
+		SELECT id, direction, body, meta_message_id, status, created_at,
+		       media_kind, media_mime, media_bytes, media_duration_ms, media_filename
 		FROM chat_messages WHERE conversation_id = $1 ORDER BY created_at, id`,
 		conversationID)
 	if err != nil {
@@ -196,7 +230,8 @@ func (s *Service) Thread(ctx context.Context, conversationID uuid.UUID) (Convers
 	var msgs []ChatMessage
 	for rows.Next() {
 		var m ChatMessage
-		if err := rows.Scan(&m.ID, &m.Direction, &m.Body, &m.MetaMessageID, &m.Status, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Direction, &m.Body, &m.MetaMessageID, &m.Status, &m.CreatedAt,
+			&m.MediaKind, &m.MediaMime, &m.MediaBytes, &m.MediaDurationMS, &m.MediaFilename); err != nil {
 			return c, nil, err
 		}
 		msgs = append(msgs, m)
@@ -210,6 +245,37 @@ func (s *Service) MarkThreadRead(ctx context.Context, conversationID uuid.UUID) 
 		UPDATE conversations SET unread_count = 0, updated_at = now() WHERE id = $1`,
 		conversationID)
 	return err
+}
+
+// MediaForMessage returns the stored media bytes for one chat message, proving
+// it belongs to the given conversation. A text message (or one whose 30-day
+// retention purge already cleared it) returns no bytes.
+func (s *Service) MediaForMessage(ctx context.Context, conversationID, messageID uuid.UUID) (media []byte, mime string, err error) {
+	err = s.pool.QueryRow(ctx, `
+		SELECT media_bytes, media_mime
+		FROM chat_messages WHERE id = $1 AND conversation_id = $2`,
+		messageID, conversationID,
+	).Scan(&media, &mime)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, "", ErrConversationNotFound
+	}
+	return media, mime, err
+}
+
+// PurgeChatMedia drops the stored bytes of media messages older than the
+// cutoff, keeping the message row and its label so the conversation history
+// still reads "[🎤 Voice message]" with no play button. It is the inbox's
+// retention job (media older than 30 days is deleted).
+func (s *Service) PurgeChatMedia(ctx context.Context, olderThan time.Time) (int, error) {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE chat_messages
+		SET media_bytes = NULL, media_mime = '', media_duration_ms = 0, media_filename = ''
+		WHERE media_kind <> '' AND media_bytes IS NOT NULL AND created_at < $1`,
+		olderThan)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
 }
 
 // ReplyResult reports a sent free-form reply.
