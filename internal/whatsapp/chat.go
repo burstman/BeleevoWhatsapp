@@ -105,14 +105,28 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 	if m.Type == "audio" || m.Type == "voice" {
 		mediaKind = "audio"
 		body = "🎤 Voice message"
-		if m.MediaID != "" {
-			// Pull the bytes from Meta so the inbox can play the note back.
-			if downloaded, mimeT, derr := s.downloadInboundMedia(ctx, shopID, m.MediaID); derr != nil {
-				s.log.Warn("inbound voice note: media download failed; storing label only",
-					"media_id", m.MediaID, "error", derr.Error())
-			} else {
-				mediaBytes, mediaMime = downloaded, mimeT
-			}
+		if m.MediaID == "" {
+			s.RecordWebhookReceipt(ctx, WebhookReceipt{
+				Kind:          "media_missing_id",
+				MetaMessageID: m.MetaMessageID,
+				FromPhone:     m.From,
+				PhoneNumberID: s.phoneNumberID(ctx, shopID),
+				ShopID:        &shopID,
+				Detail:        "audio message carried no media id",
+			})
+		} else if downloaded, mimeT, derr := s.downloadInboundMedia(ctx, shopID, m.MediaID); derr != nil {
+			s.log.Warn("inbound voice note: media download failed; storing label only",
+				"media_id", m.MediaID, "error", derr.Error())
+			s.RecordWebhookReceipt(ctx, WebhookReceipt{
+				Kind:          "media_download_failed",
+				MetaMessageID: m.MetaMessageID,
+				FromPhone:     m.From,
+				PhoneNumberID: s.phoneNumberID(ctx, shopID),
+				ShopID:        &shopID,
+				Detail:        truncate(derr.Error(), 240),
+			})
+		} else {
+			mediaBytes, mediaMime = downloaded, mimeT
 		}
 	} else if m.Type != "" && m.Type != "text" && body == "" {
 		body = "[" + m.Type + "]"
@@ -163,13 +177,43 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 // downloadInboundMedia fetches a customer's media with the shop's own Meta
 // credentials. ErrNotConfigured or a network failure falls back to storing the
 // message with its label only, so an isolated media hiccup never loses the
-// conversation itself.
+// conversation itself. Transient Graph errors are retried once before giving up.
 func (s *Service) downloadInboundMedia(ctx context.Context, shopID uuid.UUID, mediaID string) ([]byte, string, error) {
 	creds, err := s.Credentials(ctx, shopID)
 	if err != nil {
 		return nil, "", err
 	}
-	return s.DownloadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mediaID)
+	bytes, mime, err := s.DownloadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mediaID)
+	if err != nil {
+		select {
+		case <-time.After(500 * time.Millisecond):
+		case <-ctx.Done():
+			return nil, "", ctx.Err()
+		}
+		bytes, mime, err = s.DownloadMedia(ctx, creds.AccessToken, creds.PhoneNumberID, mediaID)
+	}
+	return bytes, mime, err
+}
+
+// phoneNumberID is a diagnostic helper for webhook receipts: it returns the
+// number that received the message, or empty if the shop has no credentials.
+func (s *Service) phoneNumberID(ctx context.Context, shopID uuid.UUID) string {
+	creds, err := s.Credentials(ctx, shopID)
+	if err != nil {
+		return ""
+	}
+	return creds.PhoneNumberID
+}
+
+// truncate caps diagnostic detail strings so the settings trail stays compact.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	if n <= 3 {
+		return s[:n]
+	}
+	return s[:n-3] + "..."
 }
 
 // Threads lists the operator's inbox: every conversation across their shops,

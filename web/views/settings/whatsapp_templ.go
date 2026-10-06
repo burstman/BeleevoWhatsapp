@@ -273,6 +273,10 @@ func Settings(page components.Page, integ *whatsapp.Integration, templates []wha
 }
 
 func receiptText(r whatsapp.WebhookReceipt) string {
+	switch r.Kind {
+	case "media_download_failed", "media_missing_id":
+		return r.Detail
+	}
 	if r.FromPhone != "" {
 		return r.FromPhone
 	}
