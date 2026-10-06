@@ -54,6 +54,16 @@ const composerSend = {
 };
 window.ComposerSend = composerSend;
 
+// Scroll the bubble area to the bottom only when the reader was already near
+// it, so the chat slides up for new messages without yanking a scrolled-up
+// reader down.
+function scrollIfNearBottom() {
+	const el = document.getElementById("thread-bubbles");
+	if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 260) {
+		el.scrollTop = el.scrollHeight;
+	}
+}
+
 // The reply POST, the 15s bubble poll and conversation nav all swap DOM under
 // these targets; listen once on document, they survive every swap.
 document.addEventListener("htmx:beforeRequest", (e) => {
@@ -63,11 +73,30 @@ document.addEventListener("htmx:beforeRequest", (e) => {
 	}
 });
 
+// A successful reply now returns an OOB bubble (hx-swap="none" keeps the card
+// intact): clear the input, anchor the spinner on the appended bubble and let
+// the chat slide up. Failed replies swap the whole card instead.
+document.addEventListener("htmx:afterRequest", (e) => {
+	if (!e.detail || !e.detail.successful || !e.detail.requestConfig) return;
+	const el = e.detail.requestConfig.elt;
+	if (!el || !el.matches || !el.matches("form[hx-post]")) return;
+	const ta = document.getElementById("composer-input");
+	if (ta) ta.value = "";
+	if (ta) ta.dispatchEvent(new Event("input", { bubbles: true }));
+	const bubbles = document.getElementById("thread-bubbles");
+	const last = bubbles && bubbles.querySelector(".flex[data-direction='outbound']:last-of-type");
+	if (last) {
+		composerSend.capture(last.getAttribute("data-msg-id"));
+		composerSend.seeStatus(last.getAttribute("data-status"));
+	}
+	scrollIfNearBottom();
+});
+
 document.addEventListener("htmx:afterSwap", (e) => {
 	const t = e.detail && e.detail.target;
 	if (!t || !t.id) return;
 	if (t.id === "thread-card") {
-		// The reply landed; the newest outbound bubble is our own message.
+		// Full-card re-render (failed reply): the newest outbound bubble is ours.
 		const last = t.querySelector("#thread-bubbles .flex[data-direction='outbound']:last-of-type");
 		if (last) {
 			composerSend.capture(last.getAttribute("data-msg-id"));
@@ -246,12 +275,12 @@ window.voiceComposer = (convID) => ({
 			.then((html) => {
 				const frag = document.createElement("template");
 				frag.innerHTML = html;
-				const node = frag.content.querySelector("#thread-card");
-				const card = document.getElementById("thread-card");
-				if (node && card) {
-					card.replaceWith(node);
-					const bubbles = node.querySelector("#thread-bubbles");
-					if (bubbles) bubbles.scrollTop = bubbles.scrollHeight;
+				const oob = frag.content.querySelector("[hx-swap-oob]");
+				const bubbles = document.getElementById("thread-bubbles");
+				if (oob && bubbles) {
+					oob.removeAttribute("hx-swap-oob");
+					bubbles.appendChild(oob);
+					scrollIfNearBottom();
 				}
 				this.reset();
 			})

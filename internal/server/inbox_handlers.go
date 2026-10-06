@@ -194,8 +194,10 @@ func explanationForReply(err error) string {
 	}
 }
 
-// handleInboxReply sends a free-form reply inside the service window. It
-// re-renders the thread card so htmx swaps the new bubble in place.
+// handleInboxReply sends a free-form reply inside the service window. On
+// success it responds with just the new bubble as an OOB swap so htmx appends
+// it to #thread-bubbles without rebuilding the chat; errors re-render the whole
+// card so the recorded failed bubble / banner shows.
 func (a *App) handleInboxReply(k *kit.Kit) error {
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
@@ -250,12 +252,15 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 		}
 		return k.Render(vdashboard.InboxPage(page, threads, shopNames, &vdashboard.ActiveInboxThread{Conv: conv, Msgs: msgs, Err: errMsg, Ok: okMsg}, ""))
 	}
+	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
+		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
 }
 
 // handleInboxReplyAudio sends an operator audio recording or file to the
-// customer. The web composer POSTs a multipart form; the thread card is
-// re-rendered so the new voice-note bubble appears instantly.
+// customer. The web composer POSTs a multipart form; the new voice-note bubble
+// is returned as an OOB swap so the chat does not reload.
 func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 	id, err := uuid.Parse(chi.URLParam(k.Request, "id"))
 	if err != nil {
@@ -321,6 +326,9 @@ func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 	}
 
 	conv, msgs, _ := a.WhatsApp.Thread(k.Request.Context(), id)
+	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
+		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
 }
 

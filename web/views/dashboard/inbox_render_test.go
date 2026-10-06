@@ -106,8 +106,11 @@ func TestInboxThreadPageRender(t *testing.T) {
 	if !strings.Contains(out, "Voice note · 0:48") {
 		t.Error("voice-note duration missing from bubble meta")
 	}
-	if strings.Contains(out, `hx-swap-oob="outerHTML"`) {
+	if strings.Contains(out, "hx-swap-oob") {
 		t.Error("full page must not emit OOB swaps (AJAX responses only)")
+	}
+	if !strings.Contains(out, `hx-target="this" hx-swap="none"`) {
+		t.Error("reply form must not rebuild the thread card (OOB append instead)")
 	}
 	// templ HTML-escapes the attribute value, so ' comes out as &#39; which the
 	// browser decodes back for Alpine.

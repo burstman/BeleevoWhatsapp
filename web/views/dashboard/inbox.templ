@@ -363,7 +363,7 @@ templ ThreadCard(page components.Page, conv whatsapp.Conversation, msgs []whatsa
 					</div>
 <form class="flex items-center gap-2" x-show="state === 'idle'"
 						hx-post={ templ.SafeURL("/inbox/" + conv.ID.String() + "/reply") }
-						hx-target="#thread-card" hx-swap="outerHTML">
+						hx-target="this" hx-swap="none">
 						<button type="button" :title="open ? 'Close emoji picker' : 'Emoji'" aria-label="Emoji"
 							class="composer-ctl grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[6px] text-[#728078] transition hover:bg-[#e5f3ec] hover:text-[#008069] disabled:cursor-not-allowed disabled:opacity-40"
 							:class="open ? 'bg-[#e5f3ec] text-[#008069]' : ''" @click="open = !open">
@@ -414,22 +414,37 @@ templ BubblesList(convID uuid.UUID, msgs []whatsapp.ChatMessage) {
 		<p class="mx-auto mb-4 max-w-[420px] text-center text-[11px] text-[#667781]">Messages are delivered securely via the WhatsApp Business API.</p>
 		<div class="flex flex-col gap-2.5">
 			for _, m := range msgs {
-				if m.Direction == "inbound" {
-					<div class="flex" data-direction="inbound" data-msg-id={ m.ID.String() } data-status={ m.Status }>
-						<div class="max-w-[78%] rounded-[0_7px_7px_7px] bg-white px-3 py-2 shadow-sm">
-							@messageContent(convID, m)
-						</div>
-					</div>
-				} else {
-					<div class="flex justify-end" data-direction="outbound" data-msg-id={ m.ID.String() } data-status={ m.Status }>
-						<div class="max-w-[78%] rounded-[7px_0_7px_7px] bg-[#d9fdd3] px-3 py-2 shadow-sm">
-							@messageContent(convID, m)
-						</div>
-					</div>
-				}
+				@bubbleRow(convID, m)
 			}
 		</div>
 	}
+}
+
+// bubbleRow is a single message bubble: an inbound or outbound wrapper with the
+// message id and delivery status exposed for the send-spinner tracker.
+templ bubbleRow(convID uuid.UUID, m whatsapp.ChatMessage) {
+	if m.Direction == "inbound" {
+		<div class="flex" data-direction="inbound" data-msg-id={ m.ID.String() } data-status={ m.Status }>
+			<div class="max-w-[78%] rounded-[0_7px_7px_7px] bg-white px-3 py-2 shadow-sm">
+				@messageContent(convID, m)
+			</div>
+		</div>
+	} else {
+		<div class="flex justify-end" data-direction="outbound" data-msg-id={ m.ID.String() } data-status={ m.Status }>
+			<div class="max-w-[78%] rounded-[7px_0_7px_7px] bg-[#d9fdd3] px-3 py-2 shadow-sm">
+				@messageContent(convID, m)
+			</div>
+		</div>
+	}
+}
+
+// OOBNewBubble is the AJAX-only fragment the reply endpoints return: htmx moves
+// it into #thread-bubbles (beforeend) so the chat slides up instead of the
+// whole thread card rebuilding from the top.
+templ OOBNewBubble(convID uuid.UUID, m whatsapp.ChatMessage) {
+	<div id={ "msg-" + m.ID.String() } hx-swap-oob="beforeend:#thread-bubbles">
+		@bubbleRow(convID, m)
+	</div>
 }
 
 // messageContent is the inside of one bubble: a playable voice note when the
