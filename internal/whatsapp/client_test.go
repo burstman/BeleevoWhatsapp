@@ -163,6 +163,54 @@ func TestSendImagePayload(t *testing.T) {
 	}
 }
 
+// metaUpdateTemplate edits a template in place. Meta locks name and language on
+// edit, so the request must carry only components and hit the id-based endpoint.
+func TestMetaUpdateTemplateSendsComponentsOnly(t *testing.T) {
+	var gotPath string
+	var gotPayload map[string]json.RawMessage
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want POST", r.Method)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer tok-xyz" {
+			t.Errorf("Authorization = %q, want Bearer tok-xyz", got)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&gotPayload); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true}`))
+	}))
+	defer srv.Close()
+
+	s := &Service{cfg: config.Config{MetaGraphURL: srv.URL}, http: &http.Client{Timeout: 5 * time.Second}}
+	comps := json.RawMessage(`[{"type":"BODY","text":"updated"}]`)
+	if err := s.metaUpdateTemplate(context.Background(), "tok-xyz", "9911223344", comps); err != nil {
+		t.Fatalf("metaUpdateTemplate: %v", err)
+	}
+	if want := "/" + metaAPIVersion + "/9911223344"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+	if _, ok := gotPayload["name"]; ok {
+		t.Error("name must not be sent on edit (Meta locks it)")
+	}
+	if _, ok := gotPayload["language"]; ok {
+		t.Error("language must not be sent on edit (Meta locks it)")
+	}
+	if string(gotPayload["components"]) != string(comps) {
+		t.Errorf("components = %s, want %s", gotPayload["components"], comps)
+	}
+}
+
+// A template with no Meta id cannot be edited in place; the caller must refresh.
+func TestMetaUpdateTemplateRequiresMetaID(t *testing.T) {
+	s := &Service{cfg: config.Config{MetaGraphURL: "http://127.0.0.1:0"}, http: &http.Client{Timeout: time.Second}}
+	if err := s.metaUpdateTemplate(context.Background(), "tok", "", json.RawMessage(`[]`)); err == nil {
+		t.Fatal("expected an error when the Meta id is empty")
+	}
+}
+
 // The multipart boundary must contain only characters a form post tolerates.
 func TestUploadMediaBoundaryIsClean(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

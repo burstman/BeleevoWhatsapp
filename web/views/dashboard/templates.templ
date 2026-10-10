@@ -1,6 +1,8 @@
 package viewsdashboard
 
 import (
+	"time"
+
 	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
@@ -9,8 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, shopNames map[uuid.UUID]string, flash TemplateFlash) {
+templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate, shopNames map[uuid.UUID]string, flash TemplateFlash, grace time.Duration) {
 	@layouts.Shell(page) {
+		{{ now := time.Now() }}
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
 				<div>
@@ -44,7 +47,21 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 				</div>
 
 				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3"
+					data-i18n={ templateEditorMessages(page.I18N) }
 					x-data="templateEditor" @submit="onSubmit">
+					<div x-show="editing" x-cloak
+						class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+						<span>
+							{ page.T("tpl.editing") } <span class="font-semibold" x-text="editingName"></span>
+						</span>
+						<span class="flex items-center gap-3">
+							<span class="rounded-full bg-amber-100 px-2 py-0.5 font-medium tabular-nums" x-text="countdown"></span>
+							<button type="button" @click="cancelEdit"
+								class="rounded-lg border border-amber-300 bg-white px-2 py-1 font-medium text-amber-800 transition hover:bg-amber-100">
+								{ page.T("tpl.cancel") }
+							</button>
+						</span>
+					</div>
 					<div>
 						<label for="tplSource" class="block text-xs font-medium text-slate-600">{ page.T("tpl.sourceFor") }</label>
 						<select id="tplSource" name="source" x-model="source" required
@@ -118,7 +135,8 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 							:disabled="blocked"
 							:class="blocked ? 'cursor-not-allowed bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'"
 							class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition">
-							{ page.T("tpl.submit") }
+							<span x-show="!editing">{ page.T("tpl.submit") }</span>
+							<span x-show="editing" x-cloak>{ page.T("tpl.saveResubmit") }</span>
 						</button>
 					</div>
 				</form>
@@ -128,7 +146,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 				</style>
 
 				<script>
-				window.templateEditorI18N = { !templateEditorMessages(page.I18N) };
+				window.templateEditorI18N = JSON.parse(document.getElementById("createTemplateForm").getAttribute("data-i18n") || "{}");
 				window.templateEditorFmt = function () {
 					var args = Array.prototype.slice.call(arguments);
 					var s = args.shift();
@@ -145,6 +163,28 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								charLimit: 1024,
 								charCount: 0,
 								source: "converty",
+								editing: false,
+								editingName: "",
+								deadline: 0,
+								countdown: "",
+
+								get blocked() {
+									return this.charCount > this.charLimit || this.bodyProblem !== "";
+								},
+
+								tickCountdown: function () {
+									if (!this.editing || !this.deadline) { this.countdown = ""; return; }
+									var ms = this.deadline - Date.now();
+									if (ms <= 0) { this.countdown = window.templateEditorI18N.expired; return; }
+									var total = Math.floor(ms / 1000);
+									var mm = Math.floor(total / 60);
+									var ss = total % 60;
+									this.countdown = window.templateEditorFmt(window.templateEditorI18N.expiresIn, mm, (ss < 10 ? "0" : "") + ss);
+								},
+
+								cancelEdit: function () {
+									window.location.href = "/templates";
+								},
 
 								get blocked() {
 									return this.charCount > this.charLimit || this.bodyProblem !== "";
@@ -184,6 +224,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 								init: function () {
 									var self = this;
 									this.$nextTick(function () { self.sync(); });
+									setInterval(function () { self.tickCountdown(); }, 1000);
 								},
 
 								onDragStart: function (evt) {
@@ -336,6 +377,75 @@ serializeBody: function (root) {
 							};
 						});
 					});
+
+				// Hydrate the create form into edit mode from a row's Edit button.
+				// The payload (semantic body + examples + deadline) is rendered by
+				// templateEditJSON into the button's data-edit attribute.
+				function tplAppendText(el, text) {
+					if (!text) { return; }
+					var parts = text.split("\n");
+					for (var i = 0; i < parts.length; i++) {
+						if (i > 0) { el.appendChild(document.createElement("br")); }
+						if (parts[i] !== "") { el.appendChild(document.createTextNode(parts[i])); }
+					}
+				}
+
+				window.startTemplateEdit = function (btn) {
+					var data;
+					try { data = JSON.parse(btn.getAttribute("data-edit")); } catch (e) { return; }
+					var form = document.getElementById("createTemplateForm");
+					if (!form || !window.Alpine) { return; }
+					var ed = Alpine.$data(form);
+					if (!ed) { return; }
+
+					form.setAttribute("action", data.action);
+
+					var nameInput = document.getElementById("tplName");
+					if (nameInput) {
+						nameInput.value = data.name;
+						nameInput.readOnly = true;
+						nameInput.classList.add("bg-slate-100", "text-slate-500");
+					}
+					var langInput = document.getElementById("tplLang");
+					if (langInput) {
+						langInput.value = data.language;
+						langInput.disabled = true;
+						langInput.classList.add("bg-slate-100", "text-slate-500");
+					}
+
+					ed.source = data.source;
+					ed.editing = true;
+					ed.editingName = data.name;
+					ed.deadline = data.deadline || 0;
+					ed.tickCountdown();
+
+					var bodyEl = form.querySelector('[x-ref="body"]');
+					if (bodyEl) {
+						bodyEl.innerHTML = "";
+						var re = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g;
+						var last = 0, m;
+						while ((m = re.exec(data.body)) !== null) {
+							tplAppendText(bodyEl, data.body.slice(last, m.index));
+							var chip = document.querySelector('[data-value="' + m[1] + '"]');
+							var label = chip ? chip.getAttribute("data-label") : m[1];
+							bodyEl.appendChild(ed.makePill(m[1], label));
+							last = m.index + m[0].length;
+						}
+						tplAppendText(bodyEl, data.body.slice(last));
+					}
+
+					ed.lastVars = "__forced__";
+					ed.sync();
+
+					if (data.examples) {
+						Object.keys(data.examples).forEach(function (token) {
+							var inp = form.querySelector('[name="example_' + token + '"]');
+							if (inp) { inp.value = data.examples[token]; }
+						});
+					}
+
+					form.scrollIntoView({ behavior: "smooth", block: "start" });
+				};
 				</script>
 			</div>
 
@@ -362,6 +472,7 @@ serializeBody: function (root) {
 						</thead>
 						<tbody class="divide-y divide-slate-100">
 							for _, t := range templates {
+								{{ remaining, editable := whatsapp.TemplateGraceRemaining(t, grace, now) }}
 								<tr>
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Name }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
@@ -409,13 +520,24 @@ serializeBody: function (root) {
 										if t.ApprovalStatus == "deleted" {
 											<span class="text-xs text-slate-400">—</span>
 										} else {
-											<form method="post" action={ templ.URL("/templates/" + t.ID.String() + "/delete") }
-												data-confirm={ page.Tf("tpl.deleteConfirm", t.Name, t.Language) }>
-												<button type="submit"
-													class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
-													{ page.T("tpl.delete") }
-												</button>
-											</form>
+											<div class="flex items-center justify-end gap-2">
+												if editable {
+													<button type="button"
+														data-edit={ templateEditJSON(t, now.Add(remaining).UnixMilli()) }
+														onclick="startTemplateEdit(this)"
+														title={ page.T("tpl.editHint") }
+														class="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50">
+														{ page.T("tpl.edit") }
+													</button>
+												}
+												<form method="post" action={ templ.URL("/templates/" + t.ID.String() + "/delete") }
+													data-confirm={ page.Tf("tpl.deleteConfirm", t.Name, t.Language) }>
+													<button type="submit"
+														class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
+														{ page.T("tpl.delete") }
+													</button>
+												</form>
+											</div>
 										}
 									</td>
 								</tr>

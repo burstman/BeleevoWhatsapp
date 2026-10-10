@@ -107,11 +107,11 @@ func TestRunnerResolvesHandlersByKind(t *testing.T) {
 	}
 
 	called := false
-	runner.Handle(TaskPurgeMarketingTemplate, func(context.Context, []byte) error {
+	runner.Handle(TaskPurgeNegativeTemplate, func(context.Context, []byte) error {
 		called = true
 		return nil
 	})
-	h := runner.handler(TaskPurgeMarketingTemplate)
+	h := runner.handler(TaskPurgeNegativeTemplate)
 	if h == nil {
 		t.Fatal("a registered kind must resolve to its handler")
 	}

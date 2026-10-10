@@ -193,6 +193,22 @@ func (s *Service) DeleteTemplate(ctx context.Context, token, messagingAccountID,
 		s.cfg.MetaGraphURL+"/"+metaAPIVersion+"/"+messagingAccountID+"/message_templates?"+q.Encode())
 }
 
+// metaUpdateTemplate edits a template in place. Meta only permits this for
+// templates in APPROVED, REJECTED or PAUSED state and only for the category and
+// components — name and language are immutable, so they are not sent. The
+// template id is Meta's own id (stored as templates.meta_template_id).
+func (s *Service) metaUpdateTemplate(ctx context.Context, token, metaTemplateID string, components json.RawMessage) error {
+	if metaTemplateID == "" {
+		return fmt.Errorf("template has no Meta id; refresh the template list first")
+	}
+	body := map[string]any{"components": json.RawMessage(components)}
+	var resp struct {
+		ID string `json:"id"`
+	}
+	return s.postJSON(ctx, token,
+		fmt.Sprintf("%s/%s/%s", s.cfg.MetaGraphURL, metaAPIVersion, metaTemplateID), body, &resp)
+}
+
 // GetPhoneNumber verifies a phone-number id resolves and returns its identity
 // details, for connect/seed-time sanity checks.
 func (s *Service) GetPhoneNumber(ctx context.Context, token, phoneNumberID string) (PhoneNumber, error) {

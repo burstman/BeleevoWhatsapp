@@ -27,9 +27,9 @@ import (
 // Task kinds. Every queued job is one of these, and the runner dispatches on
 // the kind.
 const (
-	TaskSendWhatsAppTemplate   = "send:whatsapp_template"
-	TaskPurgeMarketingTemplate = "purge:marketing_template"
-	TaskSendFirstContactReply  = "send:first_contact_reply"
+	TaskSendWhatsAppTemplate  = "send:whatsapp_template"
+	TaskPurgeNegativeTemplate = "purge:marketing_template"
+	TaskSendFirstContactReply = "send:first_contact_reply"
 )
 
 const (

@@ -111,6 +111,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Post("/automations/{id}/delete", kit.Handler(a.handleAutomationDelete))
 		pr.Get("/templates", kit.Handler(a.handleTemplates))
 		pr.Post("/templates/create", kit.Handler(a.handleTemplateCreate))
+		pr.Post("/templates/{id}/update", kit.Handler(a.handleTemplateUpdate))
 		pr.Get("/templates/refresh", kit.Handler(a.handleTemplateRefresh))
 		pr.Post("/templates/{id}/delete", kit.Handler(a.handleTemplateDelete))
 		pr.Get("/inbox", kit.Handler(a.handleInbox))

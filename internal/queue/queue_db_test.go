@@ -119,7 +119,7 @@ func TestDBEnqueueHonoursRunAt(t *testing.T) {
 
 	due := time.Now().Add(-time.Minute)
 	if err := Enqueue(ctx, db, Params{
-		Kind: TaskPurgeMarketingTemplate, ShopID: shop,
+		Kind: TaskPurgeNegativeTemplate, ShopID: shop,
 		Payload: []byte(`{}`), RunAt: due,
 	}); err != nil {
 		t.Fatalf("enqueue: %v", err)

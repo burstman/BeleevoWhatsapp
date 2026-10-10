@@ -18,6 +18,8 @@ func templateEditorMessages(dict *i18n.Dict) string {
 		"vars":       dict.T("tpl.js.vars"),
 		"exampleFor": dict.T("tpl.js.exampleFor"),
 		"example":    dict.T("tpl.js.example"),
+		"expiresIn":  dict.T("tpl.js.expiresIn"),
+		"expired":    dict.T("tpl.js.expired"),
 	})
 	if err != nil {
 		return "{}"

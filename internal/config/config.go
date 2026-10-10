@@ -70,9 +70,11 @@ type Config struct {
 	// MetaAppSecret verifies X-Hub-Signature-256 on webhook deliveries.
 	MetaAppSecret string
 
-	// MarketingPurgeDelay is how long after Meta flags a template as marketing
-	// before the platform auto-deletes it from Meta and the shop's list.
-	MarketingPurgeDelay time.Duration
+	// TemplateNegativeGrace is how long a template may stay in a negative Meta
+	// review state (marketing flag, rejected or paused) before it is
+	// automatically soft-deleted. The window is also the time the merchant has
+	// to edit and resubmit it.
+	TemplateNegativeGrace time.Duration
 }
 
 // Load reads configuration from the environment.
@@ -110,7 +112,7 @@ func Load() Config {
 		MetaBusinessPortfolioID: getenv("META_BUSINESS_PORTFOLIO_ID", ""),
 		MetaWebhookVerifyToken:  getenv("META_WEBHOOK_VERIFY_TOKEN", ""),
 		MetaAppSecret:           getenv("META_APP_SECRET", ""),
-		MarketingPurgeDelay:     getenvDuration("MARKETING_PURGE_DELAY", 15*time.Minute),
+		TemplateNegativeGrace:   getenvDuration("TEMPLATE_NEGATIVE_GRACE", getenvDuration("MARKETING_PURGE_DELAY", 15*time.Minute)),
 	}
 }
 

@@ -71,11 +71,11 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	}
 
 	purged := 0
-	if n, err := a.WhatsApp.PurgeExpiredMarketing(k.Request.Context()); err != nil {
-		a.Log.Warn("marketing purge check failed", "error", err.Error())
+	if n, err := a.WhatsApp.PurgeExpiredNegative(k.Request.Context()); err != nil {
+		a.Log.Warn("negative template purge check failed", "error", err.Error())
 	} else if n > 0 {
 		purged = n
-		a.Log.Info("expired marketing templates deleted", "count", n)
+		a.Log.Info("expired negative templates deleted", "count", n)
 	}
 
 	// Templates belong to the client and are shared across shops, so the page
@@ -85,6 +85,7 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
+	templates = visibleTemplates(templates)
 	shopNames := shopNameMap(all)
 
 	page := a.dashboardPage(k, "templates", "templates", all)
@@ -122,6 +123,15 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = k.Request.URL.Query().Get("msg")
 	case "deleted":
 		flash.Info = dict.T("tpl.flashDeleted")
+	case "edited":
+		flash.Info = dict.T("tpl.flashEdited")
+	case "editrejected":
+		flash.Error = dict.T("tpl.flashEditRejected")
+		if reason := k.Request.URL.Query().Get("reason"); reason != "" {
+			flash.Error = dict.T("tpl.flashEditRejected") + " " + reason
+		}
+	case "editnotallowed":
+		flash.Error = dict.T("tpl.flashEditNotAllowed")
 	case "notfound":
 		flash.Error = dict.T("tpl.flashNotFound")
 	case "inuse":
@@ -131,7 +141,20 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 		flash.Error = dict.T("error.genericBody")
 	}
 
-	return k.Render(vdashboard.TemplatesPage(page, templates, shopNames, flash))
+	return k.Render(vdashboard.TemplatesPage(page, templates, shopNames, flash, a.Cfg.TemplateNegativeGrace))
+}
+
+// visibleTemplates drops soft-deleted templates so the catalog page only shows
+// templates that can still be acted on. The rows stay in the database: automations
+// still resolve their names by id.
+func visibleTemplates(templates []whatsapp.MerchantTemplate) []whatsapp.MerchantTemplate {
+	out := templates[:0]
+	for _, t := range templates {
+		if t.ApprovalStatus != "deleted" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // handlePlaceholder renders a shell page for features that arrive in later phases.

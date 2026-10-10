@@ -131,6 +131,26 @@ func init() {
 	set(Fr, "tpl.delete", "Supprimer")
 	set(Ar, "tpl.delete", "حذف")
 
+	set(En, "tpl.edit", "Edit")
+	set(Fr, "tpl.edit", "Modifier")
+	set(Ar, "tpl.edit", "تعديل")
+
+	set(En, "tpl.editHint", "Edit this template and resubmit it to Meta before the grace period ends.")
+	set(Fr, "tpl.editHint", "Modifiez ce modèle et resoumettez-le à Meta avant la fin du délai.")
+	set(Ar, "tpl.editHint", "عدّل هذا القالب وأعد إرساله إلى Meta قبل انتهاء المهلة.")
+
+	set(En, "tpl.editing", "Editing")
+	set(Fr, "tpl.editing", "Modification de")
+	set(Ar, "tpl.editing", "تعديل")
+
+	set(En, "tpl.cancel", "Cancel")
+	set(Fr, "tpl.cancel", "Annuler")
+	set(Ar, "tpl.cancel", "إلغاء")
+
+	set(En, "tpl.saveResubmit", "Save & resubmit")
+	set(Fr, "tpl.saveResubmit", "Enregistrer et resoumettre")
+	set(Ar, "tpl.saveResubmit", "حفظ وإعادة الإرسال")
+
 	set(En, "tpl.deleteConfirm", "Delete template %s (%s)? It can no longer be sent.")
 	set(Fr, "tpl.deleteConfirm", "Supprimer le modèle %s (%s) ? Il ne pourra plus être envoyé.")
 	set(Ar, "tpl.deleteConfirm", "هل تريد حذف القالب %s (%s)؟ لن يكون قابلًا للإرسال بعد الآن.")
@@ -151,13 +171,13 @@ func init() {
 	set(Fr, "tpl.deleted", "Supprimé")
 	set(Ar, "tpl.deleted", "محذوف")
 
-	set(En, "tpl.flashPurgedOne", "Deleted %d template automatically — Meta classified it as marketing content.")
-	set(Fr, "tpl.flashPurgedOne", "%d modèle supprimé automatiquement — Meta l'a classé comme contenu marketing.")
-	set(Ar, "tpl.flashPurgedOne", "تم حذف %d قالب تلقائيًا — صنّفته Meta كمحتوى تسويقي.")
+	set(En, "tpl.flashPurgedOne", "Deleted %d template automatically — Meta did not approve it.")
+	set(Fr, "tpl.flashPurgedOne", "%d modèle supprimé automatiquement — Meta ne l'a pas approuvé.")
+	set(Ar, "tpl.flashPurgedOne", "تم حذف %d قالب تلقائيًا — لم تعتمده Meta.")
 
-	set(En, "tpl.flashPurgedMany", "Deleted %d templates automatically — Meta classified them as marketing content.")
-	set(Fr, "tpl.flashPurgedMany", "%d modèles supprimés automatiquement — Meta les a classés comme contenu marketing.")
-	set(Ar, "tpl.flashPurgedMany", "تم حذف %d قوالب تلقائيًا — صنّفتها Meta كمحتوى تسويقي.")
+	set(En, "tpl.flashPurgedMany", "Deleted %d templates automatically — Meta did not approve them.")
+	set(Fr, "tpl.flashPurgedMany", "%d modèles supprimés automatiquement — Meta ne les a pas approuvés.")
+	set(Ar, "tpl.flashPurgedMany", "تم حذف %d قوالب تلقائيًا — لم تعتمدها Meta.")
 
 	set(En, "tpl.flashCreated", "Template submitted to Meta for review. Status refreshes here once decided.")
 	set(Fr, "tpl.flashCreated", "Modèle soumis à Meta pour revue. Le statut se mettra à jour ici une fois décidé.")
@@ -199,6 +219,18 @@ func init() {
 	set(Fr, "tpl.flashDeleted", "Modèle supprimé. Il ne peut plus être envoyé.")
 	set(Ar, "tpl.flashDeleted", "تم حذف القالب. لم يعد قابلًا للإرسال.")
 
+	set(En, "tpl.flashEdited", "Changes saved and resubmitted to Meta for review.")
+	set(Fr, "tpl.flashEdited", "Modifications enregistrées et resoumises à Meta pour revue.")
+	set(Ar, "tpl.flashEdited", "تم حفظ التغييرات وإعادة إرسالها إلى Meta للمراجعة.")
+
+	set(En, "tpl.flashEditRejected", "Meta refused the changes:")
+	set(Fr, "tpl.flashEditRejected", "Meta a refusé les modifications :")
+	set(Ar, "tpl.flashEditRejected", "رفضت Meta التغييرات:")
+
+	set(En, "tpl.flashEditNotAllowed", "This template can no longer be edited — the grace period has ended.")
+	set(Fr, "tpl.flashEditNotAllowed", "Ce modèle ne peut plus être modifié — le délai est écoulé.")
+	set(Ar, "tpl.flashEditNotAllowed", "لم يعد هذا القالب قابلًا للتعديل — انتهت المهلة.")
+
 	set(En, "tpl.flashNotFound", "That template no longer exists.")
 	set(Fr, "tpl.flashNotFound", "Ce modèle n'existe plus.")
 	set(Ar, "tpl.flashNotFound", "هذا القالب لم يعد موجودًا.")
@@ -230,6 +262,14 @@ func init() {
 	set(En, "tpl.js.example", "e.g. %s")
 	set(Fr, "tpl.js.example", "ex. %s")
 	set(Ar, "tpl.js.example", "مثال: %s")
+
+	set(En, "tpl.js.expiresIn", "Auto-deletes in %s:%s")
+	set(Fr, "tpl.js.expiresIn", "Suppression auto dans %s:%s")
+	set(Ar, "tpl.js.expiresIn", "حذف تلقائي خلال %s:%s")
+
+	set(En, "tpl.js.expired", "Grace period ended")
+	set(Fr, "tpl.js.expired", "Délai écoulé")
+	set(Ar, "tpl.js.expired", "انتهت المهلة")
 
 	set(En, "src.converty.label", "Converty orders")
 	set(Fr, "src.converty.label", "Commandes Converty")
