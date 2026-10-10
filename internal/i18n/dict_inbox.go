@@ -11,6 +11,10 @@ func init() {
 	set(Fr, "inbox.subtitle", "Messages que vos clients envoient à votre numéro WhatsApp. Les réponses sont libres dans la fenêtre de service client de 24h ; après, seuls les modèles approuvés peuvent les atteindre.")
 	set(Ar, "inbox.subtitle", "رسائل يرسلها العملاء إلى رقم واتساب الخاص بك. الردود حرة خلال نافذة خدمة العملاء البالغة 24 ساعة؛ بعدها لا تصلهم إلا القوالب المعتمدة.")
 
+	set(En, "inbox.autoreplyCta", "Auto-reply")
+	set(Fr, "inbox.autoreplyCta", "Réponse auto")
+	set(Ar, "inbox.autoreplyCta", "الرد التلقائي")
+
 	set(En, "inbox.noWaTitle", "No WhatsApp number connected yet.")
 	set(Fr, "inbox.noWaTitle", "Aucun numéro WhatsApp connecté pour l'instant.")
 	set(Ar, "inbox.noWaTitle", "لا يوجد رقم واتساب متصل بعد.")

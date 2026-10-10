@@ -54,6 +54,9 @@ func TestInboxTwoPaneRender(t *testing.T) {
 	if !strings.Contains(out, `hx-get="/inbox/sidebar"`) {
 		t.Error("sidebar does not carry its polling trigger")
 	}
+	if !strings.Contains(out, `href="/settings/autoreply"`) {
+		t.Error("inbox header must link to the auto-reply settings")
+	}
 }
 
 // A full thread page must keep the sidebar and a single nav badge, with the
