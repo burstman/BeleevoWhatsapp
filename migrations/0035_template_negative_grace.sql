@@ -3,6 +3,7 @@
 -- flag, rejected, paused), not just marketing. Rename for accuracy; the value
 -- semantics are unchanged. Kept idempotent so a concurrent test migration run
 -- cannot fail on an already-renamed column.
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -12,6 +13,7 @@ BEGIN
         ALTER TABLE templates RENAME COLUMN marketing_flagged_at TO negative_at;
     END IF;
 END $$;
+-- +goose StatementEnd
 
 CREATE INDEX IF NOT EXISTS templates_negative_at_idx
     ON templates (negative_at)
@@ -20,6 +22,7 @@ CREATE INDEX IF NOT EXISTS templates_negative_at_idx
 -- +goose Down
 DROP INDEX IF EXISTS templates_negative_at_idx;
 
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -29,3 +32,4 @@ BEGIN
         ALTER TABLE templates RENAME COLUMN negative_at TO marketing_flagged_at;
     END IF;
 END $$;
+-- +goose StatementEnd
