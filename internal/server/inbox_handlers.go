@@ -392,7 +392,7 @@ func (a *App) handleInboxReplyImage(k *kit.Kit) error {
 	}
 
 	errMsg, okMsg := "", ""
-	switch _, serr := a.WhatsApp.SendImageReply(k.Request.Context(), id, mime, imageFilename(mime), data); {
+	switch _, serr := a.WhatsApp.SendImageReply(k.Request.Context(), id, mime, imageFilename(mime), data, ""); {
 	case serr == nil:
 		okMsg = page.T("inbox.imageSent")
 	case errors.Is(serr, whatsapp.ErrReplyWindowClosed):

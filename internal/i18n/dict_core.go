@@ -33,6 +33,10 @@ func init() {
 	set(Fr, "nav.delivery", "Livraison")
 	set(Ar, "nav.delivery", "التوصيل")
 
+	set(En, "nav.autoreply", "Auto-reply")
+	set(Fr, "nav.autoreply", "Réponse auto")
+	set(Ar, "nav.autoreply", "الرد التلقائي")
+
 	set(En, "nav.settings", "Settings")
 	set(Fr, "nav.settings", "Paramètres")
 	set(Ar, "nav.settings", "الإعدادات")
@@ -198,6 +202,10 @@ func init() {
 	set(En, "title.delivery", "Delivery")
 	set(Fr, "title.delivery", "Livraison")
 	set(Ar, "title.delivery", "التوصيل")
+
+	set(En, "title.autoreply", "First-contact auto-reply")
+	set(Fr, "title.autoreply", "Réponse auto au premier contact")
+	set(Ar, "title.autoreply", "الرد التلقائي عند أول تواصل")
 
 	set(En, "title.settings", "Settings")
 	set(Fr, "title.settings", "Paramètres")

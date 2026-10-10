@@ -70,12 +70,22 @@ func TestChatInbox(t *testing.T) {
 		TextBody:      "Is my order ready?",
 		PhoneNumberID: phoneNumberID,
 	}
-	if err := svc.UpsertInbound(ctx, shop, inbound); err != nil {
+	res, err := svc.UpsertInbound(ctx, shop, inbound)
+	if err != nil {
 		t.Fatalf("UpsertInbound: %v", err)
 	}
-	// Meta re-delivers on retries; the idempotency key must hold.
-	if err := svc.UpsertInbound(ctx, shop, inbound); err != nil {
+	if !res.FirstContact {
+		t.Error("first inbound must report FirstContact")
+	}
+	if res.ConversationID == uuid.Nil {
+		t.Error("first inbound must return a conversation id")
+	}
+	// Meta re-delivers on retries; the idempotency key must hold, and a
+	// duplicate must never be treated as a first contact.
+	if res2, err := svc.UpsertInbound(ctx, shop, inbound); err != nil {
 		t.Fatalf("UpsertInbound (duplicate): %v", err)
+	} else if res2.FirstContact {
+		t.Error("a duplicate message must not report FirstContact")
 	}
 
 	threads, err := svc.Threads(ctx)
@@ -109,8 +119,10 @@ func TestChatInbox(t *testing.T) {
 		TextBody:      "Hello?",
 		PhoneNumberID: phoneNumberID,
 	}
-	if err := svc.UpsertInbound(ctx, otherShop, second); err != nil {
+	if resSecond, err := svc.UpsertInbound(ctx, otherShop, second); err != nil {
 		t.Fatalf("second UpsertInbound: %v", err)
+	} else if !resSecond.FirstContact {
+		t.Error("the first inbound on a second shop must report FirstContact")
 	}
 	threads, err = svc.Threads(ctx)
 	if err != nil {

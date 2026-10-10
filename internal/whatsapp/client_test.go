@@ -118,9 +118,10 @@ func TestSendAudioPayload(t *testing.T) {
 	}
 }
 
-// An image send must carry type:"image" with image:{id}.
+// An image send must carry type:"image" with image:{id} and the caption.
 func TestSendImagePayload(t *testing.T) {
 	got := make(chan string, 1)
+	gotCaption := make(chan string, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v21.0/12345/messages" {
 			t.Errorf("path = %q", r.URL.Path)
@@ -128,7 +129,8 @@ func TestSendImagePayload(t *testing.T) {
 		var payload struct {
 			Type  string `json:"type"`
 			Image struct {
-				ID string `json:"id"`
+				ID      string `json:"id"`
+				Caption string `json:"caption"`
 			} `json:"image"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -138,6 +140,7 @@ func TestSendImagePayload(t *testing.T) {
 			t.Errorf("type = %q, want image", payload.Type)
 		}
 		got <- payload.Image.ID
+		gotCaption <- payload.Image.Caption
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.img"}]}`))
 	}))
@@ -145,7 +148,7 @@ func TestSendImagePayload(t *testing.T) {
 
 	s := &Service{cfg: config.Config{MetaGraphURL: srv.URL}, http: &http.Client{Timeout: 5 * time.Second}}
 
-	id, err := s.SendImage(context.Background(), "tok", "12345", "21654116584", "img123")
+	id, err := s.SendImage(context.Background(), "tok", "12345", "21654116584", "img123", "voici votre commande")
 	if err != nil {
 		t.Fatalf("SendImage: %v", err)
 	}
@@ -154,6 +157,9 @@ func TestSendImagePayload(t *testing.T) {
 	}
 	if <-got != "img123" {
 		t.Error("image payload must reference img123")
+	}
+	if cap := <-gotCaption; cap != "voici votre commande" {
+		t.Errorf("caption = %q, want the passed caption", cap)
 	}
 }
 

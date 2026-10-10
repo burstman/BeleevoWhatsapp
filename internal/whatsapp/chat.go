@@ -31,17 +31,17 @@ type Conversation struct {
 
 // ChatMessage is one row of a conversation thread.
 type ChatMessage struct {
-	ID             uuid.UUID
-	Direction      string
-	Body           string
-	MetaMessageID  string
-	Status         string
-	CreatedAt      time.Time
-	MediaKind      string
-	MediaMime      string
-	MediaBytes     []byte
+	ID              uuid.UUID
+	Direction       string
+	Body            string
+	MetaMessageID   string
+	Status          string
+	CreatedAt       time.Time
+	MediaKind       string
+	MediaMime       string
+	MediaBytes      []byte
 	MediaDurationMS int
-	MediaFilename  string
+	MediaFilename   string
 }
 
 // ErrReplyWindowClosed is returned when a free-form reply is attempted after
@@ -74,23 +74,32 @@ func (s *Service) ApplyChatStatusUpdate(ctx context.Context, u StatusUpdate) err
 	return s.updateChatMessageStatus(ctx, u)
 }
 
+// InboundResult reports what UpsertInbound did: the conversation the message
+// landed on, and whether this message created the conversation (the customer's
+// first-ever contact with the shop). FirstContact is used to fire the shop's
+// first-contact auto-reply exactly once.
+type InboundResult struct {
+	ConversationID uuid.UUID
+	FirstContact   bool
+}
+
 // UpsertInbound records a customer message against the shop owning the
 // receiving number, creating the conversation when it is new. Re-deliveries of
 // the same Meta message id are ignored. The customer service window restarts
 // from the message timestamp.
-func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m InboundMessage) error {
+func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m InboundMessage) (InboundResult, error) {
 	if m.From == "" || m.MetaMessageID == "" {
-		return nil
+		return InboundResult{}, nil
 	}
 	var exists bool
 	if err := s.pool.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM chat_messages WHERE meta_message_id = $1 AND direction = 'inbound')`,
 		m.MetaMessageID,
 	).Scan(&exists); err != nil {
-		return err
+		return InboundResult{}, err
 	}
 	if exists {
-		return nil
+		return InboundResult{}, nil
 	}
 	ts := time.Unix(m.Timestamp, 0).UTC()
 	if ts.Before(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)) {
@@ -143,12 +152,15 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return InboundResult{}, err
 	}
 	defer tx.Rollback(ctx)
 
 	var convID uuid.UUID
+	var firstContact bool
 	// Upsert the conversation: keep the id, refresh name/window/last fields.
+	// xmax = 0 is true only for the freshly-inserted row, so it tells us whether
+	// this inbound created the conversation (the customer's first contact).
 	err = tx.QueryRow(ctx, `
 		INSERT INTO conversations (
 			shop_id, customer_phone, customer_name, last_message_direction,
@@ -162,11 +174,11 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 			unread_count = conversations.unread_count + 1,
 			window_expires_at = $6,
 			updated_at = now()
-		RETURNING id`,
+		RETURNING id, (xmax = 0) AS is_new`,
 		shopID, m.From, m.ProfileName, body, ts, ts.Add(customerServiceWindow),
-	).Scan(&convID)
+	).Scan(&convID, &firstContact)
 	if err != nil {
-		return err
+		return InboundResult{}, err
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -178,9 +190,12 @@ func (s *Service) UpsertInbound(ctx context.Context, shopID uuid.UUID, m Inbound
 		convID, body, m.MetaMessageID, mediaKind, mediaMime, mediaBytes, durationMS, filename, ts,
 	)
 	if err != nil {
-		return err
+		return InboundResult{}, err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return InboundResult{}, err
+	}
+	return InboundResult{ConversationID: convID, FirstContact: firstContact}, nil
 }
 
 // downloadInboundMedia fetches a customer's media with the shop's own Meta
@@ -333,7 +348,7 @@ func (s *Service) PurgeChatMedia(ctx context.Context, olderThan time.Time) (int,
 
 // ReplyResult reports a sent free-form reply.
 type ReplyResult struct {
-	MessageID uuid.UUID
+	MessageID     uuid.UUID
 	MetaMessageID string
 }
 
@@ -504,8 +519,9 @@ func (s *Service) SendAudioReply(ctx context.Context, conversationID uuid.UUID, 
 
 // SendImageReply records, uploads and delivers an attached image to the
 // customer, inside the 24h window. The sender's copy stores the bytes locally
-// so the web thread shows the picture.
-func (s *Service) SendImageReply(ctx context.Context, conversationID uuid.UUID, mime string, filename string, data []byte) (ReplyResult, error) {
+// so the web thread shows the picture. An optional caption is delivered with
+// the image and used as the bubble label.
+func (s *Service) SendImageReply(ctx context.Context, conversationID uuid.UUID, mime string, filename string, data []byte, caption string) (ReplyResult, error) {
 	if len(data) == 0 {
 		return ReplyResult{}, errors.New("empty image")
 	}
@@ -531,7 +547,10 @@ func (s *Service) SendImageReply(ctx context.Context, conversationID uuid.UUID, 
 		}
 	}
 
-	body := "🖼️ Image"
+	body := strings.TrimSpace(caption)
+	if body == "" {
+		body = "🖼️ Image"
+	}
 	var msgID uuid.UUID
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO chat_messages (
@@ -552,7 +571,7 @@ func (s *Service) SendImageReply(ctx context.Context, conversationID uuid.UUID, 
 		return ReplyResult{}, upErr
 	}
 	metaID, sendErr := s.SendImage(ctx, creds.AccessToken, creds.PhoneNumberID,
-		conv.CustomerPhone, mediaID)
+		conv.CustomerPhone, mediaID, strings.TrimSpace(caption))
 	if sendErr != nil {
 		_, _ = s.pool.Exec(ctx, `
 			UPDATE chat_messages SET status = 'failed', error_message = $2 WHERE id = $1`,

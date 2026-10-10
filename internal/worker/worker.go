@@ -59,6 +59,7 @@ func Start(cfg config.Config, logger *slog.Logger) (*Server, error) {
 
 	runner := queue.NewRunner(pool, logger)
 	runner.Handle(queue.TaskPurgeMarketingTemplate, wa.HandlePurgeMarketingTemplate)
+	runner.Handle(queue.TaskSendFirstContactReply, wa.SendFirstContactReplyJob)
 	runner.Handle(queue.TaskSendWhatsAppTemplate, gateAutomation(automations, wa.HandleSendWhatsAppTemplate, logger))
 
 	deliveryCtx, stopDelivery := context.WithCancel(context.Background())

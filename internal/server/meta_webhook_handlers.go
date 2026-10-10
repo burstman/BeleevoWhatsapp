@@ -123,10 +123,23 @@ func (a *App) handleMetaWebhook(k *kit.Kit) error {
 			PhoneNumberID: m.PhoneNumberID,
 			ShopID:        &shopID,
 		})
-		if ingestErr := a.WhatsApp.UpsertInbound(ctx, shopID, m); ingestErr != nil {
+		res, ingestErr := a.WhatsApp.UpsertInbound(ctx, shopID, m)
+		if ingestErr != nil {
 			a.Log.Warn("meta webhook inbound ingest failed",
 				"meta_message_id", m.MetaMessageID, "from", m.From, "error", ingestErr.Error())
 			continue
+		}
+		// A message that created the conversation is the customer's first
+		// contact: fire the shop's auto-reply greeting, if configured. Best
+		// effort only — Meta must always get a 200 from this handler.
+		if res.FirstContact {
+			if err := a.WhatsApp.ScheduleFirstContactReply(ctx, shopID, res.ConversationID); err != nil {
+				a.Log.Warn("meta webhook: first-contact reply scheduling failed",
+					"shop_id", shopID, "conversation_id", res.ConversationID, "error", err.Error())
+			} else {
+				a.Log.Info("meta webhook: first-contact reply scheduled",
+					"shop_id", shopID, "conversation_id", res.ConversationID)
+			}
 		}
 		a.Log.Info("meta webhook inbound ingested",
 			"meta_message_id", m.MetaMessageID, "from", m.From, "shop_id", shopID)

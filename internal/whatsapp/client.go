@@ -352,13 +352,18 @@ func (s *Service) SendAudio(ctx context.Context, token, phoneNumberID, to, media
 	return resp.Messages[0].ID, nil
 }
 
-// SendImage delivers an uploaded media id as a WhatsApp image message.
-func (s *Service) SendImage(ctx context.Context, token, phoneNumberID, to, mediaID string) (string, error) {
+// SendImage delivers an uploaded media id as a WhatsApp image message. An empty
+// caption sends the image on its own.
+func (s *Service) SendImage(ctx context.Context, token, phoneNumberID, to, mediaID, caption string) (string, error) {
+	image := map[string]any{"id": mediaID}
+	if caption != "" {
+		image["caption"] = caption
+	}
 	payload := map[string]any{
 		"messaging_product": "whatsapp",
 		"to":                to,
 		"type":              "image",
-		"image":             map[string]any{"id": mediaID},
+		"image":             image,
 	}
 	var resp struct {
 		Messages []struct {

@@ -29,6 +29,7 @@ import (
 const (
 	TaskSendWhatsAppTemplate   = "send:whatsapp_template"
 	TaskPurgeMarketingTemplate = "purge:marketing_template"
+	TaskSendFirstContactReply  = "send:first_contact_reply"
 )
 
 const (
