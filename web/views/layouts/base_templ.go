@@ -353,7 +353,7 @@ func AuthLayout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " · Converty WhatsApp</title><link rel=\"stylesheet\" href=\"/static/css/styles.css\"><script src=\"/static/js/htmx.min.js\" defer></script></head><body class=\"flex min-h-full items-center justify-center bg-slate-100 px-4 py-12 text-slate-900\"><div class=\"w-full max-w-md\"><div class=\"mb-8 text-center\"><h1 class=\"text-2xl font-bold text-slate-900\">Converty WhatsApp</h1><p class=\"mt-1 text-sm text-slate-500\">Automated order notifications for your shop</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " · Converty WhatsApp</title><link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin><link href=\"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap\" rel=\"stylesheet\"><link rel=\"stylesheet\" href=\"/static/css/styles.css\"><script src=\"/static/js/htmx.min.js\" defer></script><script defer src=\"/static/js/alpine.min.js\"></script><script src=\"/static/js/voice.js\" defer></script></head><body class=\"flex min-h-full items-center justify-center bg-slate-100 px-4 py-12 text-slate-900\"><div class=\"w-full max-w-md\"><div class=\"mb-8 text-center\"><h1 class=\"text-2xl font-bold text-slate-900\">Converty WhatsApp</h1><p class=\"mt-1 text-sm text-slate-500\">Automated order notifications for your shop</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

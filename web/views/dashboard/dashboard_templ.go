@@ -16,6 +16,14 @@ import (
 	"whatsappconverty/web/views/layouts"
 )
 
+// automationsLabel pluralises the active-automation count for the setup card.
+func automationsLabel(n int) string {
+	if n == 1 {
+		return "1 active automation"
+	}
+	return strconv.Itoa(n) + " active automations"
+}
+
 func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -49,46 +57,115 @@ func Overview(page components.Page, stats dashboard.Stats) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mb-6 flex items-center justify-between\"><div><h2 class=\"text-xl font-semibold text-slate-900\">Welcome back</h2><p class=\"text-sm text-slate-500\">Here's what's happening with your shop.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"overview-page -m-4 sm:-m-6\"><div class=\"overview-main\"><section class=\"welcome\"><div><p class=\"eyebrow\">YOUR SHOP, AT A GLANCE</p><h1>Welcome back<span class=\"welcome-dot\">.</span></h1><p class=\"welcome-description\">Here's what's happening with your shop.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if stats.WhatsappConnected {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700\"><span class=\"h-2 w-2 rounded-full bg-emerald-500\"></span> WhatsApp connected</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"connection-status\"><span class=\"status-dot\"></span>WhatsApp connected</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a href=\"/whatsapp/onboard\" class=\"inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 transition hover:bg-amber-100\"><span class=\"h-2 w-2 rounded-full bg-amber-500\"></span> WhatsApp not enabled</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a href=\"/whatsapp/onboard\" class=\"connection-status\"><span class=\"status-dot\"></span>WhatsApp not enabled</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</section><section class=\"metrics-section\"><div class=\"section-heading\"><h2>Messaging overview</h2><span class=\"period-label\"><span class=\"period-dot\"></span>All time</span></div><div class=\"metrics-grid\"><article class=\"metric-card\"><div class=\"metric-top\"><span class=\"metric-icon tone-blue\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m22 2-7 20-4-9-9-4 20-7Z\"></path><path d=\"M22 2 11 13\"></path></svg></span> <span class=\"metric-category\">Messages</span></div><h3>Messages sent</h3><p class=\"metric-value\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.StatCard("Messages sent", strconv.Itoa(stats.MessagesSent), "lifetime").Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var3 string
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(stats.MessagesSent))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 51, Col: 65}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.StatCard("Messages delivered", strconv.Itoa(stats.MessagesDelivered), "lifetime").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</p><div class=\"metric-footer\"><span class=\"tiny-dot tone-blue\"></span>Lifetime total</div></article><article class=\"metric-card\"><div class=\"metric-top\"><span class=\"metric-icon tone-green\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4 12 4 4L19 5M10 16l3 3L23 9\"></path></svg></span> <span class=\"metric-category\">Messages</span></div><h3>Messages delivered</h3><p class=\"metric-value\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.StatCard("Messages failed", strconv.Itoa(stats.MessagesFailed), "lifetime").Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var4 string
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(stats.MessagesDelivered))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 65, Col: 70}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.StatCard("Not on WhatsApp", strconv.Itoa(stats.MessagesNotOnWhatsapp), "no WhatsApp account").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><div class=\"metric-footer\"><span class=\"tiny-dot tone-green\"></span>Lifetime total</div></article><article class=\"metric-card\"><div class=\"metric-top\"><span class=\"metric-icon tone-red\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M12 8v5M12 16h.01\"></path></svg></span> <span class=\"metric-category\">Messages</span></div><h3>Messages failed</h3><p class=\"metric-value\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.StatCard("Active automations", strconv.Itoa(stats.ActiveAutomations), "status → template").Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var5 string
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(stats.MessagesFailed))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 79, Col: 67}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"mt-8\"><h3 class=\"mb-3 text-sm font-semibold text-slate-700\">Getting started</h3><div class=\"grid grid-cols-1 gap-4 lg:grid-cols-3\"><a href=\"/whatsapp/onboard\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">1. Enable WhatsApp</h4><p class=\"mt-1 text-sm text-slate-500\">Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p></a> <a href=\"/automations\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">2. Create automations</h4><p class=\"mt-1 text-sm text-slate-500\">Map order statuses to approved message templates.</p></a> <a href=\"/templates\" class=\"rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300\"><h4 class=\"font-semibold text-slate-900\">3. Manage templates</h4><p class=\"mt-1 text-sm text-slate-500\">Submit and track the approval of your WhatsApp message templates.</p></a></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p><div class=\"metric-footer\"><span class=\"tiny-dot tone-red\"></span>Lifetime total</div></article><article class=\"metric-card\"><div class=\"metric-top\"><span class=\"metric-icon tone-gray\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"7\" r=\"4\"></circle><path d=\"M3 21v-2a7 7 0 0 1 12-5M17 16l5 5M22 16l-5 5\"></path></svg></span> <span class=\"metric-category\">Customers</span></div><h3>Not on WhatsApp</h3><p class=\"metric-value\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(stats.MessagesNotOnWhatsapp))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 93, Col: 74}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p><div class=\"metric-footer\">No WhatsApp account</div></article><article class=\"metric-card\"><div class=\"metric-top\"><span class=\"metric-icon tone-amber\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m13 2-9 12h7l-1 8 10-12h-7l1-8Z\"></path></svg></span> <span class=\"metric-category\">Workflows</span></div><h3>Active automations</h3><p class=\"metric-value\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(stats.ActiveAutomations))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 105, Col: 70}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p><div class=\"metric-footer\">Status <span aria-hidden=\"true\">&rarr;</span> template</div></article></div></section><section class=\"getting-started\"><div class=\"section-heading\"><h2>Getting started</h2><span class=\"section-caption\">A little setup. A lot of connection.</span></div><div class=\"setup-grid\"><a href=\"/whatsapp/onboard\" class=\"setup-card block\"><div class=\"setup-art art-whatsapp\"><span class=\"art-orbit orbit-one\"></span> <span class=\"art-orbit orbit-two\"></span> <span class=\"art-main\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z\"></path><path d=\"M8 11h8M8 15h5\"></path></svg></span> <span class=\"art-check\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m4 12 4 4L19 5M10 16l3 3L23 9\"></path></svg></span> <span class=\"art-spark spark-one\"></span> <span class=\"art-spark spark-two\"></span></div><div class=\"setup-content\"><span class=\"step-label\">STEP 01</span><h3>Enable WhatsApp</h3><p>Opt in to messaging through the platform's WhatsApp number and accept the consent terms.</p><div class=\"setup-footer\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if stats.WhatsappConnected {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"setup-state\"><span class=\"status-dot\"></span>Connected</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span class=\"setup-state neutral-state\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Z\"></path><path d=\"M12 8v5M12 16h.01\"></path></svg> Not connected</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span class=\"step-number\">01</span></div></div></a> <a href=\"/automations\" class=\"setup-card block\"><div class=\"setup-art art-automation\"><span class=\"workflow-node\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m13 2-9 12h7l-1 8 10-12h-7l1-8Z\"></path></svg></span> <span class=\"workflow-line\"></span> <span class=\"workflow-node node-end\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z\"></path><path d=\"M8 11h8M8 15h5\"></path></svg></span> <span class=\"art-spark spark-one\"></span> <span class=\"art-spark spark-two\"></span></div><div class=\"setup-content\"><span class=\"step-label\">STEP 02</span><h3>Create automations</h3><p>Map order statuses to approved message templates.</p><div class=\"setup-footer\"><span class=\"setup-state neutral-state\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m13 2-9 12h7l-1 8 10-12h-7l1-8Z\"></path></svg> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(automationsLabel(stats.ActiveAutomations))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/views/dashboard/dashboard.templ`, Line: 173, Col: 53}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span> <span class=\"step-number\">02</span></div></div></a> <a href=\"/templates\" class=\"setup-card block\"><div class=\"setup-art art-template\"><span class=\"template-paper paper-back\"></span> <span class=\"template-paper paper-front\"><span class=\"paper-title\"></span> <span class=\"paper-line\"></span> <span class=\"paper-line\"></span> <span class=\"paper-line short-line\"></span> <span class=\"paper-tag\"></span></span> <span class=\"art-spark spark-one\"></span> <span class=\"art-spark spark-two\"></span></div><div class=\"setup-content\"><span class=\"step-label\">STEP 03</span><h3>Manage templates</h3><p>Submit and track the approval of your WhatsApp message templates.</p><div class=\"setup-footer\"><span class=\"setup-state neutral-state\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"3\"></rect><path d=\"M8 8h8M8 12h8M8 16h4\"></path></svg> Message templates</span> <span class=\"step-number\">03</span></div></div></a></div></section><footer class=\"overview-footer\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z\"></path><path d=\"M8 11h8M8 15h5\"></path></svg> <span>Better conversations. Stronger connections.</span> <span class=\"footer-line\"></span></footer></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -118,12 +195,12 @@ func Placeholder(page components.Page, section string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var3 == nil {
-			templ_7745c5c3_Var3 = templ.NopComponent
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var4 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -141,7 +218,7 @@ func Placeholder(page components.Page, section string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layouts.Shell(page).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layouts.Shell(page).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
