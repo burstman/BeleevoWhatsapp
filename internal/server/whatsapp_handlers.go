@@ -21,7 +21,7 @@ func (a *App) handleWhatsappSettings(k *kit.Kit) error {
 		return err
 	}
 
-	page := a.dashboardPage(k, "Settings", "settings", all)
+	page := a.dashboardPage(k, "settings", "settings", all)
 
 	receipts, receiptsErr := a.WhatsApp.RecentWebhookReceipts(k.Request.Context(), 8)
 	if receiptsErr != nil {
@@ -147,7 +147,7 @@ func (a *App) handleWhatsappOnboard(k *kit.Kit) error {
 		return err
 	}
 
-	page := a.dashboardPage(k, "Enable WhatsApp", "settings", all)
+	page := a.dashboardPage(k, "enableWhatsapp", "settings", all)
 	owner, err := a.sharedOwnerShop(k.Request.Context())
 	if err != nil {
 		return err

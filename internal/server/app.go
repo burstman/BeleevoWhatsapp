@@ -80,6 +80,7 @@ func (a *App) InitializeRoutes(r *chi.Mux) {
 		pr.Get("/login", kit.Handler(a.handleLoginGet))
 		pr.Post("/login", kit.Handler(a.handleLoginPost))
 		pr.Post("/logout", kit.Handler(a.handleLogout))
+		pr.Post("/language", kit.Handler(a.handleLanguagePost))
 		pr.Post("/webhooks/converty", kit.Handler(a.handleConvertyWebhook))
 		pr.Get("/webhooks/meta", kit.Handler(a.handleMetaWebhookVerify))
 		pr.Post("/webhooks/meta", kit.Handler(a.handleMetaWebhook))

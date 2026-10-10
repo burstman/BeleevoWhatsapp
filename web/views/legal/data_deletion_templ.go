@@ -8,11 +8,14 @@ package viewslegal
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "whatsappconverty/internal/i18n"
+
 // DataDeletion is the public data-deletion instructions page. Meta's app
 // review asks for a Data Deletion Instructions URL whenever an app stores user
 // data, so it is served unauthenticated at /data-deletion and describes exactly
-// what the Platform holds, how to ask for erasure and what is retained.
-func DataDeletion(supportEmail string) templ.Component {
+// what the Platform holds, how to ask for erasure and what is retained. The
+// chrome follows the viewer's language; the legal text stays in English.
+func DataDeletion(supportEmail string, dict *i18n.Dict) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -49,7 +52,7 @@ func DataDeletion(supportEmail string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = contactLine(supportEmail, "Data deletion request").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = contactLine(supportEmail, "Data deletion request", dict).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -57,7 +60,7 @@ func DataDeletion(supportEmail string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = contactLine(supportEmail, "Data deletion request").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = contactLine(supportEmail, "Data deletion request", dict).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -65,13 +68,13 @@ func DataDeletion(supportEmail string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legalFooter().Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legalFooter(dict).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Shell("Data Deletion Instructions", "How to request deletion of your personal data held by Converty WhatsApp.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Shell("Data Deletion Instructions", "How to request deletion of your personal data held by Converty WhatsApp.", dict).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

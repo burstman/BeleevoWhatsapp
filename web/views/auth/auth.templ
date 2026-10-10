@@ -3,38 +3,39 @@ package viewsauth
 import (
 	"github.com/anthdm/superkit/validate"
 
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
 
-templ LoginPage() {
-	@layouts.AuthLayout("Sign in") {
-		@LoginForm(LoginValues{}, validate.Errors{})
+templ LoginPage(dict *i18n.Dict) {
+	@layouts.AuthLayout(dict.T("auth.signIn"), dict) {
+		@LoginForm(LoginValues{}, validate.Errors{}, dict)
 	}
 }
 
-templ LoginForm(values LoginValues, errors validate.Errors) {
+templ LoginForm(values LoginValues, errors validate.Errors, dict *i18n.Dict) {
 	<div class="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-		<h2 class="text-lg font-semibold text-slate-900">Sign in</h2>
+		<h2 class="text-lg font-semibold text-slate-900">{ dict.T("auth.signIn") }</h2>
 		<form method="POST" action="/login" class="mt-6 space-y-4">
 			if values.Redirect != "" {
 				<input type="hidden" name="redirect" value={ values.Redirect }/>
 			}
 			<div>
-				<label for="email" class="block text-sm font-medium text-slate-700">Email</label>
+				<label for="email" class="block text-sm font-medium text-slate-700">{ dict.T("auth.email") }</label>
 				<input type="email" id="email" name="email" value={ values.Email } autocomplete="email" required
 					class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"/>
 				@components.FieldErrors("email", errors)
 			</div>
 			<div>
-				<label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+				<label for="password" class="block text-sm font-medium text-slate-700">{ dict.T("auth.password") }</label>
 				<input type="password" id="password" name="password" value={ values.Password } autocomplete="current-password" required
 					class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"/>
 				@components.FieldErrors("password", errors)
 			</div>
 			<button type="submit"
 				class="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500">
-				Sign in
+				{ dict.T("auth.signIn") }
 			</button>
 		</form>
 	</div>

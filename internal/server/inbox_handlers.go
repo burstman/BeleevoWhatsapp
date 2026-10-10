@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"whatsappconverty/internal/auth"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	vdashboard "whatsappconverty/web/views/dashboard"
@@ -26,19 +28,25 @@ const maxSendImageBytes = 5 << 20
 
 // inboxFlash maps the ?flash= query value onto a user-facing line for the
 // inbox list page.
-func inboxFlash(q string) string {
+func inboxFlash(dict *i18n.Dict, q string) string {
 	switch q {
 	case "sent":
-		return "Reply sent."
+		return dict.T("inbox.replySent")
 	case "notfound":
-		return "Conversation not found."
+		return dict.T("inbox.flashNotFound")
 	case "error":
-		return "Something went wrong; try again."
+		return dict.T("inbox.flashError")
 	}
 	return ""
 }
 
 var inboxThreadPathRe = regexp.MustCompile(`/inbox/([0-9a-fA-F-]{36})`)
+
+// kitLang resolves the authenticated user's interface language as a dict, for
+// fragments rendered outside a full page.
+func (a *App) kitLang(k *kit.Kit) *i18n.Dict {
+	return i18n.New(i18n.Parse(auth.FromKit(k).User.Lang))
+}
 
 // activeInboxID recovers which conversation is open from htmx's current URL
 // header, so the polling sidebar can keep that row highlighted.
@@ -88,7 +96,7 @@ func (a *App) handleInbox(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Render(vdashboard.InboxPage(page, nil, nil, nil, ""))
 	}
@@ -96,10 +104,10 @@ func (a *App) handleInbox(k *kit.Kit) error {
 	threads, shopNames, err := a.inboxThreads(k, &page)
 	if err != nil {
 		a.Log.Error("inbox threads failed", "error", err.Error())
-		return k.Render(vdashboard.InboxPage(page, nil, nil, nil, "Could not load conversations."))
+		return k.Render(vdashboard.InboxPage(page, nil, nil, nil, page.T("inbox.flashError")))
 	}
 
-	return k.Render(vdashboard.InboxPage(page, threads, shopNames, nil, inboxFlash(k.Request.URL.Query().Get("flash"))))
+	return k.Render(vdashboard.InboxPage(page, threads, shopNames, nil, inboxFlash(page.I18N, k.Request.URL.Query().Get("flash"))))
 }
 
 // handleInboxSidebar is the polling response for the conversation list: the
@@ -109,7 +117,7 @@ func (a *App) handleInboxSidebar(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Text(http.StatusOK, "")
 	}
@@ -118,7 +126,7 @@ func (a *App) handleInboxSidebar(k *kit.Kit) error {
 	if err != nil {
 		return k.Text(http.StatusOK, "")
 	}
-	return k.Render(vdashboard.InboxSidebar(threads, activeInboxID(k), shopNames))
+	return k.Render(vdashboard.InboxSidebar(page.I18N, threads, activeInboxID(k), shopNames))
 }
 
 // handleInboxThread shows one conversation with its messages and reply box. On
@@ -135,7 +143,7 @@ func (a *App) handleInboxThread(k *kit.Kit) error {
 	if err2 != nil {
 		return err2
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Render(vdashboard.InboxPage(page, nil, nil, nil, ""))
 	}
@@ -160,7 +168,7 @@ func (a *App) handleInboxThread(k *kit.Kit) error {
 
 	ok := ""
 	if k.Request.URL.Query().Get("flash") == "sent" {
-		ok = "Reply sent."
+		ok = page.T("inbox.replySent")
 	}
 
 	if k.Request.Header.Get("HX-Request") == "true" {
@@ -181,19 +189,19 @@ func (a *App) handleInboxFragment(k *kit.Kit) error {
 	if err != nil {
 		return k.Text(http.StatusOK, "")
 	}
-	return k.Render(vdashboard.BubblesList(id, msgs))
+	return k.Render(vdashboard.BubblesList(a.kitLang(k), id, msgs))
 }
 
 // explanationForReply turns a failed reply into a line the operator can act
 // on, mirroring the template-rejection explanations.
-func explanationForReply(err error) string {
+func explanationForReply(dict *i18n.Dict, err error) string {
 	switch {
 	case errors.Is(err, whatsapp.ErrReplyWindowClosed):
-		return "The 24h customer service window has closed; message this customer with an approved template instead."
+		return dict.T("inbox.explWinClosed")
 	case errors.Is(err, whatsapp.ErrNotConfigured):
-		return "WhatsApp is not configured. Connect your number in Settings first."
+		return dict.T("inbox.explNotConfigured")
 	default:
-		return "The reply could not be sent: " + err.Error()
+		return dict.T("inbox.explFailed") + " " + err.Error()
 	}
 }
 
@@ -211,7 +219,7 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Redirect(http.StatusSeeOther, "/inbox")
 	}
@@ -229,18 +237,18 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 	errMsg, okMsg := "", ""
 	switch _, err := a.WhatsApp.SendReply(k.Request.Context(), id, body); {
 	case err == nil:
-		okMsg = "Reply sent."
+		okMsg = page.T("inbox.replySent")
 		// Re-fetch so the outgoing bubble shows up in the swapped card right away
 		// instead of waiting for the fragment poll.
 		conv, msgs, _ = a.WhatsApp.Thread(k.Request.Context(), id)
 	case errors.Is(err, whatsapp.ErrReplyWindowClosed):
-		errMsg = explanationForReply(err)
+		errMsg = explanationForReply(page.I18N, err)
 		// Re-fetch so a recorded failed bubble (e.g. a meta rejection) shows.
 		conv, msgs, _ = a.WhatsApp.Thread(k.Request.Context(), id)
 	case errors.Is(err, whatsapp.ErrConversationNotFound):
 		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
 	default:
-		errMsg = explanationForReply(err)
+		errMsg = explanationForReply(page.I18N, err)
 		conv, msgs, _ = a.WhatsApp.Thread(k.Request.Context(), id)
 	}
 
@@ -256,7 +264,7 @@ func (a *App) handleInboxReply(k *kit.Kit) error {
 		return k.Render(vdashboard.InboxPage(page, threads, shopNames, &vdashboard.ActiveInboxThread{Conv: conv, Msgs: msgs, Err: errMsg, Ok: okMsg}, ""))
 	}
 	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
-		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+		return k.Render(vdashboard.OOBNewBubble(page.I18N, conv.ID, msgs[len(msgs)-1]))
 	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
 }
@@ -274,7 +282,7 @@ func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Redirect(http.StatusSeeOther, "/inbox")
 	}
@@ -289,26 +297,25 @@ func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 
 	k.Request.Body = http.MaxBytesReader(k.Response, k.Request.Body, maxSendAudioBytes+1<<20)
 	if err := k.Request.ParseMultipartForm(maxSendAudioBytes + 1<<20); err != nil {
-		return k.Text(http.StatusBadRequest, "Audio upload too large (max 16 MB).")
+		return k.Text(http.StatusBadRequest, page.T("inbox.audioTooLarge"))
 	}
 
 	file, hdr, err := k.Request.FormFile("audio")
 	if err != nil {
-		return k.Text(http.StatusBadRequest, "Missing audio file.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.missingAudio"))
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return k.Text(http.StatusBadRequest, "Could not read audio file.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.readAudio"))
 	}
 	if len(data) == 0 || len(data) > maxSendAudioBytes {
-		return k.Text(http.StatusBadRequest, "Audio file is empty or larger than 16 MB.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.audioBadSize"))
 	}
 	mime := canonicalSendAudioMime(hdr.Header.Get("Content-Type"))
 	if mime == "" {
-		return k.Text(http.StatusBadRequest,
-			"WhatsApp does not accept this audio format (WebM is not supported). Use MP3, M4A, AAC, AMR or OGG.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.badAudioFmt"))
 	}
 
 	durationMS, _ := strconv.Atoi(k.Request.FormValue("duration_ms"))
@@ -319,18 +326,18 @@ func (a *App) handleInboxReplyAudio(k *kit.Kit) error {
 	errMsg, okMsg := "", ""
 	switch _, serr := a.WhatsApp.SendAudioReply(k.Request.Context(), id, mime, audioFilename(hdr.Filename, mime), data, durationMS); {
 	case serr == nil:
-		okMsg = "Voice note sent."
+		okMsg = page.T("inbox.voiceSent")
 	case errors.Is(serr, whatsapp.ErrReplyWindowClosed):
-		errMsg = explanationForReply(serr)
+		errMsg = explanationForReply(page.I18N, serr)
 	case errors.Is(serr, whatsapp.ErrConversationNotFound):
 		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
 	default:
-		errMsg = explanationForReply(serr)
+		errMsg = explanationForReply(page.I18N, serr)
 	}
 
 	conv, msgs, _ := a.WhatsApp.Thread(k.Request.Context(), id)
 	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
-		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+		return k.Render(vdashboard.OOBNewBubble(page.I18N, conv.ID, msgs[len(msgs)-1]))
 	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
 }
@@ -348,7 +355,7 @@ func (a *App) handleInboxReplyImage(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-	page := a.dashboardPage(k, "Inbox", "inbox", all)
+	page := a.dashboardPage(k, "inbox", "inbox", all)
 	if !page.WhatsAppConnected {
 		return k.Redirect(http.StatusSeeOther, "/inbox")
 	}
@@ -363,43 +370,42 @@ func (a *App) handleInboxReplyImage(k *kit.Kit) error {
 
 	k.Request.Body = http.MaxBytesReader(k.Response, k.Request.Body, maxSendImageBytes+1<<20)
 	if err := k.Request.ParseMultipartForm(maxSendImageBytes + 1<<20); err != nil {
-		return k.Text(http.StatusBadRequest, "Image upload too large (max 5 MB).")
+		return k.Text(http.StatusBadRequest, page.T("inbox.imageTooLarge"))
 	}
 
 	file, hdr, err := k.Request.FormFile("image")
 	if err != nil {
-		return k.Text(http.StatusBadRequest, "Missing image file.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.missingImage"))
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return k.Text(http.StatusBadRequest, "Could not read image file.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.readImage"))
 	}
 	if len(data) == 0 || len(data) > maxSendImageBytes {
-		return k.Text(http.StatusBadRequest, "Image file is empty or larger than 5 MB.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.imageBadSize"))
 	}
 	mime := canonicalSendImageMime(hdr.Header.Get("Content-Type"))
 	if mime == "" {
-		return k.Text(http.StatusBadRequest,
-			"WhatsApp does not accept this image format. Use JPG, PNG or WEBP.")
+		return k.Text(http.StatusBadRequest, page.T("inbox.badImageFmt"))
 	}
 
 	errMsg, okMsg := "", ""
 	switch _, serr := a.WhatsApp.SendImageReply(k.Request.Context(), id, mime, imageFilename(mime), data); {
 	case serr == nil:
-		okMsg = "Image sent."
+		okMsg = page.T("inbox.imageSent")
 	case errors.Is(serr, whatsapp.ErrReplyWindowClosed):
-		errMsg = explanationForReply(serr)
+		errMsg = explanationForReply(page.I18N, serr)
 	case errors.Is(serr, whatsapp.ErrConversationNotFound):
 		return k.Redirect(http.StatusSeeOther, "/inbox?flash=notfound")
 	default:
-		errMsg = explanationForReply(serr)
+		errMsg = explanationForReply(page.I18N, serr)
 	}
 
 	conv, msgs, _ := a.WhatsApp.Thread(k.Request.Context(), id)
 	if errMsg == "" && len(msgs) > 0 && msgs[len(msgs)-1].Direction == "outbound" {
-		return k.Render(vdashboard.OOBNewBubble(conv.ID, msgs[len(msgs)-1]))
+		return k.Render(vdashboard.OOBNewBubble(page.I18N, conv.ID, msgs[len(msgs)-1]))
 	}
 	return k.Render(vdashboard.ThreadCard(page, conv, msgs, errMsg, okMsg))
 }

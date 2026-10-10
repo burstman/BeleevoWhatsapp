@@ -105,35 +105,37 @@ func (a *App) handleIntegrations(k *kit.Kit) error {
 		shopNames[s.ID] = s.Name
 	}
 
+	page := a.dashboardPage(k, "shopIntegration", "integrations", all)
+	dict := page.I18N
+
 	flash := vdashboard.IntegrationFlash{}
 	switch k.Request.URL.Query().Get("flash") {
 	case "connected":
-		flash.Info = "Store connected — order webhooks are now subscribed."
+		flash.Info = dict.T("int.flashConnected")
 	case "refreshed":
-		flash.Info = "Access token refreshed."
+		flash.Info = dict.T("int.flashRefreshed")
 	case "tested":
-		flash.Info = "Connection test passed — Converty responds correctly."
+		flash.Info = dict.T("int.flashTested")
 	case "testfailed":
-		flash.Error = "Connection test failed — the tokens may be revoked. Try refreshing them or re-connect the store."
+		flash.Error = dict.T("int.flashTestFailed")
 	case "updated":
-		flash.Info = "Store details updated."
+		flash.Info = dict.T("int.flashUpdated")
 	case "activated":
-		flash.Info = "Integration activated."
+		flash.Info = dict.T("int.flashActivated")
 	case "deactivated":
-		flash.Info = "Integration deactivated — new order events will not be processed until you activate it again."
+		flash.Info = dict.T("int.flashDeactivated")
 	case "deleted":
-		flash.Info = "Integration deleted — its webhook subscriptions were removed."
+		flash.Info = dict.T("int.flashDeleted")
 	case "notfound":
-		flash.Error = "That integration no longer exists."
+		flash.Error = dict.T("int.flashNotFound")
 	case "missing":
-		flash.Error = "A store name is required."
+		flash.Error = dict.T("int.flashMissing")
 	case "credsmissing":
-		flash.Error = "Enter your Converty app client ID and client secret to connect."
+		flash.Error = dict.T("int.flashCredsMissing")
 	case "error", "internal":
-		flash.Error = "Something went wrong — try again."
+		flash.Error = dict.T("error.genericBody")
 	}
 
-	page := a.dashboardPage(k, "Shop Integration", "integrations", all)
 	return k.Render(vdashboard.IntegrationsPage(page, integrations, shopNames, flash))
 }
 

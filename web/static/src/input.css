@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Language switcher renders nothing until Alpine is ready: without this the
+   dropdown flashes on every page load. */
+[x-cloak] {
+  display: none !important;
+}
+
+/* Right-to-left (Arabic) needs an Arabic-first font stack and mirrored page
+   flow. Tailwind's logical properties handle spacing everywhere except the
+   bespoke overview CSS, which the RTL block below overrides. */
+[dir="rtl"] body {
+  font-family: "Noto Sans Arabic", "DM Sans", ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+[dir="rtl"] .overview-page {
+  text-align: right;
+}
+
+[dir="rtl"] .overview-page .topbar-inner,
+[dir="rtl"] .overview-page .welcome,
+[dir="rtl"] .overview-page .section-heading,
+[dir="rtl"] .overview-page .setup-footer,
+[dir="rtl"] .overview-page .overview-footer {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .overview-page .overview-footer .footer-line {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
 /* ==========================================================================
    Overview — standalone stylesheet
    Plain CSS only. No framework, no build step, no JavaScript.

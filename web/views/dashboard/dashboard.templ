@@ -4,16 +4,17 @@ import (
 	"strconv"
 
 	"whatsappconverty/internal/dashboard"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
 
 // automationsLabel pluralises the active-automation count for the setup card.
-func automationsLabel(n int) string {
+func automationsLabel(dict *i18n.Dict, n int) string {
 	if n == 1 {
-		return "1 active automation"
+		return dict.T("ov.automations1")
 	}
-	return strconv.Itoa(n) + " active automations"
+	return dict.Tf("ov.automationsN", n)
 }
 
 templ Overview(page components.Page, stats dashboard.Stats) {
@@ -22,21 +23,21 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 			<div class="overview-main">
 				<section class="welcome">
 					<div>
-						<p class="eyebrow">YOUR SHOP, AT A GLANCE</p>
-						<h1>Welcome back<span class="welcome-dot">.</span></h1>
-						<p class="welcome-description">Here's what's happening with your shop.</p>
+						<p class="eyebrow">{ page.T("ov.eyebrow") }</p>
+						<h1>{ page.T("ov.welcome") }<span class="welcome-dot">.</span></h1>
+						<p class="welcome-description">{ page.T("ov.welcomeDesc") }</p>
 					</div>
 					if stats.WhatsappConnected {
-						<span class="connection-status"><span class="status-dot" ></span>WhatsApp connected</span>
+						<span class="connection-status"><span class="status-dot" ></span>{ page.T("ov.waConnected") }</span>
 					} else {
-						<a href="/whatsapp/onboard" class="connection-status"><span class="status-dot" ></span>WhatsApp not enabled</a>
+						<a href="/whatsapp/onboard" class="connection-status"><span class="status-dot" ></span>{ page.T("ov.waNotEnabled") }</a>
 					}
 				</section>
 
 				<section class="metrics-section">
 					<div class="section-heading">
-						<h2>Messaging overview</h2>
-						<span class="period-label"><span class="period-dot" ></span>All time</span>
+						<h2>{ page.T("ov.messaging") }</h2>
+						<span class="period-label"><span class="period-dot" ></span>{ page.T("ov.allTime") }</span>
 					</div>
 
 					<div class="metrics-grid">
@@ -45,12 +46,12 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="metric-icon tone-blue">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>
 								</span>
-								<span class="metric-category">Messages</span>
+								<span class="metric-category">{ page.T("ov.catMessages") }</span>
 							</div>
-							<h3>Messages sent</h3>
+							<h3>{ page.T("ov.sent") }</h3>
 							<p class="metric-value">{ strconv.Itoa(stats.MessagesSent) }</p>
 							<div class="metric-footer">
-								<span class="tiny-dot tone-blue" ></span>Lifetime total
+								<span class="tiny-dot tone-blue" ></span>{ page.T("ov.lifetime") }
 							</div>
 						</article>
 
@@ -59,12 +60,12 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="metric-icon tone-green">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 4 4L19 5M10 16l3 3L23 9"/></svg>
 								</span>
-								<span class="metric-category">Messages</span>
+								<span class="metric-category">{ page.T("ov.catMessages") }</span>
 							</div>
-							<h3>Messages delivered</h3>
+							<h3>{ page.T("ov.delivered") }</h3>
 							<p class="metric-value">{ strconv.Itoa(stats.MessagesDelivered) }</p>
 							<div class="metric-footer">
-								<span class="tiny-dot tone-green" ></span>Lifetime total
+								<span class="tiny-dot tone-green" ></span>{ page.T("ov.lifetime") }
 							</div>
 						</article>
 
@@ -73,12 +74,12 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="metric-icon tone-red">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
 								</span>
-								<span class="metric-category">Messages</span>
+								<span class="metric-category">{ page.T("ov.catMessages") }</span>
 							</div>
-							<h3>Messages failed</h3>
+							<h3>{ page.T("ov.failed") }</h3>
 							<p class="metric-value">{ strconv.Itoa(stats.MessagesFailed) }</p>
 							<div class="metric-footer">
-								<span class="tiny-dot tone-red" ></span>Lifetime total
+								<span class="tiny-dot tone-red" ></span>{ page.T("ov.lifetime") }
 							</div>
 						</article>
 
@@ -87,11 +88,11 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="metric-icon tone-gray">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="7" r="4"/><path d="M3 21v-2a7 7 0 0 1 12-5M17 16l5 5M22 16l-5 5"/></svg>
 								</span>
-								<span class="metric-category">Customers</span>
+								<span class="metric-category">{ page.T("ov.catCustomers") }</span>
 							</div>
-							<h3>Not on WhatsApp</h3>
+							<h3>{ page.T("ov.notOnWhatsapp") }</h3>
 							<p class="metric-value">{ strconv.Itoa(stats.MessagesNotOnWhatsapp) }</p>
-							<div class="metric-footer">No WhatsApp account</div>
+							<div class="metric-footer">{ page.T("ov.noWaAccount") }</div>
 						</article>
 
 						<article class="metric-card">
@@ -99,12 +100,12 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="metric-icon tone-amber">
 									<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z"/></svg>
 								</span>
-								<span class="metric-category">Workflows</span>
+								<span class="metric-category">{ page.T("ov.catWorkflows") }</span>
 							</div>
-							<h3>Active automations</h3>
+							<h3>{ page.T("ov.activeAutomations") }</h3>
 							<p class="metric-value">{ strconv.Itoa(stats.ActiveAutomations) }</p>
 							<div class="metric-footer">
-								Status <span aria-hidden="true">&rarr;</span> template
+								{ page.T("ov.statusToTemplate") }
 							</div>
 						</article>
 					</div>
@@ -112,8 +113,8 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 
 				<section class="getting-started">
 					<div class="section-heading">
-						<h2>Getting started</h2>
-						<span class="section-caption">A little setup. A lot of connection.</span>
+						<h2>{ page.T("ov.gettingStarted") }</h2>
+						<span class="section-caption">{ page.T("ov.setupCaption") }</span>
 					</div>
 
 					<div class="setup-grid">
@@ -131,19 +132,18 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="art-spark spark-two" ></span>
 							</div>
 							<div class="setup-content">
-								<span class="step-label">STEP 01</span>
-								<h3>Enable WhatsApp</h3>
+								<span class="step-label">{ page.T("ov.step1") }</span>
+								<h3>{ page.T("ov.enableWa") }</h3>
 								<p>
-									Opt in to messaging through the platform's WhatsApp number and accept
-									the consent terms.
+									{ page.T("ov.enableWaBody") }
 								</p>
 								<div class="setup-footer">
 									if stats.WhatsappConnected {
-										<span class="setup-state"><span class="status-dot" ></span>Connected</span>
+										<span class="setup-state"><span class="status-dot" ></span>{ page.T("ov.connected") }</span>
 									} else {
 										<span class="setup-state neutral-state">
 											<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Z"/><path d="M12 8v5M12 16h.01"/></svg>
-											Not connected
+											{ page.T("ov.notConnected") }
 										</span>
 									}
 									<span class="step-number">01</span>
@@ -164,13 +164,13 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="art-spark spark-two" ></span>
 							</div>
 							<div class="setup-content">
-								<span class="step-label">STEP 02</span>
-								<h3>Create automations</h3>
-								<p>Map order statuses to approved message templates.</p>
+								<span class="step-label">{ page.T("ov.step2") }</span>
+								<h3>{ page.T("ov.createAutomations") }</h3>
+								<p>{ page.T("ov.createAutomationsBody") }</p>
 								<div class="setup-footer">
 									<span class="setup-state neutral-state">
 										<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z"/></svg>
-										{ automationsLabel(stats.ActiveAutomations) }
+										{ automationsLabel(page.I18N, stats.ActiveAutomations) }
 									</span>
 									<span class="step-number">02</span>
 								</div>
@@ -191,13 +191,13 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 								<span class="art-spark spark-two" ></span>
 							</div>
 							<div class="setup-content">
-								<span class="step-label">STEP 03</span>
-								<h3>Manage templates</h3>
-								<p>Submit and track the approval of your WhatsApp message templates.</p>
+								<span class="step-label">{ page.T("ov.step3") }</span>
+								<h3>{ page.T("ov.manageTemplates") }</h3>
+								<p>{ page.T("ov.manageTemplatesBody") }</p>
 								<div class="setup-footer">
 									<span class="setup-state neutral-state">
 										<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
-										Message templates
+										{ page.T("ov.messageTemplates") }
 									</span>
 									<span class="step-number">03</span>
 								</div>
@@ -208,7 +208,7 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 
 				<footer class="overview-footer">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 11h8M8 15h5"/></svg>
-					<span>Better conversations. Stronger connections.</span>
+					<span>{ page.T("ov.footer") }</span>
 					<span class="footer-line" ></span>
 				</footer>
 			</div>
@@ -218,6 +218,6 @@ templ Overview(page components.Page, stats dashboard.Stats) {
 
 templ Placeholder(page components.Page, section string) {
 	@layouts.Shell(page) {
-		@components.EmptyState("Coming soon", "This module lands in a later phase. It will let "+ "you manage "+ section + " from your dashboard.")
+		@components.EmptyState(page.T("common.comingSoon"), page.Tf("common.comingSoonBody", page.T("title."+section)))
 	}
 }

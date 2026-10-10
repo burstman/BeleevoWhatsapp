@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
@@ -18,19 +19,19 @@ type AutomationFlash struct {
 	Info  string
 }
 
-func typeLabel(a automations.Automation) string {
+func typeLabel(dict *i18n.Dict, a automations.Automation) string {
 	if a.DelayMinutes != nil {
-		return "Delayed"
+		return dict.T("automations.typeDelayed")
 	}
 	if a.SendTime != nil {
-		return "Scheduled"
+		return dict.T("automations.typeScheduled")
 	}
-	return "Instant"
+	return dict.T("automations.typeInstant")
 }
 
-func typeDetail(a automations.Automation) string {
+func typeDetail(dict *i18n.Dict, a automations.Automation) string {
 	if a.DelayMinutes != nil {
-		return fmt.Sprintf("%d min after the event", *a.DelayMinutes)
+		return dict.Tf("automations.delayDetail", *a.DelayMinutes)
 	}
 	if a.SendTime != nil {
 		tz := a.SendTimezone
@@ -44,17 +45,14 @@ func typeDetail(a automations.Automation) string {
 
 var dayNames = [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
 
-func daysLabel(days []int) string {
-	if len(days) == 0 {
-		return "All days"
-	}
-	if len(days) == 7 {
-		return "All days"
+func daysLabel(dict *i18n.Dict, days []int) string {
+	if len(days) == 0 || len(days) == 7 {
+		return dict.T("automations.allDays")
 	}
 	var parts []string
 	for _, d := range days {
 		if d >= 1 && d <= 7 {
-			parts = append(parts, dayNames[d-1])
+			parts = append(parts, dict.T("automations.day."+dayNames[d-1]))
 		}
 	}
 	return strings.Join(parts, ", ")
@@ -116,18 +114,18 @@ func selectedMode(a *automations.Automation) string {
 	return "instant"
 }
 
-templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, shopNames map[uuid.UUID]string) {
+templ automationCardBody(dict *i18n.Dict, a automations.Automation, templateNames map[uuid.UUID]string, templateBodies map[uuid.UUID]string, shopNames map[uuid.UUID]string) {
 	<div class="p-5">
 		<div class="flex items-start justify-between gap-4">
 			<div>
 				<div class="flex items-center gap-2">
 					<span class="text-base font-bold text-slate-900">{ a.Name }</span>
 					if a.Enabled {
-						<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
+						<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">{ dict.T("automations.active") }</span>
 					} else {
-						<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Paused</span>
+						<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{ dict.T("automations.paused") }</span>
 					}
-					<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" title="Owner shop">{ shopNames[a.ShopID] }</span>
+					<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" title={ dict.T("automations.ownerShop") }>{ shopNames[a.ShopID] }</span>
 				</div>
 				if a.Description != "" {
 					<div class="mt-1 text-sm text-slate-500">{ a.Description }</div>
@@ -139,60 +137,60 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 					if a.Enabled {
 						<input type="hidden" name="enabled" value="0" />
 						<button type="submit"
-							class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Pause</button>
+							class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">{ dict.T("automations.pause") }</button>
 					} else {
 						<input type="hidden" name="enabled" value="1" />
 						<button type="submit"
-							class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Enable</button>
+							class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">{ dict.T("automations.enable") }</button>
 					}
 				</form>
 				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/history") }
-					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">History</a>
+					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">{ dict.T("automations.history") }</a>
 				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/edit") }
-					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Edit</a>
+					class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50">{ dict.T("automations.edit") }</a>
 				if a.TemplateID != uuid.Nil {
 					<button type="button" @click="testOpen = true"
-						class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100">Test</button>
+						class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100">{ dict.T("automations.test") }</button>
 				}
 				<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/delete") }
-					onsubmit="return confirm('Delete this automation?')">
+					data-confirm={ dict.T("automations.deleteConfirm") }>
 					<button type="submit"
-						class="rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">Delete</button>
+						class="rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">{ dict.T("automations.delete") }</button>
 				</form>
 			</div>
 		</div>
 
 		<div class="mt-4 grid grid-cols-2 gap-4 border-y border-slate-100 py-3 lg:grid-cols-4">
 			<div>
-				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Type</div>
-				<div class="mt-1 text-sm font-medium text-slate-700">{ typeLabel(a) }</div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">{ dict.T("automations.type") }</div>
+				<div class="mt-1 text-sm font-medium text-slate-700">{ typeLabel(dict, a) }</div>
 				if a.SendTime != nil && len(a.SendDays) > 0 {
-					<div class="text-xs text-slate-400">{ daysLabel(a.SendDays) }</div>
+					<div class="text-xs text-slate-400">{ daysLabel(dict, a.SendDays) }</div>
 				}
-				<div class="text-xs text-slate-400">{ typeDetail(a) }</div>
+				<div class="text-xs text-slate-400">{ typeDetail(dict, a) }</div>
 			</div>
 			<div>
-				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Trigger</div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">{ dict.T("automations.trigger") }</div>
 				<div class="mt-1">
 					<span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{ automations.SourceLabel(a.EventSource) }</span>
 				</div>
 				<div class="mt-1 text-sm font-semibold text-slate-900">{ a.OrderStatus }</div>
 			</div>
 			<div>
-				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Template</div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">{ dict.T("automations.template") }</div>
 				if a.TemplateID == uuid.Nil {
 					<div class="mt-1">
-						<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600">Deleted</span>
+						<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600">{ dict.T("automations.deleted") }</span>
 					</div>
 				} else {
 					<div class="mt-1">
-						<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Approved</span>
+						<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">{ dict.T("automations.approved") }</span>
 					</div>
 					<div class="mt-1 text-sm font-medium text-slate-900">{ templateNames[a.TemplateID] }</div>
 				}
 			</div>
 			<div>
-				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">Message</div>
+				<div class="text-xs font-medium uppercase tracking-wide text-slate-400">{ dict.T("automations.message") }</div>
 				<div class="mt-1 truncate text-sm text-slate-500">{ templateBodies[a.TemplateID] }</div>
 			</div>
 		</div>
@@ -207,9 +205,9 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<h4 class="text-base font-semibold text-slate-900">Test message</h4>
+						<h4 class="text-base font-semibold text-slate-900">{ dict.T("automations.testMessage") }</h4>
 						<p class="mt-1 text-sm text-slate-500">
-							Template: <span class="font-medium text-slate-700">{ templateNames[a.TemplateID] }</span>
+							{ dict.T("automations.templateLabel") } <span class="font-medium text-slate-700">{ templateNames[a.TemplateID] }</span>
 						</p>
 					</div>
 					<button type="button" @click="testOpen = false"
@@ -222,21 +220,20 @@ templ automationCardBody(a automations.Automation, templateNames map[uuid.UUID]s
 
 				<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/test") }
 					class="mt-4">
-					<label class="block text-xs font-medium text-slate-600">WhatsApp number</label>
+					<label class="block text-xs font-medium text-slate-600">{ dict.T("automations.phoneNumber") }</label>
 					<input name="phone" type="tel" required inputmode="tel"
-						placeholder="e.g. +21624118849"
+						placeholder={ dict.T("automations.phonePlaceholder") }
 						class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
 					<p class="mt-1 text-xs text-slate-400">
-						Use international format. The recipient must be in your WhatsApp test phone list
-						or have an open 24h conversation.
+						{ dict.T("automations.testHelp") }
 					</p>
 
 					<div class="mt-4 flex items-center justify-end gap-2">
 						<button type="button" @click="testOpen = false"
-							class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Cancel</button>
+							class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">{ dict.T("common.cancel") }</button>
 						<button type="submit"
 							class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
-							Send test message
+							{ dict.T("automations.sendTest") }
 						</button>
 					</div>
 				</form>
@@ -251,15 +248,14 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 		<div class="space-y-6">
 			<div class="flex items-center justify-between gap-4">
 				<div>
-					<h2 class="text-2xl font-bold text-slate-900">Automations</h2>
+					<h2 class="text-2xl font-bold text-slate-900">{ page.T("title.automations") }</h2>
 					<p class="mt-1 text-sm text-slate-500">
-						Each automation sends an approved template when an event happens —
-						instant, at a fixed time, or after a delay.
+						{ page.T("automations.subtitle") }
 					</p>
 				</div>
 				<a href="/automations/new"
 					class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-200">
-					New automation
+					{ page.T("automations.new") }
 				</a>
 			</div>
 
@@ -272,20 +268,19 @@ templ AutomationsPage(page components.Page, list []automations.Automation, templ
 
 			if len(list) == 0 {
 				<div class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-					<div class="text-sm font-semibold text-slate-700">No automations yet</div>
+					<div class="text-sm font-semibold text-slate-700">{ page.T("automations.none") }</div>
 					<div class="mt-1 text-sm text-slate-500">
-						Create the first one — for example a "delivered" event that sends your
-						order_delivered template at 10:00.
+						{ page.T("automations.noneHint") }
 					</div>
 					<a href="/automations/new"
 						class="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-						Create an automation
+						{ page.T("automations.create") }
 					</a>
 				</div>
 			} else {
 				for _, a := range list {
 					<div class={ templ.SafeClass(borderClass(a.Enabled)) } x-data="{ testOpen: false }">
-						@automationCardBody(a, templateNames, templateBodies, shopNames)
+						@automationCardBody(page.I18N, a, templateNames, templateBodies, shopNames)
 					</div>
 				}
 			}

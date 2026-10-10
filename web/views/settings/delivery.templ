@@ -1,12 +1,13 @@
 package settings
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/delivery"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
 )
@@ -22,16 +23,16 @@ type DeliveryFlash struct {
 const pollStaleAfter = 10 * time.Minute
 
 // seenAge renders an elapsed time in the compact form the table uses.
-func seenAge(d time.Duration) string {
+func seenAge(dict *i18n.Dict, d time.Duration) string {
 	switch {
 	case d < time.Minute:
-		return "just now"
+		return dict.T("dlv.justNow")
 	case d < time.Hour:
-		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+		return dict.Tf("dlv.minutesAgo", int(d.Minutes()))
 	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
+		return dict.Tf("dlv.hoursAgo", int(d.Hours()))
 	}
-	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	return dict.Tf("dlv.daysAgo", int(d.Hours()/24))
 }
 
 // seenClass marks a parcel the poller has not touched in a while, so an operator
@@ -59,21 +60,18 @@ func watchedSummary(tracked []delivery.TrackedOrder) (watched, withDriver, termi
 	return
 }
 
-func watchedSummaryText(tracked []delivery.TrackedOrder) string {
+func watchedSummaryText(dict *i18n.Dict, tracked []delivery.TrackedOrder) string {
 	watched, withDriver, terminal := watchedSummary(tracked)
-	return fmt.Sprintf("%d watched \u00b7 %d with a driver \u00b7 %d finished", watched, withDriver, terminal)
+	return dict.T("dlv.watched") + " " + strconv.Itoa(watched) + " \u00b7 " + dict.T("dlv.withDriver") + " " + strconv.Itoa(withDriver) + " \u00b7 " + dict.T("dlv.finished") + " " + strconv.Itoa(terminal)
 }
 
-templ Delivery(page components.Page, integ *delivery.Integration, tracked []delivery.TrackedOrder, shopNames map[uuid.UUID]string, flash DeliveryFlash) {
+templ Delivery(page components.Page, dict *i18n.Dict, integ *delivery.Integration, tracked []delivery.TrackedOrder, shopNames map[uuid.UUID]string, flash DeliveryFlash) {
 	@layouts.Shell(page) {
 		{{ now := time.Now() }}
 		<div class="mx-auto max-w-[1800px] space-y-6">
 			<div class="max-w-3xl">
-				<h1 class="text-2xl font-bold text-slate-900">Delivery</h1>
-				<p class="mt-1 text-sm text-slate-500">
-					Connect a delivery provider so parcel status changes fire your order-event automations.
-					First provider: Mes Colis Express.
-				</p>
+				<h1 class="text-2xl font-bold text-slate-900">{ page.T("dlv.title") }</h1>
+				<p class="mt-1 text-sm text-slate-500">{ page.T("dlv.subtitle") }</p>
 			</div>
 
 			if flash.Error != "" {
@@ -85,37 +83,33 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 
 			if integ == nil {
 				<div class="max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-slate-900">Connect Mes Colis Express</h2>
-					<p class="mt-2 text-sm text-slate-600">
-						Paste the API access token of your Mes Colis account. The token is stored
-						encrypted and is validated against the Mes Colis API before saving. Parcels are
-						polled for status changes every couple of minutes.
-					</p>
+					<h2 class="text-lg font-semibold text-slate-900">{ page.T("dlv.connect") }</h2>
+					<p class="mt-2 text-sm text-slate-600">{ page.T("dlv.connectBody") }</p>
 					<form method="post" action="/settings/delivery/connect" class="mt-6 space-y-4">
 						<div>
-							<label for="access-token" class="block text-sm font-medium text-slate-700">Mes Colis access token (x-access-token)</label>
+							<label for="access-token" class="block text-sm font-medium text-slate-700">{ page.T("dlv.tokenLabel") }</label>
 							<input id="access-token" name="access_token" type="password" required
-								placeholder="Paste your Mes Colis access token"
+								placeholder={ page.T("dlv.tokenPlaceholder") }
 								class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<label for="account-code" class="block text-sm font-medium text-slate-700">Account code (optional)</label>
+								<label for="account-code" class="block text-sm font-medium text-slate-700">{ page.T("dlv.accountCode") }</label>
 								<input id="account-code" name="account_code" type="text"
-									placeholder="For sub-account access"
+									placeholder={ page.T("dlv.accountCodePlaceholder") }
 									class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
 							</div>
 							<div class="flex items-end pb-1">
 								<label class="flex items-center gap-2 text-sm text-slate-700">
 									<input type="checkbox" name="allow_sub_account" value="1"
 										class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-									Use sub-account access
+									{ page.T("dlv.subAccount") }
 								</label>
 							</div>
 						</div>
 						<button type="submit"
 							class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-							Connect
+							{ page.T("was.connect") }
 						</button>
 					</form>
 				</div>
@@ -124,50 +118,44 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 					<div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
 						<div class="flex items-center gap-3">
 							<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
-								<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Mes Colis connected
+								<span class="h-2 w-2 rounded-full bg-emerald-500"></span> { page.T("dlv.connected") }
 							</span>
 						</div>
 						<form method="post" action="/settings/delivery/disconnect"
-							onsubmit="return confirm('Disconnect Mes Colis? Delivery automations will stop firing.')">
+							data-confirm={ page.T("dlv.disconnectConfirm") }>
 							<button type="submit"
 								class="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
-								Disconnect
+								{ page.T("was.disconnect") }
 							</button>
 						</form>
 					</div>
 					<div class="px-6 py-4 text-sm text-slate-600">
-						Parcel statuses are polled automatically. A parcel starts being tracked by
-						itself on every Converty upload event that carries the tracking reference —
-						the barcode, order id, customer name and phone are all captured from the
-						order, so there is nothing to enter here.
+						{ page.T("dlv.connectedBody") }
 					</div>
 				</div>
 			}
 
 			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 				<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-6 py-4">
-					<h3 class="text-sm font-semibold text-slate-700">Tracked parcels</h3>
+					<h3 class="text-sm font-semibold text-slate-700">{ page.T("dlv.tracked") }</h3>
 					if len(tracked) > 0 {
-						<span class="text-xs text-slate-500">{ watchedSummaryText(tracked) }</span>
+						<span class="text-xs text-slate-500">{ watchedSummaryText(dict, tracked) }</span>
 					}
 				</div>
 				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 text-xs text-slate-500">
-					<span>
-						Parcels appear when a Converty order event carries a tracking reference. You can
-						remove one here to stop polling it.
-					</span>
+					<span>{ page.T("dlv.trackedHint") }</span>
 					if integ != nil {
 						<form method="post" action="/settings/delivery/poll">
 							<button type="submit"
 								class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
-							Check now
+							{ page.T("dlv.checkNow") }
 						</button>
 						</form>
 					}
 				</div>
 				if len(tracked) == 0 {
 					<div class="px-6 py-10 text-center text-sm text-slate-500">
-						No parcels being watched yet. Once a Converty order event carries a tracking reference, the parcel appears here automatically.
+						{ page.T("dlv.empty") }
 					</div>
 				} else {
 					// The card clips its corners, so keep the table inside it. Gutter
@@ -178,13 +166,13 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 					<table class="w-full table-fixed text-left text-sm">
 						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
 <tr>
-									<th class="hidden w-[10%] px-3 py-3 font-medium first:pl-6 xl:table-cell">Shop</th>
-									<th class="w-[13%] px-3 py-3 font-medium first:pl-6">Barcode</th>
-									<th class="w-[10%] px-3 py-3 font-medium">Order</th>
-									<th class="w-[15%] px-3 py-3 font-medium">Customer</th>
-									<th class="w-[14%] px-3 py-3 font-medium">Status</th>
-									<th class="w-[14%] px-3 py-3 font-medium">Driver</th>
-									<th class="w-[15%] px-3 py-3 font-medium last:pr-6">Last seen</th>
+									<th class="hidden w-[10%] px-3 py-3 font-medium first:pl-6 xl:table-cell">{ page.T("dlv.colShop") }</th>
+									<th class="w-[13%] px-3 py-3 font-medium first:pl-6">{ page.T("dlv.colBarcode") }</th>
+									<th class="w-[10%] px-3 py-3 font-medium">{ page.T("dlv.colOrder") }</th>
+									<th class="w-[15%] px-3 py-3 font-medium">{ page.T("dlv.colCustomer") }</th>
+									<th class="w-[14%] px-3 py-3 font-medium">{ page.T("dlv.colStatus") }</th>
+									<th class="w-[14%] px-3 py-3 font-medium">{ page.T("dlv.colDriver") }</th>
+									<th class="w-[15%] px-3 py-3 font-medium last:pr-6">{ page.T("dlv.colSeen") }</th>
 									<th class="w-[9%] px-3 py-3 font-medium last:pr-6"></th>
 								</tr>
 							</thead>
@@ -203,7 +191,7 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 									<td class="px-3 py-3 text-slate-600">{ t.CustomerName } { t.CustomerPhone }</td>
 									<td class="px-3 py-3">
 										if t.LastStatus == "" {
-											<span class="text-slate-500">waiting for first poll</span>
+											<span class="text-slate-500">{ page.T("dlv.firstPoll") }</span>
 										} else {
 											<span class="font-medium text-slate-900">{ t.StatusLabel }</span>
 											<span class="text-xs text-slate-500"> ({ t.LastStatus })</span>
@@ -214,31 +202,31 @@ templ Delivery(page components.Page, integ *delivery.Integration, tracked []deli
 											if t.DriverName != "" {
 												<span class="font-medium text-slate-900">{ t.DriverName }</span>
 											} else {
-												<span class="text-slate-500">name not reported</span>
+												<span class="text-slate-500">{ page.T("dlv.noName") }</span>
 											}
 											if t.DriverPhone != "" {
 												<span class="ml-1 text-xs text-slate-500">{ t.DriverPhone }</span>
 											}
 										} else {
-											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not assigned</span>
+											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{ page.T("dlv.unassigned") }</span>
 										}
 									</td>
 									<td class="px-3 py-3">
 										if t.MissingCount > 0 {
-											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">not listed at the carrier, { seenAge(t.MissingFor(now)) }</span>
+											<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{ page.T("dlv.missing") } { seenAge(dict, t.MissingFor(now)) }</span>
 										} else {
-											<span class={ seenClass(now.Sub(t.LastSeenAt)) }>{ seenAge(now.Sub(t.LastSeenAt)) }</span>
+											<span class={ seenClass(now.Sub(t.LastSeenAt)) }>{ seenAge(dict, now.Sub(t.LastSeenAt)) }</span>
 										}
 										if t.LastStatus == delivery.StatusRemovedUpstream {
-											<span class="ml-1 text-xs text-slate-500">deleted at the carrier, no longer polled</span>
+											<span class="ml-1 text-xs text-slate-500">{ page.T("dlv.removedUpstream") }</span>
 										} else if delivery.StatusTerminal(t.LastStatus) {
-											<span class="ml-1 text-xs text-slate-500">final, no longer polled</span>
+											<span class="ml-1 text-xs text-slate-500">{ page.T("dlv.terminalNote") }</span>
 										}
 									</td>
 									<td class="px-3 py-3 text-right last:pr-6">
 										<form method="post" action={ templ.SafeURL("/settings/delivery/track/" + t.Barcode + "/remove") }
-											onsubmit="return confirm('Stop tracking this parcel?')">
-											<button type="submit" class="whitespace-nowrap text-sm font-medium text-rose-600 transition hover:text-rose-700">Remove</button>
+											data-confirm={ page.T("dlv.removeConfirm") }>
+											<button type="submit" class="whitespace-nowrap text-sm font-medium text-rose-600 transition hover:text-rose-700">{ page.T("dlv.remove") }</button>
 										</form>
 									</td>
 								</tr>

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,37 +55,39 @@ func (a *App) handleDeliverySettings(k *kit.Kit) error {
 		}
 	}
 
+	shopNames := shopNameMap(all)
+	page := a.dashboardPage(k, "delivery", "delivery", all)
+	dict := page.I18N
+
 	flash := vsettings.DeliveryFlash{}
 	switch k.Request.URL.Query().Get("flash") {
 	case "connected":
-		flash.Info = "Mes Colis connected — parcel statuses are now polled."
+		flash.Info = dict.T("dlv.flashConnected")
 	case "testfailed":
 		if msg := k.Request.URL.Query().Get("error"); msg != "" {
-			flash.Error = "Connection test failed: " + msg
+			flash.Error = dict.T("dlv.flashTestFailed") + " " + msg
 		} else {
-			flash.Error = "Connection test failed — check that the access token is valid for Mes Colis Express."
+			flash.Error = dict.T("dlv.flashTestFailedBody")
 		}
 	case "missing":
-		flash.Error = "The access token is required."
+		flash.Error = dict.T("dlv.flashMissing")
 	case "error", "internal":
-		flash.Error = "Something went wrong — try again."
+		flash.Error = dict.T("error.genericBody")
 	case "disconnected":
-		flash.Info = "Delivery provider disconnected."
+		flash.Info = dict.T("dlv.flashDisconnected")
 	case "removed":
-		flash.Info = "Parcel removed from tracking."
+		flash.Info = dict.T("dlv.flashRemoved")
 	case "polled":
 		changes, _ := strconv.Atoi(k.Request.URL.Query().Get("changes"))
 		checked, _ := strconv.Atoi(k.Request.URL.Query().Get("checked"))
 		if changes == 0 {
-			flash.Info = fmt.Sprintf("Checked %d parcel(s) — no new status changes.", checked)
+			flash.Info = dict.Tf("dlv.flashPolledNone", checked)
 		} else {
-			flash.Info = fmt.Sprintf("Checked %d parcel(s) — %d status change(s) found.", checked, changes)
+			flash.Info = dict.Tf("dlv.flashPolledChanges", checked, changes)
 		}
 	}
 
-	shopNames := shopNameMap(all)
-	page := a.dashboardPage(k, "Delivery", "delivery", all)
-	return k.Render(vsettings.Delivery(page, integPtr, tracked, shopNames, flash))
+	return k.Render(vsettings.Delivery(page, dict, integPtr, tracked, shopNames, flash))
 }
 
 // handleDeliveryConnect stores the shared Mes Colis access token after a live

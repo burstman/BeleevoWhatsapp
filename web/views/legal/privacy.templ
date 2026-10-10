@@ -1,9 +1,13 @@
 package viewslegal
 
+import "whatsappconverty/internal/i18n"
+
 // Privacy is the public Privacy Policy page (Meta requires each live app to
-// publish one). Served unauthenticated at /privacy.
-templ Privacy(supportEmail string) {
-	@Shell("Privacy Policy", "How Converty WhatsApp collects, uses, shares and deletes personal data.") {
+// publish one). Served unauthenticated at /privacy. The chrome follows the
+// viewer's language; the legal text itself is kept in English because wording
+// precision matters more than localisation for that page.
+templ Privacy(supportEmail string, dict *i18n.Dict) {
+	@Shell("Privacy Policy", "How Converty WhatsApp collects, uses, shares and deletes personal data.", dict) {
 <h1 class="text-3xl font-bold text-slate-900">Privacy Policy</h1>
 				<p class="mt-1 text-sm text-slate-500">Last updated: September 27, 2026</p>
 
@@ -120,7 +124,7 @@ templ Privacy(supportEmail string) {
 
 				<section>
 					<h2 class="text-lg font-semibold text-slate-900">10. Contact</h2>
-					@contactLine(supportEmail, "Privacy")
+					@contactLine(supportEmail, "Privacy", dict)
 				</section>
 
 					<section>
@@ -133,6 +137,6 @@ templ Privacy(supportEmail string) {
 					</section>
 				</div>
 
-		@legalFooter()
+		@legalFooter(dict)
 	}
 }

@@ -80,7 +80,7 @@ func (a *App) handleAutomations(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Automations", "automations", all)
+	page := a.dashboardPage(k, "automations", "automations", all)
 	return k.Render(vdashboard.AutomationsPage(page, list, approved, names, bodies, shopNames,
 		automations.DeliveryStatuses(), flash))
 }
@@ -173,7 +173,7 @@ func (a *App) handleAutomationHistory(k *kit.Kit) error {
 		}
 	}
 
-	page := a.dashboardPage(k, "Send history", "automations", all)
+	page := a.dashboardPage(k, "sendHistory", "automations", all)
 	retry := retryOutcome(k)
 	return k.Render(vdashboard.AutomationHistoryPage(page, *automation, templateName, rows, counts, suppressions, retry))
 }
@@ -247,7 +247,7 @@ func (a *App) handleAutomationEdit(k *kit.Kit) error {
 		flash.Error = "Something went wrong — try again."
 	}
 
-	page := a.dashboardPage(k, "Automation", "automations", all)
+	page := a.dashboardPage(k, "automation", "automations", all)
 	source, sourceCounts := defaultEventSource(automation, approved)
 	return k.Render(vdashboard.AutomationFormPage(page, automation, fitSource(approved, source), templateShops,
 		automations.DeliveryStatuses(), automation != nil, flash, source, sourceCounts))

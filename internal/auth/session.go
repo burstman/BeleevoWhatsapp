@@ -33,12 +33,12 @@ func (s *Service) userByToken(ctx context.Context, token string) (Auth, error) {
 	var user User
 
 	err := s.pool.QueryRow(ctx, `
-		SELECT u.id, u.email, u.name, u.role
+		SELECT u.id, u.email, u.name, u.role, u.lang
 		FROM auth_sessions a
 		JOIN users u ON u.id = a.user_id
 		WHERE a.token = $1 AND a.expires_at > now()`,
 		token,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.Role)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.Lang)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Auth{}, nil
 	}

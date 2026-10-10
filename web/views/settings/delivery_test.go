@@ -31,7 +31,7 @@ func TestDeliveryPageGivesTheParcelsTableRoom(t *testing.T) {
 	shops := map[uuid.UUID]string{shopID: "Converty Tunis"}
 
 	var sb strings.Builder
-	err := Delivery(components.Page{Title: "Delivery", Active: "settings"}, nil, tracked, shops, DeliveryFlash{}).Render(t.Context(), &sb)
+	err := Delivery(components.Page{Title: "Delivery", Active: "settings"}, nil, nil, tracked, shops, DeliveryFlash{}).Render(t.Context(), &sb)
 	if err != nil {
 		t.Fatalf("render delivery page: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestDeliveryPageGivesTheParcelsTableRoom(t *testing.T) {
 // The long text blocks stay readable rather than stretching the full width.
 func TestDeliveryPageKeepsProseReadable(t *testing.T) {
 	var sb strings.Builder
-	if err := Delivery(components.Page{Title: "Delivery", Active: "settings"}, nil, nil, nil, DeliveryFlash{}).Render(t.Context(), &sb); err != nil {
+	if err := Delivery(components.Page{Title: "Delivery", Active: "settings"}, nil, nil, nil, nil, DeliveryFlash{}).Render(t.Context(), &sb); err != nil {
 		t.Fatalf("render delivery page: %v", err)
 	}
 	html := sb.String()

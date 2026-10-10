@@ -1,6 +1,10 @@
 package components
 
-import "github.com/anthdm/superkit/validate"
+import (
+	"github.com/anthdm/superkit/validate"
+
+	"whatsappconverty/internal/i18n"
+)
 
 // FieldErrors renders inline validation errors for a form field when present.
 templ FieldErrors(field string, errors validate.Errors) {
@@ -37,10 +41,10 @@ templ ToastTarget() {
 }
 
 // LogoutForm is a tiny POST form used in the topbar.
-templ LogoutForm() {
+templ LogoutForm(dict *i18n.Dict) {
 	<form method="POST" action="/logout">
-		<button type="submit" class="rounded-md px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white">
-			Sign out
+		<button type="submit" class="rounded-md px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100">
+			{ dict.T("auth.signOut") }
 		</button>
 	</form>
 }

@@ -1,6 +1,7 @@
 package viewsdashboard
 
 import (
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
@@ -13,15 +14,14 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
 				<div>
-					<h2 class="text-xl font-semibold text-slate-900">Templates</h2>
+					<h2 class="text-xl font-semibold text-slate-900">{ page.T("tpl.title") }</h2>
 					<p class="text-sm text-slate-500">
-						Only <span class="font-medium text-emerald-600">approved</span> templates can be
-						sent. Approval is decided by Meta's review — not by us.
+						{ page.T("tpl.subtitleA") }<span class="font-medium text-emerald-600">{ page.T("tpl.approvedWord") }</span>{ page.T("tpl.subtitleB") }
 					</p>
 				</div>
 				<a href="/templates/refresh"
 					class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-					Refresh from Meta
+					{ page.T("tpl.refresh") }
 				</a>
 			</div>
 
@@ -35,10 +35,9 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 			<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 				<div class="flex items-center justify-between">
 					<div>
-						<h3 class="text-sm font-semibold text-slate-700">Create a template</h3>
+						<h3 class="text-sm font-semibold text-slate-700">{ page.T("tpl.create") }</h3>
 						<p class="mt-1 text-xs text-slate-500">
-							Submitted to Meta for review. Category is fixed to <span class="font-medium">Utility</span> —
-							this platform only sends transactional updates, not marketing.
+							{ page.T("tpl.createHintA") }<span class="font-medium">{ page.T("tpl.utility") }</span>{ page.T("tpl.createHintB") }
 						</p>
 					</div>
 					<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">UTILITY</span>
@@ -47,24 +46,24 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 				<form id="createTemplateForm" method="post" action="/templates/create" class="mt-4 space-y-3"
 					x-data="templateEditor" @submit="onSubmit">
 					<div>
-						<label for="tplSource" class="block text-xs font-medium text-slate-600">This message is for</label>
+						<label for="tplSource" class="block text-xs font-medium text-slate-600">{ page.T("tpl.sourceFor") }</label>
 						<select id="tplSource" name="source" x-model="source" required
 							class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
 							for _, opt := range whatsapp.SourceOptions() {
-								<option value={ opt.Value }>{ opt.Label } — { opt.Hint }</option>
+								<option value={ opt.Value }>{ page.T("src." + opt.Value + ".label") } — { page.T("src." + opt.Value + ".hint") }</option>
 							}
 						</select>
 					</div>
 
 					<div class="grid gap-3 sm:grid-cols-2">
 						<div>
-							<label for="tplName" class="block text-xs font-medium text-slate-600">Name</label>
+							<label for="tplName" class="block text-xs font-medium text-slate-600">{ page.T("tpl.name") }</label>
 							<input id="tplName" name="name" required pattern="[a-z0-9_]{1,60}"
-								placeholder="order_shipped" title="lowercase letters, digits, underscores"
+								placeholder="order_shipped" title={ page.T("tpl.nameTitle") }
 								class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
 						</div>
 						<div>
-							<label for="tplLang" class="block text-xs font-medium text-slate-600">Language</label>
+							<label for="tplLang" class="block text-xs font-medium text-slate-600">{ page.T("tpl.language") }</label>
 							<select id="tplLang" name="language" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
 								<option value="ar">Arabic (ar)</option>
 								<option value="en">English (en)</option>
@@ -74,27 +73,24 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 					</div>
 
 					<div>
-						<label class="block text-xs font-medium text-slate-600">Message</label>
-						<p class="mt-1 text-xs text-slate-500">
-							Write the message and drag a variable in where the customer's info should appear. No need
-							to type &#123;&#123;1&#125;&#125; — the chips handle it.
-						</p>
+						<label class="block text-xs font-medium text-slate-600">{ page.T("tpl.message") }</label>
+						<p class="mt-1 text-xs text-slate-500">{ page.T("tpl.messageHint") }</p>
 
 						<div class="mt-2 flex flex-wrap gap-2" aria-label="Variables">
 							for _, chip := range whatsapp.VariableChips() {
-								<span draggable="true" data-value={ chip.Value } data-label={ chip.Label } data-example={ chip.Example } data-for={ chip.Sources() }
+								<span draggable="true" data-value={ chip.Value } data-label={ page.T("chip." + chip.Value) } data-example={ chip.Example } data-for={ chip.Sources() }
 									x-show="chipVisible($el)"
 									@dragstart="onDragStart($event)"
 									@dragend="dragging = ''"
 									:class="dragging === $el.dataset.value ? 'opacity-40' : ''"
 									class="cursor-grab select-none rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100">
-									{ chip.Label }
+									{ page.T("chip." + chip.Value) }
 								</span>
 							}
 						</div>
 
 						<div x-ref="body" contenteditable="true" role="textbox" aria-multiline="true"
-							data-placeholder="Your message text — drag chips from above into place."
+							data-placeholder={ page.T("tpl.bodyPlaceholder") }
 							@dragenter.prevent="dragOver = true"
 							@dragover.prevent="dragOver = true"
 							@dragleave="dragOver = false"
@@ -106,7 +102,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 						<input type="hidden" name="body" x-ref="bodyField" />
 
 						<div class="mt-1 flex items-center justify-between text-xs">
-							<span class="text-slate-500">Meta allows up to <span class="font-medium text-slate-700">1024 characters</span></span>
+							<span class="text-slate-500">{ page.T("tpl.charLimitA") }<span class="font-medium text-slate-700">{ page.T("tpl.charLimitB") }</span></span>
 							<span :class="charCount > charLimit ? 'font-semibold text-rose-600' : 'text-slate-500'"
 								x-text="charCount + ' / ' + charLimit"></span>
 						</div>
@@ -122,7 +118,7 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 							:disabled="blocked"
 							:class="blocked ? 'cursor-not-allowed bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'"
 							class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition">
-							Submit for review
+							{ page.T("tpl.submit") }
 						</button>
 					</div>
 				</form>
@@ -132,7 +128,13 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 				</style>
 
 				<script>
-					document.addEventListener("alpine:init", function () {
+				window.templateEditorI18N = { !templateEditorMessages(page.I18N) };
+				window.templateEditorFmt = function () {
+					var args = Array.prototype.slice.call(arguments);
+					var s = args.shift();
+					return s.replace(/%s/g, function () { return args.shift() || ''; });
+				};
+				document.addEventListener("alpine:init", function () {
 						Alpine.data("templateEditor", function () {
 							return {
 								dragOver: false,
@@ -158,21 +160,19 @@ templ TemplatesPage(page components.Page, templates []whatsapp.MerchantTemplate,
 
 									var first = found[0];
 									if (text.indexOf(first[0]) === text.search(/\S/)) {
-										return "Start the message with a few words before the " + first[1] + " variable.";
+										return window.templateEditorFmt(window.templateEditorI18N.startVar, first[1]);
 									}
 
 									var last = found[found.length - 1];
 									var tail = text.slice(last.index + last[0].length).replace(/[\s.!?]+$/, "");
 									if (tail.trim() === "") {
-										return "End the message with a few words after the " + last[1] + " variable, e.g. \". Merci!\"";
+										return window.templateEditorFmt(window.templateEditorI18N.endVar, last[1]);
 									}
 
 									var words = text.replace(/\{\{[^}]*\}\}/g, " ").split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 									var need = 3 * found.length;
 									if (words.length < need) {
-										return "Meta wants at least " + need + " words of message for " + found.length +
-											" variable(s) \u2014 this has " + words.length + ". Write the sentence out, e.g. \"Your driver is " +
-											first[1] + " and you can call " + last[1] + " if needed\".";
+										return window.templateEditorFmt(window.templateEditorI18N.needsWords, need, found.length, words.length, first[1], last[1]);
 									}
 									return "";
 								},
@@ -289,7 +289,7 @@ serializeBody: function (root) {
 										if (seen.indexOf(m[1]) === -1) { seen.push(m[1]); }
 									}
 									this.statusText = seen.length
-										? seen.length + " variable(s) — add an example value for each"
+										? window.templateEditorFmt(window.templateEditorI18N.vars, seen.length)
 										: "";
 
 									var key = seen.join(",");
@@ -313,7 +313,7 @@ serializeBody: function (root) {
 										var lab = document.createElement("label");
 										lab.className = "block text-xs font-medium text-slate-600";
 										lab.setAttribute("for", "example_" + token);
-										lab.textContent = "Example for " + label;
+										lab.textContent = window.templateEditorFmt(window.templateEditorI18N.exampleFor, label);
 
 										var inp = document.createElement("input");
 										inp.id = "example_" + token;
@@ -321,7 +321,7 @@ serializeBody: function (root) {
 										inp.type = "text";
 										inp.required = true;
 										inp.value = saved["example_" + token] || "";
-										inp.placeholder = "e.g. " + example;
+										inp.placeholder = window.templateEditorFmt(window.templateEditorI18N.example, example);
 										inp.className = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
 
 										wrap.appendChild(lab);
@@ -341,23 +341,23 @@ serializeBody: function (root) {
 
 			<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 				<div class="border-b border-slate-100 px-6 py-4">
-					<h3 class="text-sm font-semibold text-slate-700">Your templates</h3>
+					<h3 class="text-sm font-semibold text-slate-700">{ page.T("tpl.yourTemplates") }</h3>
 				</div>
 				if len(templates) == 0 {
 					<div class="px-6 py-10 text-center text-sm text-slate-500">
-						No templates yet. Create one above and its review status will appear here.
+						{ page.T("tpl.empty") }
 					</div>
 				} else {
 					<table class="w-full text-left text-sm">
 						<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
 							<tr>
-								<th class="px-6 py-3 font-medium">Name</th>
-								<th class="px-6 py-3 font-medium">Language</th>
-								<th class="px-6 py-3 font-medium">Category</th>
-								<th class="px-6 py-3 font-medium">For</th>
-								<th class="px-6 py-3 font-medium">Shop</th>
-								<th class="px-6 py-3 font-medium">Status</th>
-								<th class="px-6 py-3 text-right font-medium">Actions</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colName") }</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colLanguage") }</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colCategory") }</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colFor") }</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colShop") }</th>
+								<th class="px-6 py-3 font-medium">{ page.T("tpl.colStatus") }</th>
+								<th class="px-6 py-3 text-right font-medium">{ page.T("tpl.colActions") }</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -366,7 +366,7 @@ serializeBody: function (root) {
 									<td class="px-6 py-3 font-medium text-slate-900">{ t.Name }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Language }</td>
 									<td class="px-6 py-3 text-slate-600">{ t.Category }</td>
-									<td class="px-6 py-3 text-slate-600">{ whatsapp.SourceLabel(t.Source) }</td>
+									<td class="px-6 py-3 text-slate-600">{ page.T(sourceLabelKey(t.Source)) }</td>
 									<td class="px-6 py-3 text-slate-600">
 										if shopNames[t.ShopID] != "" {
 											{ shopNames[t.ShopID] }
@@ -376,20 +376,19 @@ serializeBody: function (root) {
 									</td>
 									<td class="px-6 py-3">
 										if t.ApprovalStatus == "deleted" {
-											@ApprovalBadge("deleted")
+											@ApprovalBadge(page.I18N, "deleted")
 											<p class="mt-1 text-xs text-slate-500">
-												Deleted — it can no longer be sent.
+												{ page.T("tpl.deletedNote") }
 											</p>
 											if t.MetaWarnings != "" {
 												<p class="mt-1 text-xs text-slate-400 italic">{ t.MetaWarnings }</p>
 											}
 										} else if t.MarketingFlagged {
 											<span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-												Blocked — marketing
+												{ page.T("tpl.blockedMarketing") }
 											</span>
 											<p class="mt-1 text-xs text-rose-600">
-												Meta treats this as marketing content; it will never be sent. Delete it and
-												rewrite as a transactional update.
+												{ page.T("tpl.marketingNote") }
 											</p>
 											if t.MetaWarnings != "" {
 												<p class="mt-1 text-xs text-slate-400 italic">{ t.MetaWarnings }</p>
@@ -398,12 +397,12 @@ serializeBody: function (root) {
 												<p class="mt-1 text-xs text-rose-700">{ t.RejectionReason }</p>
 											}
 										} else if t.ApprovalStatus == "rejected" {
-											@ApprovalBadge("rejected")
+											@ApprovalBadge(page.I18N, "rejected")
 											if t.RejectionReason != "" {
 												<p class="mt-1 text-xs text-rose-700">{ t.RejectionReason }</p>
 											}
 										} else {
-											@ApprovalBadge(t.ApprovalStatus)
+											@ApprovalBadge(page.I18N, t.ApprovalStatus)
 										}
 									</td>
 									<td class="px-6 py-3 text-right">
@@ -411,11 +410,10 @@ serializeBody: function (root) {
 											<span class="text-xs text-slate-400">—</span>
 										} else {
 											<form method="post" action={ templ.URL("/templates/" + t.ID.String() + "/delete") }
-												data-name={ t.Name } data-language={ t.Language } x-data
-												@submit="if (! confirm('Delete template ' + $el.dataset.name + ' (' + $el.dataset.language + ')? It can no longer be sent.')) $event.preventDefault()">
+												data-confirm={ page.Tf("tpl.deleteConfirm", t.Name, t.Language) }>
 												<button type="submit"
 													class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50">
-													Delete
+													{ page.T("tpl.delete") }
 												</button>
 											</form>
 										}
@@ -435,15 +433,28 @@ type TemplateFlash struct {
 	Info  string
 }
 
-templ ApprovalBadge(status string) {
+// sourceLabelKey maps a stored template source to the dict key for its short
+// form as shown in the templates table, mirroring whatsapp.SourceLabel.
+func sourceLabelKey(source string) string {
+	switch source {
+	case whatsapp.SourceConverty:
+		return "src.converty.short"
+	case whatsapp.SourceDelivery:
+		return "src.delivery.short"
+	default:
+		return "src.any.short"
+	}
+}
+
+templ ApprovalBadge(dict *i18n.Dict, status string) {
 	if status == "approved" {
-		<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Approved</span>
+		<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{ dict.T("tpl.approved") }</span>
 	} else if status == "rejected" {
-		<span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">Rejected</span>
+		<span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">{ dict.T("tpl.rejected") }</span>
 	} else if status == "pending" {
-		<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Pending review</span>
+		<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{ dict.T("tpl.pending") }</span>
 	} else if status == "deleted" {
-		<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">Deleted</span>
+		<span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">{ dict.T("tpl.deleted") }</span>
 	} else {
 		<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{ status }</span>
 	}

@@ -2,12 +2,12 @@ package server
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/anthdm/superkit/kit"
 
 	"whatsappconverty/internal/auth"
 	"whatsappconverty/internal/database"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	vdashboard "whatsappconverty/web/views/dashboard"
 	vlanding "whatsappconverty/web/views/landing"
@@ -29,14 +29,14 @@ func (a *App) handleIndex(k *kit.Kit) error {
 	if authenticated := auth.FromKit(k); authenticated.LoggedIn {
 		return k.Redirect(http.StatusSeeOther, "/dashboard")
 	}
-	return k.Render(vlanding.Index())
+	return k.Render(vlanding.Index(i18n.New(a.publicLang(k))))
 }
 
 // handlePrivacyPage renders the public Privacy Policy, required by Meta for
 // live apps. It intentionally skips auth so the URL can be published to the
 // WhatsApp review and marketing materials.
 func (a *App) handlePrivacyPage(k *kit.Kit) error {
-	return k.Render(vlegal.Privacy(a.Cfg.SupportEmail))
+	return k.Render(vlegal.Privacy(a.Cfg.SupportEmail, i18n.New(a.publicLang(k))))
 }
 
 // handleDataDeletionPage renders the public data-deletion instructions, the
@@ -44,7 +44,7 @@ func (a *App) handlePrivacyPage(k *kit.Kit) error {
 // policy it is unauthenticated so reviewers and customers can open it
 // directly.
 func (a *App) handleDataDeletionPage(k *kit.Kit) error {
-	return k.Render(vlegal.DataDeletion(a.Cfg.SupportEmail))
+	return k.Render(vlegal.DataDeletion(a.Cfg.SupportEmail, i18n.New(a.publicLang(k))))
 }
 
 func (a *App) handleOverview(k *kit.Kit) error {
@@ -58,7 +58,7 @@ func (a *App) handleOverview(k *kit.Kit) error {
 		return err
 	}
 
-	page := a.dashboardPage(k, "Overview", "overview", all)
+	page := a.dashboardPage(k, "overview", "overview", all)
 	return k.Render(vdashboard.Overview(page, stats))
 }
 
@@ -87,48 +87,50 @@ func (a *App) handleTemplates(k *kit.Kit) error {
 	}
 	shopNames := shopNameMap(all)
 
+	page := a.dashboardPage(k, "templates", "templates", all)
+	dict := page.I18N
+
 	flash := vdashboard.TemplateFlash{}
 	if purged > 0 {
-		plural := "s"
 		if purged == 1 {
-			plural = ""
+			flash.Info = dict.Tf("tpl.flashPurgedOne", purged)
+		} else {
+			flash.Info = dict.Tf("tpl.flashPurgedMany", purged)
 		}
-		flash.Info = "Deleted " + strconv.Itoa(purged) + " template" + plural + " automatically — Meta classified it as marketing content."
 	}
 	switch k.Request.URL.Query().Get("flash") {
 	case "created":
-		flash.Info = "Template submitted to Meta for review. Status refreshes here once decided."
+		flash.Info = dict.T("tpl.flashCreated")
 	case "marketing":
-		flash.Error = "Meta flagged this template as marketing content. It will NEVER be sent — delete it and rewrite as a transactional update (order status, delivery, billing…)."
+		flash.Error = dict.T("tpl.flashMarketing")
 	case "rejected":
-		flash.Error = "Meta rejected the submission from below (row-level reason, if any)."
+		flash.Error = dict.T("tpl.flashRejected")
 		if reason := k.Request.URL.Query().Get("reason"); reason != "" {
-			flash.Error = "Meta rejected the submission: " + reason
+			flash.Error = dict.T("tpl.flashRejectedReason") + " " + reason
 		}
 	case "synced":
-		flash.Info = "Approval statuses refreshed from Meta."
+		flash.Info = dict.T("tpl.flashSynced")
 	case "missing":
-		flash.Error = "Name, language and body are required."
+		flash.Error = dict.T("tpl.flashMissing")
 	case "novariables":
-		flash.Error = "The body must contain at least one {{N}} placeholder."
+		flash.Error = dict.T("tpl.flashNoVariables")
 	case "example":
-		flash.Error = "Provide an example value for every {{N}} placeholder."
+		flash.Error = dict.T("tpl.flashExample")
 	case "toolong":
-		flash.Error = "The message exceeds Meta's " + strconv.Itoa(whatsapp.MaxTemplateBodyChars) + "-character limit."
+		flash.Error = dict.Tf("tpl.flashTooLong", whatsapp.MaxTemplateBodyChars)
 	case "invalidbody":
 		flash.Error = k.Request.URL.Query().Get("msg")
 	case "deleted":
-		flash.Info = "Template deleted. It can no longer be sent."
+		flash.Info = dict.T("tpl.flashDeleted")
 	case "notfound":
-		flash.Error = "That template no longer exists."
+		flash.Error = dict.T("tpl.flashNotFound")
 	case "inuse":
-		flash.Error = "This template is still used by an automation. Detach it there first: " +
+		flash.Error = dict.T("tpl.flashInUse") + " " +
 			k.Request.URL.Query().Get("names")
 	case "error", "internal", "refresh":
-		flash.Error = "Something went wrong — try again."
+		flash.Error = dict.T("error.genericBody")
 	}
 
-	page := a.dashboardPage(k, "Templates", "templates", all)
 	return k.Render(vdashboard.TemplatesPage(page, templates, shopNames, flash))
 }
 
@@ -147,12 +149,12 @@ func (a *App) handlePlaceholder(section string) func(*kit.Kit) error {
 func sectionTitle(section string) string {
 	switch section {
 	case "automations":
-		return "Automations"
+		return "automations"
 	case "templates":
-		return "Templates"
+		return "templates"
 	case "settings":
-		return "Settings"
+		return "settings"
 	default:
-		return "Dashboard"
+		return "overview"
 	}
 }

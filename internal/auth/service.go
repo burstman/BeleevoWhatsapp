@@ -16,6 +16,7 @@ import (
 
 	"whatsappconverty/internal/config"
 	"whatsappconverty/internal/database"
+	"whatsappconverty/internal/i18n"
 )
 
 var (
@@ -78,11 +79,11 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	var user User
 	var passwordHash string
 	if err := s.pool.QueryRow(ctx, `
-		SELECT id, email, name, role, password_hash
+		SELECT id, email, name, role, lang, password_hash
 		FROM users
 		WHERE email = lower($1)`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &passwordHash); err != nil {
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.Lang, &passwordHash); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", ErrInvalidCredentials
 		}
@@ -105,6 +106,19 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 func (s *Service) Logout(ctx context.Context, token string) error {
 	_, err := s.pool.Exec(ctx, `DELETE FROM auth_sessions WHERE token = $1`, token)
 	return err
+}
+
+// SetLang persists the operator's interface language on their account. The
+// preference is account-bound so it follows the user to any device.
+func (s *Service) SetLang(ctx context.Context, userID uuid.UUID, lang i18n.Lang) error {
+	if _, err := s.pool.Exec(ctx, `
+		UPDATE users SET lang = $2, updated_at = now()
+		WHERE id = $1`,
+		userID, lang.String(),
+	); err != nil {
+		return fmt.Errorf("update language: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) createSession(ctx context.Context, q database.Querier, userID uuid.UUID) (string, error) {

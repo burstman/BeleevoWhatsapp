@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 )
@@ -17,7 +18,7 @@ import (
 // status WhatsApp writes must have a label and a readable pill.
 func TestStatusLabelAndBadgeCoverEveryStoredStatus(t *testing.T) {
 	for _, status := range []string{"queued", "sent", "delivered", "read", "failed"} {
-		label := statusLabel(status)
+		label := statusLabel(i18n.New(i18n.En), status)
 		if label == "" || label == status {
 			t.Errorf("status %q renders as %q, which tells the merchant nothing", status, label)
 		}
@@ -32,7 +33,7 @@ func TestStatusLabelAndBadgeCoverEveryStoredStatus(t *testing.T) {
 
 func TestStatusLabelFallsBackToRawStatus(t *testing.T) {
 	// A status WhatsApp adds later must still render rather than blank out.
-	if got := statusLabel("something_new"); got != "something_new" {
+	if got := statusLabel(i18n.New(i18n.En), "something_new"); got != "something_new" {
 		t.Fatalf("unknown status should render verbatim, got %q", got)
 	}
 	if got := statusBadgeClass("something_new"); got == "" {
@@ -364,10 +365,10 @@ func TestRetryNamesAGoneTemplateInsteadOfBlamingTheOrder(t *testing.T) {
 // later". A row only exists once the job ran, so a stuck one is a send that did
 // not complete and must not be dressed as pending.
 func TestQueuedRowReadsAsAFailureNotAPendingSchedule(t *testing.T) {
-	if got := statusLabel("queued"); got != "Not sent" {
+	if got := statusLabel(i18n.New(i18n.En), "queued"); got != "Not sent" {
 		t.Fatalf("queued label is %q, which still reads as a schedule", got)
 	}
-	if got := statusLabel("queued"); got == "Waiting" {
+	if got := statusLabel(i18n.New(i18n.En), "queued"); got == "Waiting" {
 		t.Fatal(`"Waiting" implies the send is still to come`)
 	}
 
@@ -412,7 +413,7 @@ func TestHistoryNoteExplainsWhenRowsAppear(t *testing.T) {
 		{"instant", automations.Automation{}, "as soon as the event happens"},
 	}
 	for _, c := range cases {
-		got := historyNote(c.auto)
+		got := historyNote(i18n.New(i18n.En), c.auto)
 		if !strings.Contains(got, c.want) {
 			t.Errorf("%s note says %q, want it to mention %q", c.name, got, c.want)
 		}
@@ -424,7 +425,7 @@ func TestHistoryNoteExplainsWhenRowsAppear(t *testing.T) {
 	// A scheduled automation with a blank stored zone falls back to the default
 	// rather than printing an empty one.
 	blank := automations.Automation{SendTime: &sendAt}
-	if got := historyNote(blank); strings.Contains(got, "10:00 \u00b7") || !strings.Contains(got, "Africa/Tunis") {
+	if got := historyNote(i18n.New(i18n.En), blank); strings.Contains(got, "10:00 \u00b7") || !strings.Contains(got, "Africa/Tunis") {
 		t.Errorf("blank timezone should render the default, got %q", got)
 	}
 

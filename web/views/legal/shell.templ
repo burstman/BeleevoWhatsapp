@@ -1,12 +1,14 @@
 package viewslegal
 
+import "whatsappconverty/internal/i18n"
+
 // Shell is the standalone document wrapper used by the public legal pages
 // (/privacy and /data-deletion). Those pages must stay reachable without a
 // session so the URLs can be published to Meta's app review and to customers,
 // so they deliberately skip the merchant dashboard chrome.
-templ Shell(title string, description string) {
+templ Shell(title string, description string, dict *i18n.Dict) {
 	<!DOCTYPE html>
-	<html lang="en" class="h-full">
+	<html lang={ dict.Lang().String() } dir={ dict.Dir() } class="h-full">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -16,7 +18,7 @@ templ Shell(title string, description string) {
 		</head>
 		<body class="h-full bg-slate-50 text-slate-900 antialiased">
 			<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-				<a href="/" class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">← Back to home</a>
+				<a href="/" class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">{ dict.T("legal.backHome") }</a>
 				{ children... }
 			</div>
 		</body>
@@ -25,12 +27,12 @@ templ Shell(title string, description string) {
 
 // legalFooter links the legal pages to each other so neither is a dead end for
 // a reviewer following a link from Meta's dashboard.
-templ legalFooter() {
+templ legalFooter(dict *i18n.Dict) {
 	<footer class="mt-12 flex flex-wrap items-center gap-4 border-t border-slate-200 pt-4 text-xs text-slate-500">
 		<span>Converty WhatsApp © 2026</span>
-		<a href="/privacy" class="font-medium text-slate-600">Privacy Policy</a>
-		<a href="/data-deletion" class="font-medium text-slate-600">Data deletion</a>
-		<a href="/" class="font-medium text-slate-600">Home</a>
+		<a href="/privacy" class="font-medium text-slate-600">{ dict.T("legal.privacy") }</a>
+		<a href="/data-deletion" class="font-medium text-slate-600">{ dict.T("legal.deletion") }</a>
+		<a href="/" class="font-medium text-slate-600">{ dict.T("legal.home") }</a>
 	</footer>
 }
 
@@ -38,19 +40,17 @@ templ legalFooter() {
 // detail we need to act on a request. When SUPPORT_EMAIL is unset it falls
 // back to plain wording rather than printing a placeholder address on a page
 // Meta will review.
-templ contactLine(supportEmail string, subject string) {
+templ contactLine(supportEmail string, subject string, dict *i18n.Dict) {
 	if supportEmail != "" {
 		<p>
-			Send your request to
+			{ dict.T("legal.contactSend") }
 			<a href={ templ.SafeURL("mailto:" + supportEmail) } class="font-medium text-indigo-600 underline hover:text-indigo-700">{ supportEmail }</a>
-			with <span class="font-medium">{ subject }</span> in the subject line, and include
-			the shop name or the customer phone number the request relates to.
+			{ dict.T("legal.contactSubject") }
 		</p>
 	} else {
 		<p>
-			Send your request to our support team with <span class="font-medium">{ subject }</span>
-			in the subject line, and include the shop name or the customer phone number the
-			request relates to.
+			{ dict.T("legal.contactSendTeam") } <span class="font-medium">{ subject }</span>
+			{ dict.T("legal.contactSubject") }
 		</p>
 	}
 }

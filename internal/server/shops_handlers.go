@@ -7,6 +7,7 @@ import (
 	"github.com/anthdm/superkit/kit"
 
 	"whatsappconverty/internal/auth"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/shops"
 	viewshared "whatsappconverty/web/views/components"
 )
@@ -57,11 +58,12 @@ func (a *App) sharedOwnerShop(ctx context.Context) (shops.Shop, error) {
 }
 
 // dashboardPage builds the page scaffolding every dashboard page shares.
-// StoreConnected reflects the Converty integration state, not the raw shop
-// list: settings pages pass every shop (WhatsApp/delivery connections are
-// shared and standalone), so the sidebar flags Overview, Automations and
+// titleKey is the "title.*" translation key for the page's heading, not the
+// display text. StoreConnected reflects the Converty integration state, not the
+// raw shop list: settings pages pass every shop (WhatsApp/delivery connections
+// are shared and standalone), so the sidebar flags Overview, Automations and
 // Templates as locked until an actual store is connected.
-func (a *App) dashboardPage(k *kit.Kit, title, activeSection string, all []shops.Shop) viewshared.Page {
+func (a *App) dashboardPage(k *kit.Kit, titleKey, activeSection string, all []shops.Shop) viewshared.Page {
 	principal := auth.FromKit(k)
 	storeConnected := len(all) > 0
 	if integrated, err := a.Shops.ListIntegrated(k.Request.Context()); err == nil {
@@ -71,12 +73,24 @@ func (a *App) dashboardPage(k *kit.Kit, title, activeSection string, all []shops
 	if _, err := a.whatsappIntegrationAnyShop(k.Request.Context()); err == nil {
 		waConnected = true
 	}
+	dict := i18n.New(i18n.Parse(principal.User.Lang))
 	return viewshared.Page{
-		Title:             title,
+		Title:             dict.T("title." + titleKey),
 		Active:            activeSection,
 		UserName:          principal.User.Name,
 		Shops:             all,
 		StoreConnected:    storeConnected,
 		WhatsAppConnected: waConnected,
+		I18N:              dict,
 	}
+}
+
+// publicLang resolves the interface language for unauthenticated pages
+// (landing, login, legal). It prefers the durable cookie the language switch
+// writes so a user who just chose French sees the login screen in French too.
+func (a *App) publicLang(k *kit.Kit) i18n.Lang {
+	if c, err := k.Request.Cookie("lang"); err == nil {
+		return i18n.Parse(c.Value)
+	}
+	return i18n.En
 }

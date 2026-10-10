@@ -8,6 +8,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"whatsappconverty/internal/auth"
+	"whatsappconverty/internal/i18n"
 	viewserrors "whatsappconverty/web/views/errors"
 )
 
@@ -27,9 +28,20 @@ func (a *App) ErrorHandler(k *kit.Kit, err error) {
 
 	if k.Request.Header.Get("HX-Request") == "true" {
 		k.Response.Header().Set("HX-Retarget", "#toast")
-		_ = k.Render(viewserrors.ErrorToast(http.StatusText(status)))
+		_ = k.Render(viewserrors.ErrorToast(i18n.New(a.publicLang(k)).T(errorTitleKey(status))))
 		return
 	}
 
-	_ = k.Render(viewserrors.ErrorPage(status, http.StatusText(status), "Something went wrong. Please try again."))
+	dict := i18n.New(a.publicLang(k))
+	_ = k.Render(viewserrors.ErrorPage(status, dict.T(errorTitleKey(status)), dict.T("error.genericBody"), dict))
+}
+
+// errorTitleKey maps an HTTP status to a translated error heading. The status
+// is still shown as a big number above it, so the heading can stay a clean
+// sentence instead of the technical english status text.
+func errorTitleKey(status int) string {
+	if status == http.StatusUnauthorized {
+		return "error.unauthorizedTitle"
+	}
+	return "error.serverErrorTitle"
 }

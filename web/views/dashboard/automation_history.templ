@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"whatsappconverty/internal/automations"
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	"whatsappconverty/web/views/components"
 	"whatsappconverty/web/views/layouts"
@@ -16,18 +17,18 @@ import (
 // statusLabel and statusBadgeClass map a message status to its pill. The text
 // is kept legible on the light background rather than the slate-400 wash that
 // reads as invisible.
-func statusLabel(status string) string {
+func statusLabel(dict *i18n.Dict, status string) string {
 	switch status {
 	case "delivered":
-		return "Delivered"
+		return dict.T("hist.statusDelivered")
 	case "read":
-		return "Read"
+		return dict.T("hist.statusRead")
 	case "sent":
-		return "Sent"
+		return dict.T("hist.statusSent")
 	case "failed":
-		return "Failed"
+		return dict.T("hist.statusFailed")
 	case "queued":
-		return "Not sent"
+		return dict.T("hist.statusNotSent")
 	default:
 		return status
 	}
@@ -111,21 +112,20 @@ func historyError(m whatsapp.AutomationMessage) string {
 // wording matters more than it looks: a scheduled send is parked in the queue with
 // no ledger row at all, so a merchant checking at 09:00 for a 10:00 automation
 // would otherwise read the empty list as a failure.
-func historyNote(a automations.Automation) string {
-	rule := "sends as soon as the event happens"
+func historyNote(dict *i18n.Dict, a automations.Automation) string {
+	rule := dict.T("hist.ruleInstant")
 	switch {
 	case a.DelayMinutes != nil:
-		rule = fmt.Sprintf("sends %d minutes after the event", *a.DelayMinutes)
+		rule = dict.Tf("hist.ruleDelay", *a.DelayMinutes)
 	case a.SendTime != nil:
 		zone := a.SendTimezone
 		if zone == "" {
 			zone = automations.DefaultTimezone
 		}
-		rule = fmt.Sprintf("sends at %02d:%02d %s",
-			a.SendTime.Hour(), a.SendTime.Minute(), zone)
+		rule = fmt.Sprintf("%02d:%02d %s", a.SendTime.Hour(), a.SendTime.Minute(), zone)
+		rule = dict.Tf("hist.ruleFixed", rule)
 	}
-	return "This automation " + rule + ". Messages appear here only once they have " +
-		"been sent, so an empty list before the first one is normal."
+	return dict.Tf("hist.note", rule)
 }
 
 // historyVariables renders the filled placeholders so a merchant can see what
@@ -200,85 +200,84 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 		<div class="space-y-6">
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<a href="/automations" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">← All automations</a>
-					<h2 class="mt-1 text-2xl font-bold text-slate-900">{ a.Name } · send history</h2>
+					<a href="/automations" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">{ page.T("hist.allAutomations") }</a>
+					<h2 class="mt-1 text-2xl font-bold text-slate-900">{ a.Name } · { page.T("hist.sendHistory") }</h2>
 					<p class="mt-1 text-sm text-slate-500">
-						Every message this automation has sent, newest first.
-						Trigger: <span class="font-medium text-slate-700">{ a.EventSource } / { a.OrderStatus }</span>
-						· { typeLabel(a) }
-						· template <span class="font-medium text-slate-700">{ templateName }</span>
+						{ page.T("hist.subtitle") }
+						{ page.T("hist.trigger") } <span class="font-medium text-slate-700">{ a.EventSource } / { a.OrderStatus }</span>
+						· { typeLabel(page.I18N, a) }
+						· { page.T("hist.template") } <span class="font-medium text-slate-700">{ templateName }</span>
 						if !a.Enabled {
-							<span class="ml-1 font-medium text-slate-600">(paused)</span>
+							<span class="ml-1 font-medium text-slate-600">({ page.T("automations.paused") })</span>
 						}
 					</p>
 				</div>
 				<a href={ templ.SafeURL("/automations/" + a.ID.String() + "/edit") }
-					class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Edit automation</a>
+					class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">{ page.T("hist.editAutomation") }</a>
 			</div>
 
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.total") }</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Total) }>{ strconv.Itoa(counts.Total) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Sent</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.sent") }</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Sent) }>{ strconv.Itoa(counts.Sent) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Delivered</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.delivered") }</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Delivered) }>{ strconv.Itoa(counts.Delivered) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Read</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.read") }</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Read) }>{ strconv.Itoa(counts.Read) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Failed</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.failed") }</div>
 					<div class={ "mt-1 text-2xl font-bold", failureClass(counts.Failed) }>{ strconv.Itoa(counts.Failed) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Not sent</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.notSent") }</div>
 					<div class={ "mt-1 text-2xl font-bold", countClass(counts.Queued) }>{ strconv.Itoa(counts.Queued) }</div>
 				</div>
 				<div class="rounded-xl border border-slate-200 bg-white p-4">
-					<div class="text-xs uppercase tracking-wide text-slate-500">Held back</div>
+					<div class="text-xs uppercase tracking-wide text-slate-500">{ page.T("hist.heldBack") }</div>
 					<div class={ "mt-1 text-2xl font-bold", heldBackClass(len(suppressions)) }>{ strconv.Itoa(len(suppressions)) }</div>
 				</div>
 			</div>
 
-			<p class="text-sm text-slate-500">{ historyNote(a) }</p>
+			<p class="text-sm text-slate-500">{ historyNote(page.I18N, a) }</p>
 
 			if retry.Attempted > 0 || retry.AlreadySent > 0 || retry.TemplateMissing > 0 {
 				<div class={ "rounded-xl border px-4 py-3 text-sm", retryBannerClass(retry.StillHeld + retry.TemplateMissing + retry.Rejected) }>
 					if retry.Sent > 0 {
-						<span class="font-medium">{ strconv.Itoa(retry.Sent) } message(s) sent now.</span>
+						<span class="font-medium">{ page.Tf("hist.sentNow", retry.Sent) }</span>
 					} else if retry.Scheduled > 0 {
-						<span class="font-medium">{ strconv.Itoa(retry.Scheduled) } message(s) are on their way now.</span>
+						<span class="font-medium">{ page.Tf("hist.onWay", retry.Scheduled) }</span>
 					} else if retry.TemplateMissing > 0 {
-						<span class="font-medium">This automation cannot send at all right now.</span>
+						<span class="font-medium">{ page.T("hist.cannotSend") }</span>
 					} else {
-						<span class="font-medium">Nothing new could be sent.</span>
+						<span class="font-medium">{ page.T("hist.nothingNew") }</span>
 					}
 					if retry.TemplateMissing > 0 {
 						<span>
-							{ strconv.Itoa(retry.TemplateMissing) }
-							{ " " }need the template this automation points at. Choose another template on the automation — retrying will not help.
+							{ page.Tf("hist.needTemplate", retry.TemplateMissing) }
 						</span>
 					}
 					if retry.StillHeld > 0 {
 						<span>
-							{ strconv.Itoa(retry.StillHeld) } still held back — the template needs data this order does not have yet.
+							{ page.Tf("hist.stillHeld", retry.StillHeld) }
 						</span>
 					}
 					if retry.Rejected > 0 {
 						<span>
-							{ strconv.Itoa(retry.Rejected) } were refused by the send rules (consent, or a template the carrier treats as marketing). Retrying will not change it.
+							{ page.Tf("hist.rejected", retry.Rejected) }
 						</span>
 					}
 					if retry.AlreadySent > 0 {
 						<span>
-							{ strconv.Itoa(retry.AlreadySent) } had already been sent and were left alone.
+							{ page.Tf("hist.alreadySent", retry.AlreadySent) }
 						</span>
 					}
 				</div>
@@ -287,17 +286,14 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 			<div class="rounded-xl border border-slate-200 bg-white">
 				if len(rows) == 0 {
 					<div class="px-5 py-12 text-center">
-						<p class="text-sm font-medium text-slate-700">Nothing sent yet</p>
+						<p class="text-sm font-medium text-slate-700">{ page.T("hist.nothingYet") }</p>
 						if len(suppressions) > 0 {
 							<p class="mt-1 text-sm text-slate-500">
-								{ strconv.Itoa(len(suppressions)) } event(s) matched this automation but were held
-								back rather than sent. They are listed below with what was missing.
+								{ page.Tf("hist.heldEvents", len(suppressions)) }
 							</p>
 						} else {
 							<p class="mt-1 text-sm text-slate-500">
-								No event has triggered a message from this automation yet. A send is
-								recorded only when it actually goes out, so an empty list here means
-								"no matching event" — not a broken automation.
+								{ page.T("hist.noEvent") }
 							</p>
 						}
 					</div>
@@ -306,13 +302,13 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 						<table class="w-full table-fixed text-left text-sm">
 							<thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
 								<tr>
-									<th class="w-[10%] px-3 py-3 font-medium first:pl-5">When</th>
-									<th class="w-[15%] px-3 py-3 font-medium">Customer</th>
-									<th class="w-[10%] px-3 py-3 font-medium">Phone</th>
-									<th class="w-[11%] px-3 py-3 font-medium">Order</th>
-									<th class="w-[8%] px-3 py-3 font-medium">Status</th>
-									<th class="w-[10%] px-3 py-3 font-medium">Delivered</th>
-									<th class="w-[36%] px-3 py-3 font-medium last:pr-5">Message</th>
+									<th class="w-[10%] px-3 py-3 font-medium first:pl-5">{ page.T("hist.when") }</th>
+									<th class="w-[15%] px-3 py-3 font-medium">{ page.T("hist.customer") }</th>
+									<th class="w-[10%] px-3 py-3 font-medium">{ page.T("hist.phone") }</th>
+									<th class="w-[11%] px-3 py-3 font-medium">{ page.T("hist.order") }</th>
+									<th class="w-[8%] px-3 py-3 font-medium">{ page.T("hist.status") }</th>
+									<th class="w-[10%] px-3 py-3 font-medium">{ page.T("hist.deliveredAt") }</th>
+									<th class="w-[36%] px-3 py-3 font-medium last:pr-5">{ page.T("hist.message") }</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
@@ -338,20 +334,20 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 											}
 										</td>
 										<td class="px-3 py-3">
-											<span class={ "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", statusBadgeClass(m.Status) }>{ statusLabel(m.Status) }</span>
+											<span class={ "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", statusBadgeClass(m.Status) }>{ statusLabel(page.I18N, m.Status) }</span>
 										</td>
 										<td class="px-3 py-3 text-slate-600">{ historyTime(m.DeliveredAt) }</td>
 										<td class="px-3 py-3 text-xs last:pr-5 text-slate-600">
 											if e := historyError(m); e != "" {
 												<span class="block text-rose-700" title={ e }>{ e }</span>
 											} else if m.Status == "queued" {
-												<span class="block text-amber-800">Recorded, but WhatsApp never confirmed it — this send did not complete.</span>
+												<span class="block text-amber-800">{ page.T("hist.recordedNotConfirmed") }</span>
 											} else if b := historyBody(m); b != "" {
 												<span class={ historyBodyClass(len(b)) } title={ b }>{ b }</span>
 											} else if m.Status == "read" {
-												<span class="text-slate-500">Read by the customer</span>
+												<span class="text-slate-500">{ page.T("hist.readByCustomer") }</span>
 											} else {
-												<span class="text-slate-500">Accepted by WhatsApp</span>
+												<span class="text-slate-500">{ page.T("hist.acceptedByWhatsapp") }</span>
 											}
 										</td>
 									</tr>
@@ -361,7 +357,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 					</div>
 					if len(rows) == 200 {
 						<div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-							Showing the 200 most recent messages.
+							{ page.T("hist.showingRecent") }
 						</div>
 					}
 				}
@@ -370,18 +366,15 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 						<div class="border-b border-amber-100 px-5 py-4">
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div>
-									<h3 class="text-sm font-semibold text-slate-900">Held back — matched, but not sent</h3>
+									<h3 class="text-sm font-semibold text-slate-900">{ page.T("hist.heldTitle") }</h3>
 									<p class="mt-1 text-sm text-slate-600">
-										These events reached this automation, but the message was withheld on purpose:
-										the template places a variable that this order had no value for, and a blank
-										line in the customer's message is worse than no message. Nothing was sent to
-										anyone on this list.
+										{ page.T("hist.heldBody") }
 									</p>
 								</div>
 								<form method="post" action={ templ.SafeURL("/automations/" + a.ID.String() + "/retry-held") } class="shrink-0">
 									<button type="submit"
 										class="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100">
-										Send held back now
+										{ page.T("hist.sendHeldNow") }
 									</button>
 								</form>
 							</div>
@@ -390,11 +383,11 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 							<table class="w-full table-fixed text-left text-sm">
 								<thead class="bg-amber-50/60 text-xs uppercase tracking-wide text-slate-600">
 									<tr>
-										<th class="w-[14%] px-3 py-3 font-medium first:pl-5">When</th>
-										<th class="w-[22%] px-3 py-3 font-medium">Customer</th>
-										<th class="w-[16%] px-3 py-3 font-medium">Order</th>
-										<th class="w-[20%] px-3 py-3 font-medium">Waiting for</th>
-										<th class="w-[28%] px-3 py-3 font-medium last:pr-5">Why</th>
+										<th class="w-[14%] px-3 py-3 font-medium first:pl-5">{ page.T("hist.when") }</th>
+										<th class="w-[22%] px-3 py-3 font-medium">{ page.T("hist.customer") }</th>
+										<th class="w-[16%] px-3 py-3 font-medium">{ page.T("hist.order") }</th>
+										<th class="w-[20%] px-3 py-3 font-medium">{ page.T("hist.heldWaitingFor") }</th>
+										<th class="w-[28%] px-3 py-3 font-medium last:pr-5">{ page.T("hist.why") }</th>
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-slate-100">
@@ -429,7 +422,7 @@ templ AutomationHistoryPage(page components.Page, a automations.Automation, temp
 							</table>
 						</div>
 						<div class="border-t border-amber-100 px-5 py-3 text-xs text-slate-500">
-							<span>A held-back send is not an error, and it waits for nothing: no new event will come for an order that has already changed status. Once the missing detail is available — a driver attached by the carrier, for example — use the button above and it goes out immediately.</span>
+							<span>{ page.T("hist.heldFootnote") }</span>
 						</div>
 					</div>
 				}

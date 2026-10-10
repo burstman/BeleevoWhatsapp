@@ -9,46 +9,43 @@ import (
 templ Settings(page components.Page, integ *whatsapp.Integration, templates []whatsapp.Template, receipts []whatsapp.WebhookReceipt) {
 	@layouts.Shell(page) {
 		<div class="mx-auto max-w-3xl">
-			<h1 class="text-2xl font-bold text-slate-900">WhatsApp settings</h1>
-			<p class="mt-1 text-sm text-slate-500">Connect your WhatsApp Business number once — it is shared by every connected store.</p>
+			<h1 class="text-2xl font-bold text-slate-900">{ page.T("was.title") }</h1>
+			<p class="mt-1 text-sm text-slate-500">{ page.T("was.subtitle") }</p>
 
 			if integ == nil {
 					<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-slate-900">Connect WhatsApp</h2>
-						<p class="mt-2 text-sm text-slate-600">
-							Paste the credentials of the WhatsApp Business number your stores send through. This one
-							number and its approved templates are used by every connected store.
-						</p>
+						<h2 class="text-lg font-semibold text-slate-900">{ page.T("was.connect") }</h2>
+						<p class="mt-2 text-sm text-slate-600">{ page.T("was.connectBody") }</p>
 						<ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-							<li>Meta Business Manager or developer app: create a long-lived token (a temporary token from the app dashboard expires within hours).</li>
-							<li>Copy the Phone number ID and the WABA (WhatsApp Business Account) ID of that same number.</li>
-							<li>Paste all three below and save.</li>
+							<li>{ page.T("was.step1") }</li>
+							<li>{ page.T("was.step2") }</li>
+							<li>{ page.T("was.step3") }</li>
 						</ol>
 
 						<form method="post" action="/whatsapp/connect" class="mt-6 space-y-4">
 							<div>
-								<label for="token" class="block text-sm font-medium text-slate-700">Meta access token</label>
+								<label for="token" class="block text-sm font-medium text-slate-700">{ page.T("was.token") }</label>
 								<input id="token" name="token" type="password" required
 									class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 									placeholder="EAAP... long-lived"/>
 							</div>
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div>
-									<label for="phone-number-id" class="block text-sm font-medium text-slate-700">Phone number ID</label>
+									<label for="phone-number-id" class="block text-sm font-medium text-slate-700">{ page.T("was.phoneNumberId") }</label>
 									<input id="phone-number-id" name="phone_number_id" type="text" required
 										class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 										placeholder="e.g. 1302152316314738"/>
 								</div>
 								<div>
-									<label for="messaging-account-id" class="block text-sm font-medium text-slate-700">WABA (messaging account) ID</label>
+									<label for="messaging-account-id" class="block text-sm font-medium text-slate-700">{ page.T("was.wabaId") }</label>
 									<input id="messaging-account-id" name="messaging_account_id" type="text" required
 										class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-										placeholder="your WhatsApp Business Account ID"/>
+										placeholder={ page.T("was.wabaPlaceholder") }/>
 								</div>
 							</div>
 							<button type="submit"
 								class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
-								Connect
+								{ page.T("was.connect") }
 							</button>
 						</form>
 					</div>
@@ -57,30 +54,30 @@ templ Settings(page components.Page, integ *whatsapp.Integration, templates []wh
 					<div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
 						<div class="flex items-center gap-3">
 							<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
-								<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected
+								<span class="h-2 w-2 rounded-full bg-emerald-500"></span> { page.T("was.connected") }
 							</span>
 						</div>
 						<form method="post" action="/whatsapp/disconnect"
-							onsubmit="return confirm('Disconnect your WhatsApp number? Order confirmation messages will stop sending.')">
+							data-confirm={ page.T("was.disconnectConfirm") }>
 							<button type="submit"
 								class="rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
-								Disconnect
+								{ page.T("was.disconnect") }
 							</button>
 						</form>
 					</div>
 					<div class="px-6 py-4">
 						<dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<dt class="text-xs font-medium uppercase tracking-wide text-slate-400">WhatsApp number</dt>
+								<dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{ page.T("was.number") }</dt>
 								<dd class="mt-1 text-sm font-medium text-slate-900">{ integ.PhoneNumber }</dd>
 							</div>
 							<div>
-								<dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Status</dt>
+								<dt class="text-xs font-medium uppercase tracking-wide text-slate-400">{ page.T("was.status") }</dt>
 								<dd class="mt-1 text-sm font-medium text-slate-900">{ integ.Status }</dd>
 							</div>
 						</dl>
 						<div class="mt-5">
-							<h3 class="text-xs font-medium uppercase tracking-wide text-slate-400">Available templates ({ len(templates) })</h3>
+							<h3 class="text-xs font-medium uppercase tracking-wide text-slate-400">{ page.Tf("was.available", len(templates)) }</h3>
 							<ul class="mt-2 divide-y divide-slate-100 border-t border-slate-100">
 								for _, t := range templates {
 									<li class="flex items-center justify-between py-2 text-sm">
@@ -98,14 +95,11 @@ templ Settings(page components.Page, integ *whatsapp.Integration, templates []wh
 			}
 
 			<div class="mt-8">
-				<h2 class="text-base font-semibold text-slate-900">Recent webhook deliveries</h2>
-				<p class="mt-1 text-sm text-slate-500">
-					Every Meta webhook POST is recorded here before processing, so a delivery that is
-					rejected or fails to map to a number is visible instead of silently vanishing.
-				</p>
+				<h2 class="text-base font-semibold text-slate-900">{ page.T("was.recent") }</h2>
+				<p class="mt-1 text-sm text-slate-500">{ page.T("was.recentBody") }</p>
 				<div class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 					if len(receipts) == 0 {
-						<p class="px-4 py-6 text-center text-sm text-slate-500">No webhook deliveries yet.</p>
+						<p class="px-4 py-6 text-center text-sm text-slate-500">{ page.T("was.none") }</p>
 					} else {
 						<ul class="divide-y divide-slate-100">
 							for _, r := range receipts {

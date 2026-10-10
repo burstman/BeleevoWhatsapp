@@ -1,0 +1,755 @@
+/* ==========================================================================
+   Overview — standalone stylesheet
+   Plain CSS only. No framework, no build step, no JavaScript.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design tokens — every colour, radius, font and shadow lives here.
+      Change a value once and the whole page follows.
+   -------------------------------------------------------------------------- */
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.979 0.003 160);
+  --foreground: oklch(0.255 0.016 165);
+  --card: oklch(1 0 0);
+  --primary: oklch(0.52 0.115 163);
+  --primary-foreground: oklch(0.984 0.003 247.858);
+  --muted-foreground: oklch(0.565 0.014 165);
+  --border: oklch(0.922 0.006 165);
+
+  --surface-subtle: oklch(0.988 0.002 165);
+  --status-surface: oklch(0.95 0.032 164);
+  --status-dot: oklch(0.65 0.15 162);
+
+  --tone-blue: oklch(0.57 0.15 255);
+  --tone-blue-surface: oklch(0.96 0.018 250);
+  --tone-red: oklch(0.62 0.17 25);
+  --tone-red-surface: oklch(0.967 0.018 25);
+  --tone-amber: oklch(0.62 0.125 75);
+  --tone-amber-surface: oklch(0.974 0.025 80);
+  --tone-gray: oklch(0.58 0.017 250);
+  --tone-gray-surface: oklch(0.96 0.006 250);
+
+  --card-shadow: 0 2px 3px oklch(0.25 0.015 165 / 2%),
+    0 8px 24px oklch(0.25 0.015 165 / 2%);
+  --art-shadow: 0 8px 18px oklch(0.25 0.02 165 / 8%);
+
+  --font-body: "DM Sans", sans-serif;
+  --font-heading: "Manrope", sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   2. Base
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+}
+
+.overview-page {
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   3. Top bar
+   -------------------------------------------------------------------------- */
+.topbar {
+  height: 80px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  max-width: 1360px;
+  height: 100%;
+  margin: auto;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.brand-mark svg {
+  width: 21px;
+  height: 21px;
+}
+
+.sign-out {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.sign-out svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   4. Page shell + welcome
+   -------------------------------------------------------------------------- */
+.overview-main {
+  max-width: 1360px;
+  margin: auto;
+  padding: 54px 48px 36px;
+}
+
+.welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+
+.welcome h1 {
+  font-size: 38px;
+  line-height: 1.25;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.welcome-dot {
+  color: var(--primary);
+}
+
+.welcome-description {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  margin-bottom: 0;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--status-surface);
+  color: var(--primary);
+  border: 1px solid color-mix(in oklab, var(--primary) 12%, transparent);
+  border-radius: 30px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-dot);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   5. Section headings
+   -------------------------------------------------------------------------- */
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.section-heading h2 {
+  font-size: 15px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.period-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.period-dot {
+  height: 5px;
+  width: 5px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+}
+
+.section-caption {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+/* --------------------------------------------------------------------------
+   6. Metric cards
+   -------------------------------------------------------------------------- */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  padding: 21px 20px 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 23px;
+}
+
+.metric-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.metric-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tone-blue {
+  color: var(--tone-blue);
+  background: var(--tone-blue-surface);
+}
+
+.tone-green {
+  color: var(--primary);
+  background: var(--status-surface);
+}
+
+.tone-red {
+  color: var(--tone-red);
+  background: var(--tone-red-surface);
+}
+
+.tone-gray {
+  color: var(--tone-gray);
+  background: var(--tone-gray-surface);
+}
+
+.tone-amber {
+  color: var(--tone-amber);
+  background: var(--tone-amber-surface);
+}
+
+.metric-category {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.metric-card h3 {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+}
+
+.metric-value {
+  font-family: var(--font-heading);
+  font-size: 38px;
+  font-weight: 650;
+  line-height: 1.3;
+  margin-bottom: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-footer {
+  margin: 0 -20px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.tiny-dot {
+  height: 5px;
+  width: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   7. Getting started cards
+   -------------------------------------------------------------------------- */
+.getting-started {
+  margin-top: 46px;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.setup-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.setup-art {
+  height: 145px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.art-whatsapp {
+  background: var(--status-surface);
+  color: var(--primary);
+}
+
+.art-automation {
+  background: var(--tone-blue-surface);
+  color: var(--tone-blue);
+}
+
+.art-template {
+  background: var(--tone-amber-surface);
+  color: var(--tone-amber);
+}
+
+/* --- artwork: WhatsApp --- */
+.art-main {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  transform: rotate(-8deg);
+  box-shadow: var(--art-shadow);
+  z-index: 1;
+}
+
+.art-main svg {
+  width: 32px;
+  height: 32px;
+}
+
+.art-orbit {
+  position: absolute;
+  border: 1px solid color-mix(in oklab, var(--primary) 10%, transparent);
+  border-radius: 50%;
+  width: 110px;
+  height: 110px;
+}
+
+.orbit-two {
+  width: 174px;
+  height: 174px;
+}
+
+.art-check {
+  position: absolute;
+  left: calc(50% + 14px);
+  top: 84px;
+  border: 3px solid var(--status-surface);
+  border-radius: 50%;
+  background: var(--card);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+
+.art-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+.art-spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+}
+
+.spark-one {
+  top: 37px;
+  left: 23%;
+}
+
+.spark-two {
+  right: 24%;
+  bottom: 33px;
+  width: 4px;
+  height: 4px;
+}
+
+/* --- artwork: automation --- */
+.workflow-node {
+  width: 49px;
+  height: 49px;
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  border: 1px solid color-mix(in oklab, var(--tone-blue) 20%, transparent);
+  border-radius: 12px;
+  box-shadow: var(--art-shadow);
+  transform: rotate(-6deg);
+  z-index: 1;
+}
+
+.workflow-line {
+  width: 48px;
+  border-top: 2px dashed color-mix(in oklab, var(--tone-blue) 40%, transparent);
+}
+
+.node-end {
+  background: var(--tone-blue);
+  color: var(--primary-foreground);
+  transform: rotate(6deg);
+}
+
+/* --- artwork: templates --- */
+.template-paper {
+  position: absolute;
+  height: 84px;
+  width: 65px;
+  border: 1px solid color-mix(in oklab, var(--tone-amber) 20%, transparent);
+  border-radius: 6px;
+  background: var(--card);
+  box-shadow: var(--art-shadow);
+}
+
+.paper-back {
+  transform: rotate(-12deg) translate(-10px, -2px);
+  background: color-mix(in oklab, var(--tone-amber) 8%, var(--card));
+}
+
+.paper-front {
+  transform: rotate(8deg) translate(7px, 2px);
+  padding: 15px 11px;
+}
+
+.paper-title,
+.paper-line,
+.paper-tag {
+  display: block;
+  height: 4px;
+  background: color-mix(in oklab, var(--tone-amber) 22%, var(--card));
+  border-radius: 2px;
+  margin-bottom: 6px;
+}
+
+.paper-title {
+  height: 5px;
+  width: 22px;
+  background: var(--tone-amber);
+  margin-bottom: 11px;
+}
+
+.short-line {
+  width: 65%;
+}
+
+.paper-tag {
+  width: 19px;
+  height: 7px;
+  margin-top: 9px;
+  background: var(--status-surface);
+}
+
+/* --- card copy --- */
+.setup-content {
+  padding: 24px 25px 0;
+}
+
+.step-label {
+  color: var(--muted-foreground);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.setup-content h3 {
+  font-size: 18px;
+  font-weight: 750;
+  margin: 9px 0 10px;
+}
+
+.setup-content p {
+  font-size: 12px;
+  line-height: 1.85;
+  color: var(--muted-foreground);
+  min-height: 67px;
+  margin-bottom: 20px;
+  max-width: 295px;
+}
+
+.setup-footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.setup-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.neutral-state {
+  color: var(--muted-foreground);
+}
+
+.setup-state svg {
+  width: 13px;
+  height: 13px;
+}
+
+.step-number {
+  color: color-mix(in oklab, var(--muted-foreground) 45%, var(--card));
+  font-family: var(--font-heading);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   8. Footer
+   -------------------------------------------------------------------------- */
+.overview-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 36px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.overview-footer svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.65;
+}
+
+.footer-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  margin-left: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   9. Responsive
+   -------------------------------------------------------------------------- */
+@media (min-width: 1500px) {
+  .overview-main {
+    padding-top: 65px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .topbar-inner {
+    padding: 0 28px;
+  }
+
+  .overview-main {
+    padding: 40px 28px;
+  }
+
+  .metrics-grid {
+    gap: 12px;
+  }
+
+  .metric-card {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .metric-category {
+    display: none;
+  }
+
+  .metric-footer {
+    margin-left: -15px;
+    margin-right: -15px;
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .setup-content {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    height: 68px;
+  }
+
+  .topbar-inner {
+    padding: 0 22px;
+  }
+
+  .overview-main {
+    padding: 34px 22px;
+  }
+
+  .welcome {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 22px;
+    margin-bottom: 32px;
+  }
+
+  .welcome h1 {
+    font-size: 32px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .metric-top {
+    margin-bottom: 16px;
+  }
+
+  .metric-value {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+
+  .metric-category {
+    display: block;
+  }
+
+  .setup-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .setup-art {
+    height: 135px;
+  }
+
+  .setup-content p {
+    min-height: auto;
+    max-width: none;
+    margin-bottom: 24px;
+  }
+
+  .getting-started {
+    margin-top: 34px;
+  }
+
+  .section-caption {
+    display: none;
+  }
+
+  .overview-footer {
+    font-size: 9px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. Motion (skipped entirely when the visitor asks for less movement)
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .metric-card,
+  .setup-card {
+    animation: reveal 0.5s ease-out both;
+  }
+
+  .setup-card {
+    animation-delay: 0.1s;
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

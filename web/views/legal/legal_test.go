@@ -1,6 +1,7 @@
 package viewslegal_test
 
 import (
+	"whatsappconverty/internal/i18n"
 	"context"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ func TestPrivacyPagePublishesContactAndDeletionLink(t *testing.T) {
 	ctx := context.Background()
 
 	var sb strings.Builder
-	if err := legal.Privacy("support@example.com").Render(ctx, &sb); err != nil {
+	if err := legal.Privacy("support@example.com", i18n.New(i18n.En)).Render(ctx, &sb); err != nil {
 		t.Fatalf("render privacy: %v", err)
 	}
 	html := sb.String()
@@ -46,7 +47,7 @@ func TestDataDeletionPagePublishesContactAndInventory(t *testing.T) {
 	ctx := context.Background()
 
 	var sb strings.Builder
-	if err := legal.DataDeletion("support@example.com").Render(ctx, &sb); err != nil {
+	if err := legal.DataDeletion("support@example.com", i18n.New(i18n.En)).Render(ctx, &sb); err != nil {
 		t.Fatalf("render data deletion: %v", err)
 	}
 	html := sb.String()
@@ -77,7 +78,7 @@ func TestLegalPagesWithoutSupportEmail(t *testing.T) {
 	ctx := context.Background()
 
 	var privacy strings.Builder
-	if err := legal.Privacy("").Render(ctx, &privacy); err != nil {
+	if err := legal.Privacy("", i18n.New(i18n.En)).Render(ctx, &privacy); err != nil {
 		t.Fatalf("render privacy: %v", err)
 	}
 	if strings.Contains(privacy.String(), "mailto:") {
@@ -85,7 +86,7 @@ func TestLegalPagesWithoutSupportEmail(t *testing.T) {
 	}
 
 	var deletion strings.Builder
-	if err := legal.DataDeletion("").Render(ctx, &deletion); err != nil {
+	if err := legal.DataDeletion("", i18n.New(i18n.En)).Render(ctx, &deletion); err != nil {
 		t.Fatalf("render data deletion: %v", err)
 	}
 	if strings.Contains(deletion.String(), "mailto:") {

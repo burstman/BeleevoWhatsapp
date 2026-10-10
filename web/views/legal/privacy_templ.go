@@ -8,9 +8,13 @@ package viewslegal
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "whatsappconverty/internal/i18n"
+
 // Privacy is the public Privacy Policy page (Meta requires each live app to
-// publish one). Served unauthenticated at /privacy.
-func Privacy(supportEmail string) templ.Component {
+// publish one). Served unauthenticated at /privacy. The chrome follows the
+// viewer's language; the legal text itself is kept in English because wording
+// precision matters more than localisation for that page.
+func Privacy(supportEmail string, dict *i18n.Dict) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -47,7 +51,7 @@ func Privacy(supportEmail string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = contactLine(supportEmail, "Privacy").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = contactLine(supportEmail, "Privacy", dict).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -55,13 +59,13 @@ func Privacy(supportEmail string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legalFooter().Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legalFooter(dict).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Shell("Privacy Policy", "How Converty WhatsApp collects, uses, shares and deletes personal data.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Shell("Privacy Policy", "How Converty WhatsApp collects, uses, shares and deletes personal data.", dict).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
