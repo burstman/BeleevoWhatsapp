@@ -18,15 +18,15 @@ import (
 func TestInboxTwoPaneRender(t *testing.T) {
 	shopID := uuid.New()
 	thread := whatsapp.Conversation{
-		ID:             uuid.New(),
-		ShopID:         shopID,
-		CustomerPhone:  "21654116584",
-		CustomerName:   "Ahmed",
-		LastBody:       "Bonjour",
-		LastMessageAt:  time.Now().Add(-time.Minute),
-		UnreadCount:    2,
-		WindowOpen:     true,
-		LastDirection:  "inbound",
+		ID:            uuid.New(),
+		ShopID:        shopID,
+		CustomerPhone: "21654116584",
+		CustomerName:  "Ahmed",
+		LastBody:      "Bonjour",
+		LastMessageAt: time.Now().Add(-time.Minute),
+		UnreadCount:   2,
+		WindowOpen:    true,
+		LastDirection: "inbound",
 	}
 	page := components.Page{Title: "Inbox", Active: "inbox", WhatsAppConnected: true, UnreadInbox: 2}
 
@@ -54,8 +54,14 @@ func TestInboxTwoPaneRender(t *testing.T) {
 	if !strings.Contains(out, `hx-get="/inbox/sidebar"`) {
 		t.Error("sidebar does not carry its polling trigger")
 	}
-	if !strings.Contains(out, `href="/settings/autoreply"`) {
-		t.Error("inbox header must link to the auto-reply settings")
+	if !strings.Contains(out, `hx-get="/settings/autoreply"`) {
+		t.Error("inbox header must load the auto-reply modal over htmx")
+	}
+	if !strings.Contains(out, `id="autoreply-modal-body"`) {
+		t.Error("inbox must render the auto-reply modal target")
+	}
+	if strings.Contains(out, `href="/settings/autoreply"`) {
+		t.Error("auto-reply must open the modal, not navigate to a standalone page")
 	}
 }
 

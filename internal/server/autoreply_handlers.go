@@ -8,16 +8,17 @@ import (
 
 	"github.com/anthdm/superkit/kit"
 
+	"whatsappconverty/internal/i18n"
 	"whatsappconverty/internal/whatsapp"
 	vsettings "whatsappconverty/web/views/settings"
 )
 
-// handleAutoreplySettings renders the first-contact auto-reply page: the
-// greeting configured on the shop that owns the WhatsApp number.
+// handleAutoreplySettings renders the inbox auto-reply modal body. It is a
+// fragment-only endpoint: the inbox button loads it via htmx. A plain GET
+// (someone pasting the URL) is bounced back to the inbox.
 func (a *App) handleAutoreplySettings(k *kit.Kit) error {
-	all, err := a.pageShops(k)
-	if err != nil {
-		return err
+	if k.Request.Header.Get("HX-Request") != "true" {
+		return k.Redirect(http.StatusSeeOther, "/inbox")
 	}
 	ctx := k.Request.Context()
 	owner, err := a.sharedOwnerShop(ctx)
@@ -28,37 +29,19 @@ func (a *App) handleAutoreplySettings(k *kit.Kit) error {
 	if err != nil {
 		return err
 	}
-
-	page := a.dashboardPage(k, "autoreply", "autoreply", all)
-	dict := page.I18N
-
-	flash := vsettings.AutoreplyFlash{}
-	switch k.Request.URL.Query().Get("flash") {
-	case "saved":
-		flash.Info = dict.T("far.flashSaved")
-	case "missingtext":
-		flash.Error = dict.T("far.flashMissingText")
-	case "missingfile":
-		flash.Error = dict.T("far.flashMissingFile")
-	case "toolarge":
-		flash.Error = dict.T("far.flashTooLarge")
-	case "badformat":
-		flash.Error = dict.T("far.flashBadFormat")
-	case "error", "internal":
-		flash.Error = dict.T("far.flashError")
-	}
-
-	return k.Render(vsettings.Autoreply(page, dict, cfg, flash))
+	dict := i18n.New(a.publicLang(k))
+	return k.Render(vsettings.AutoreplyModal(dict, cfg, vsettings.AutoreplyFlash{}))
 }
 
 // handleAutoreplySave stores the greeting. It is a multipart form because the
 // image/audio kinds carry a file; the text kind is validated to be non-empty
-// when the greeting is enabled.
+// when the greeting is enabled. On success an HX-Request gets an HX-Trigger
+// event the inbox listens for to close the modal; on failure the modal body is
+// re-rendered in place with the error.
 func (a *App) handleAutoreplySave(k *kit.Kit) error {
-	if _, err := a.pageShops(k); err != nil {
-		return err
-	}
+	isHX := k.Request.Header.Get("HX-Request") == "true"
 	ctx := k.Request.Context()
+	dict := i18n.New(a.publicLang(k))
 	owner, err := a.sharedOwnerShop(ctx)
 	if err != nil {
 		return err
@@ -76,7 +59,7 @@ func (a *App) handleAutoreplySave(k *kit.Kit) error {
 	old, err := a.WhatsApp.GetFirstContactAutoreply(ctx, shopID)
 	if err != nil {
 		a.Log.Error("autoreply load failed", "shop_id", shopID, "error", err.Error())
-		return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=error")
+		return a.autoreplyFail(k, dict, whatsapp.FirstContactAutoreply{ShopID: shopID, Enabled: enabled, Kind: kind}, "error", isHX)
 	}
 
 	cfg := whatsapp.FirstContactAutoreply{ShopID: shopID, Enabled: enabled, Kind: kind}
@@ -87,28 +70,30 @@ func (a *App) handleAutoreplySave(k *kit.Kit) error {
 	k.Request.Body = http.MaxBytesReader(k.Response, k.Request.Body, maxSendAudioBytes+1<<20)
 	if err := k.Request.ParseMultipartForm(maxSendAudioBytes + 1<<20); err != nil {
 		if strings.Contains(err.Error(), "too large") {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=toolarge")
+			return a.autoreplyFail(k, dict, cfg, "toolarge", isHX)
 		}
 		a.Log.Error("autoreply form parse failed", "shop_id", shopID, "error", err.Error())
-		return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=error")
+		return a.autoreplyFail(k, dict, cfg, "error", isHX)
 	}
+
+	cfg.TextBody = strings.TrimSpace(k.Request.FormValue("text_body"))
+	cfg.Caption = strings.TrimSpace(k.Request.FormValue("caption"))
 
 	switch kind {
 	case whatsapp.AutoreplyImage:
-		cfg.Caption = strings.TrimSpace(k.Request.FormValue("caption"))
 		mime, data, filename, hasFile, reason := readAutoreplyUpload(k, "image")
 		if reason != "" {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash="+reason)
+			return a.autoreplyFail(k, dict, cfg, reason, isHX)
 		}
 		if hasFile {
 			cfg.MediaMime, cfg.MediaBytes, cfg.MediaFilename = mime, data, filename
 		} else if !(old.Kind == whatsapp.AutoreplyImage && old.MediaMime != "") {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=missingfile")
+			return a.autoreplyFail(k, dict, cfg, "missingfile", isHX)
 		}
 	case whatsapp.AutoreplyAudio:
 		mime, data, filename, hasFile, reason := readAutoreplyUpload(k, "audio")
 		if reason != "" {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash="+reason)
+			return a.autoreplyFail(k, dict, cfg, reason, isHX)
 		}
 		if hasFile {
 			cfg.MediaMime, cfg.MediaBytes, cfg.MediaFilename = mime, data, filename
@@ -116,21 +101,54 @@ func (a *App) handleAutoreplySave(k *kit.Kit) error {
 				cfg.MediaDurationMS = ms
 			}
 		} else if !(old.Kind == whatsapp.AutoreplyAudio && old.MediaMime != "") {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=missingfile")
+			return a.autoreplyFail(k, dict, cfg, "missingfile", isHX)
 		}
 	default:
-		cfg.TextBody = strings.TrimSpace(k.Request.FormValue("text_body"))
 		if enabled && cfg.TextBody == "" {
-			return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=missingtext")
+			return a.autoreplyFail(k, dict, cfg, "missingtext", isHX)
 		}
 	}
 
 	if err := a.WhatsApp.SaveFirstContactAutoreply(ctx, cfg); err != nil {
 		a.Log.Error("autoreply save failed", "shop_id", shopID, "error", err.Error())
-		return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=error")
+		return a.autoreplyFail(k, dict, cfg, "error", isHX)
 	}
 	a.Log.Info("first-contact autoreply saved", "shop_id", shopID, "kind", kind, "enabled", enabled)
-	return k.Redirect(http.StatusSeeOther, "/settings/autoreply?flash=saved")
+
+	if isHX {
+		k.Response.Header().Set("HX-Trigger", "autoreply-saved")
+		return k.Text(http.StatusOK, "")
+	}
+	return k.Redirect(http.StatusSeeOther, "/inbox")
+}
+
+// autoreplyFail reports a save/load problem. For the inbox modal it re-renders
+// the modal body in place with a localized message; for a plain post it simply
+// bounces back to the inbox.
+func (a *App) autoreplyFail(k *kit.Kit, dict *i18n.Dict, cfg whatsapp.FirstContactAutoreply, code string, isHX bool) error {
+	if !isHX {
+		return k.Redirect(http.StatusSeeOther, "/inbox")
+	}
+	return k.Render(vsettings.AutoreplyModal(dict, cfg, autoreplyFlash(dict, code)))
+}
+
+// autoreplyFlash maps a save/load problem code to the localized banner shown in
+// the modal.
+func autoreplyFlash(dict *i18n.Dict, code string) vsettings.AutoreplyFlash {
+	switch code {
+	case "saved":
+		return vsettings.AutoreplyFlash{Info: dict.T("far.flashSaved")}
+	case "missingtext":
+		return vsettings.AutoreplyFlash{Error: dict.T("far.flashMissingText")}
+	case "missingfile":
+		return vsettings.AutoreplyFlash{Error: dict.T("far.flashMissingFile")}
+	case "toolarge":
+		return vsettings.AutoreplyFlash{Error: dict.T("far.flashTooLarge")}
+	case "badformat":
+		return vsettings.AutoreplyFlash{Error: dict.T("far.flashBadFormat")}
+	default:
+		return vsettings.AutoreplyFlash{Error: dict.T("far.flashError")}
+	}
 }
 
 // handleAutoreplyMedia streams the stored greeting media for the preview. It is
