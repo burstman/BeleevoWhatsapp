@@ -58,6 +58,39 @@ func TestAutoreplyModalRender(t *testing.T) {
 	}
 }
 
+// The "Enabled" control is a sliding switch: it must keep the native
+// checkbox field the save handler reads, reflect the saved state, and carry
+// the peer classes that draw the toggle.
+func TestAutoreplyToggle(t *testing.T) {
+	render := func(enabled bool) string {
+		var sb strings.Builder
+		cfg := whatsapp.FirstContactAutoreply{Kind: "text", Enabled: enabled, TextBody: "Bonjour"}
+		if err := AutoreplyModal(i18n.New(i18n.En), cfg, AutoreplyFlash{}).Render(t.Context(), &sb); err != nil {
+			t.Fatalf("render: %v", err)
+		}
+		return sb.String()
+	}
+
+	on := render(true)
+	if !strings.Contains(on, `name="enabled"`) {
+		t.Error("enabled field missing")
+	}
+	if !strings.Contains(on, `role="switch"`) {
+		t.Error("enabled control must be a switch")
+	}
+	if !strings.Contains(on, `peer-checked:bg-indigo-600`) {
+		t.Error("toggle track missing its checked style")
+	}
+	if !strings.Contains(on, `value="1" checked`) {
+		t.Error("enabled toggle must render checked when enabled")
+	}
+
+	off := render(false)
+	if strings.Contains(off, `value="1" checked`) {
+		t.Error("enabled toggle must not render checked when disabled")
+	}
+}
+
 // A save problem must surface as a visible banner inside the modal.
 func TestAutoreplyModalFlash(t *testing.T) {
 	var sb strings.Builder

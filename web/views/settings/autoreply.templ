@@ -40,12 +40,15 @@ templ AutoreplyModal(dict *i18n.Dict, cfg whatsapp.FirstContactAutoreply, flash 
 		<form hx-post="/settings/autoreply" hx-encoding="multipart/form-data"
 			hx-target="#autoreply-modal-body" hx-swap="innerHTML"
 			class="mt-4 space-y-5" x-data="{ kind: $el.dataset.kind }" data-kind={ cfg.Kind }>
-			<label class="flex items-start gap-3">
-				<input type="checkbox" name="enabled" value="1" checked={ cfg.Enabled }
-					class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+			<label class="flex cursor-pointer items-center justify-between gap-4">
 				<span>
 					<span class="block text-sm font-medium text-slate-900">{ dict.T("far.enabled") }</span>
 					<span class="mt-0.5 block text-xs text-slate-500">{ dict.T("far.runOnce") }</span>
+				</span>
+				<span class="relative inline-flex shrink-0">
+					<input type="checkbox" name="enabled" value="1" checked?={ cfg.Enabled } class="peer sr-only" role="switch" />
+					<span class="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 peer-focus-visible:ring-offset-2"></span>
+					<span class="pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5 rtl:peer-checked:-translate-x-5"></span>
 				</span>
 			</label>
 
